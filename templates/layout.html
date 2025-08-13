@@ -224,42 +224,55 @@
 /* スマホ版レイアウトの調整（768px以下） */
 /*----------------------------------*/
 @media (max-width: 768px) {
-    /* ヘッダー全体の設定 */
     .header-content {
         padding: 0 10px;
-        display: flex; /* Flexboxを再適用 */
-        flex-wrap: nowrap; /* 要素が折り返さないように */
-        align-items: center; /* 縦方向の中央揃え */
-    }
-    
-    /* UEC 掲示板タイトルのスタイル */
-    .header-left {
-        flex-shrink: 0; /* 縮小しないように */
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: space-between; /* 要素を両端に配置 */
     }
 
-    /* 検索フォームのスタイル */
+    /* UEC 掲示板タイトルのスタイルを調整 */
+    .header-left h1 {
+        margin: 0;
+        font-size: 1.2em; /* タイトルを小さくする */
+    }
+
+    /* 検索フォームのスタイルを調整 */
     .header-center {
         flex-grow: 1; /* 残りのスペースを埋める */
         display: flex;
-        justify-content: flex-end; /* フォームを右に寄せる */
-        margin-left: 10px; /* タイトルとの間に少し余白 */
+        justify-content: center; /* 検索フォームを中央に配置 */
+        margin: 0 10px; /* 左右に余白を追加 */
+    }
+    
+    .search-form-header {
+        margin: 0;
     }
 
     .search-form-header input[type="text"] {
-        width: 100px; /* 検索フォームの幅を狭くする */
+        width: 100%;
+        max-width: 150px; /* 最大幅を設定して広がりすぎないように */
     }
 
-    /* 通知アイコンとプロフィールアイコンを非表示にする（任意） */
-    /* .header-right {
-        display: none;
-    } */
+    /* 右側のアイコン部分を調整 */
+    .header-right {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0; /* 縮小しないように */
+        white-space: nowrap; /* アイコンが改行されないように */
+        margin-left: 10px; /* 検索フォームとの間に余白 */
+    }
+    
+    .header-right > a {
+        margin-right: 10px;
+    }
 
     /* ヘッダーがbodyに食い込むのを防ぐ */
     body {
-        padding-top: 100px; /* ヘッダーの高さに合わせて調整 */
+        padding-top: 70px; /* ヘッダーの高さに合わせて調整 */
     }
-}
-    </style>
+}    </style>
 </head>
 <body>
     <div class="header">
