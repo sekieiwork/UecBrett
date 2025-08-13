@@ -226,41 +226,37 @@
 @media (max-width: 768px) {
     /* ヘッダー全体の設定 */
     .header-content {
-        padding: 0 10px; /* 左右の余白を少し追加 */
+        padding: 0 10px;
+        display: flex; /* Flexboxを再適用 */
+        flex-wrap: nowrap; /* 要素が折り返さないように */
+        align-items: center; /* 縦方向の中央揃え */
     }
     
-    /* 左側（タイトル）と右側（アイコン）を両端に寄せる */
+    /* UEC 掲示板タイトルのスタイル */
     .header-left {
-        order: 1; /* 左端に配置 */
-    }
-    .header-right {
-        order: 3; /* 右端に配置 */
-        margin-left: auto; /* 右端に寄せる */
+        flex-shrink: 0; /* 縮小しないように */
     }
 
-    /* 中央の検索フォームを隠す、もしくは下に配置 */
+    /* 検索フォームのスタイル */
     .header-center {
-        order: 2; /* 左右の間に配置 */
-        flex-basis: 100%; /* 横幅いっぱいに広げる */
-        margin-top: 10px; /* 上部に余白 */
+        flex-grow: 1; /* 残りのスペースを埋める */
+        display: flex;
+        justify-content: flex-end; /* フォームを右に寄せる */
+        margin-left: 10px; /* タイトルとの間に少し余白 */
     }
 
-    /* 通知アイコンとプロフィールアイコンの間のスペース調整 */
-    .header-right > a {
-        margin-right: 10px;
+    .search-form-header input[type="text"] {
+        width: 100px; /* 検索フォームの幅を狭くする */
     }
 
-    /* 通知アイコンとプロフィールアイコンを縦並びにしないよう調整 */
-    .header-right {
-        flex-wrap: nowrap;
-    }
+    /* 通知アイコンとプロフィールアイコンを非表示にする（任意） */
+    /* .header-right {
+        display: none;
+    } */
 
-    /* プロフィールのドロップダウンメニューの調整 */
-    .dropdown-content {
-        right: 0; /* 画面の右端を基準にする */
-        left: auto;
-        min-width: 150px; /* 最小幅を設定 */
-        box-shadow: 0px 4px 8px 0px rgba(0,0,0,0.2);
+    /* ヘッダーがbodyに食い込むのを防ぐ */
+    body {
+        padding-top: 100px; /* ヘッダーの高さに合わせて調整 */
     }
 }
     </style>
