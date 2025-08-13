@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+
+{% block title %}投稿編集 - {{ post.title }}{% endblock %}
+
+{% block content %}
+    <h1>投稿編集</h1>
+    <form method="POST">
+        {{ form.csrf_token }}
+        <div class="form-field">
+            {{ form.title.label }}<br>
+            {{ form.title(size=32) }}
+        </div>
+        <div class="form-field">
+            {{ form.content.label }}<br>
+            {{ form.content(cols=40, rows=5) }}
+        </div>
+        {{ form.submit(value='更新') }}
+    </form>
+{% endblock %}

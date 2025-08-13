@@ -1,0 +1,88 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content %}
+    <div class="post-detail" style="position: relative;">
+        {% if current_user.is_authenticated and current_user == post.author %}
+            <a href="{{ url_for('edit_post', post_id=post.id) }}" style="position: absolute; top: 1em; right: 1em; font-size: 0.9em;">編集</a>
+        {% endif %}
+        
+         <h1>
+        {{ post.title }}
+        <span style="color: black; font-size: 0.7em;">コメント数({{ post.comments|length }})</span>
+        {% if current_user.is_authenticated %}
+        <form action="{{ url_for('bookmark_post', post_id=post.id) }}" method="POST" style="display: inline;">
+            <button type="submit" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
+                {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
+                {% if is_bookmarked %}
+                    <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
+                {% else %}
+                    <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
+                {% endif %}
+            </button>
+        </form>
+        {% endif %}
+    </h1>
+        <div class="post-content">{{ markdown.markdown(post.content) | safe }}</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">
+            <div>
+                <small>投稿者: <a href="{{ url_for('user_profile', username=post.author.username) }}" class="{{ post.author.get_username_class() }}">{{ post.author.username }}</a></small> | 
+                <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                {% if post.updated_at %}
+                    <small style="color: gray;"> / 最終更新日時: {{ post.updated_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                {% endif %}
+            </div>
+            
+            {% if current_user.is_authenticated and (current_user == post.author or current_user.is_admin) %}
+                <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" style="display:inline; margin-left: auto;">
+                    <input type="submit" value="削除" onclick="return confirm('本当に削除しますか？');" class="delete-button">
+                </form>
+            {% endif %}
+        </div>
+        <hr>
+    </div>
+
+    <div class="comment-form">
+        <h3>コメントする</h3>
+        <form method="POST">
+            {{ form.csrf_token }}
+            {{ form.content.label }}<br>
+            {{ form.content(cols=40, rows=5) }}
+            {{ form.submit }}
+        </form>
+    </div>
+
+    <div class="comments">
+        <h3>コメント ({{ post.comments|length }})</h3>
+        {% for comment in post.comments %}
+            <div class="comment" style="display: flex; align-items: flex-start; position: relative;">
+                <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" style="margin-right: 1em;">
+                    {% if comment.commenter.icon_url %}
+                        <img src="{{ comment.commenter.icon_url }}" alt="{{ comment.commenter.username }}のアイコン" style="width: 40px; height: 40px; border-radius: 50%;">
+                    {% else %}
+                        <img src="https://via.placeholder.com/40" alt="デフォルトアイコン" style="width: 40px; height: 40px; border-radius: 50%;">
+                    {% endif %}
+                </a>
+                <div>
+                    <div class="comment-content">{{ markdown.markdown(comment.content) | safe }}</div>
+                    <small>コメント投稿者: <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="{{ comment.commenter.get_username_class() }}">{{ comment.commenter.username }}</a></small> | <small>投稿日時: {{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                </div>
+                
+                {% if current_user.is_authenticated and (current_user == comment.commenter or current_user == post.author or current_user.is_admin) %}
+                    {% if current_user == post.author and current_user != comment.commenter %}
+                        <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="POST" style="position: absolute; bottom: 0; right: 0;">
+                            <input type="submit" value="削除" onclick="return confirm('これは{{ comment.commenter.username }}のコメントです、削除しますか？');" class="delete-button yellow">
+                        </form>
+                    {% else %}
+                        <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="POST" style="position: absolute; bottom: 0; right: 0;">
+                            <input type="submit" value="削除" onclick="return confirm('本当に削除しますか？');" class="delete-button">
+                        </form>
+                    {% endif %}
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    
+{% endblock %}

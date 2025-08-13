@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+
+{% block title %}ログイン{% endblock %}
+
+{% block content %}
+    <h1>ログイン</h1>
+    <form method="POST">
+        {{ form.csrf_token }}
+        <div class="form-field">
+            {{ form.username.label }}<br>
+            {{ form.username(size=20) }}
+        </div>
+        <div class="form-field">
+            {{ form.password.label }}<br>
+            {{ form.password(size=20) }}
+        </div>
+        {{ form.submit }}
+    </form>
+    <p>アカウントをお持ちでないですか？ <a href="{{ url_for('register') }}">ユーザー登録</a></p>
+{% endblock %}
