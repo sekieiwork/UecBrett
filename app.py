@@ -451,5 +451,4 @@ def show_notifications():
     return render_template('notifications.html', notifications=notifications, search_form=search_form)
 
 if __name__ == '__main__':
-    with app.app_context():
     app.run(debug=True)
