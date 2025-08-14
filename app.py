@@ -12,6 +12,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 import os
 from flask_wtf.file import FileField, FileAllowed
+from .forms import SearchForm # SearchFormをインポート
 import markdown
 
 app = Flask(__name__)
@@ -436,15 +437,19 @@ def user_profile(username):
 @app.route('/admin')
 @login_required
 def admin_dashboard():
-    # 管理者でない場合は403 Forbiddenエラーを返す
     if not current_user.is_admin:
         abort(403)
-    
-    # ユーザーと投稿をすべて取得
+
+    search_form = SearchForm() # ここでSearchFormを初期化
     all_users = User.query.all()
     all_posts = Post.query.all()
 
-    return render_template('admin_dashboard.html', users=all_users, posts=all_posts)
+    return render_template(
+        'admin_dashboard.html', 
+        users=all_users, 
+        posts=all_posts,
+        search_form=search_form # テンプレートにsearch_formを渡す
+    )
 
 # 投稿を強制的に削除するルート
 @app.route('/admin/delete_post/<int:post_id>', methods=['POST'])
