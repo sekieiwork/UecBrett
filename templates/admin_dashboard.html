@@ -28,4 +28,17 @@
         </li>
     {% endfor %}
     </ul>
+
+	<h2>コメント一覧</h2>
+    <ul>
+    {% for comment in all_comments %}
+        <li>
+            {{ comment.content }} (投稿者: {{ comment.commenter.username }})
+            <form action="{{ url_for('admin_delete_comment', comment_id=comment.id) }}" method="POST" style="display:inline;">
+                <button type="submit">削除</button>
+            </form>
+        </li>
+    {% endfor %}
+    </ul>
+
 {% endblock %}

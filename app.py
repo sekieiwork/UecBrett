@@ -81,7 +81,7 @@ class Comment(db.Model):
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False) # <-- ここに追記
 
     def __repr__(self):
         return f'<Comment {self.id}>'
@@ -407,13 +407,30 @@ def admin_dashboard():
     search_form = SearchForm() # ここでSearchFormを初期化
     all_users = User.query.all()
     all_posts = Post.query.all()
+    all_comments = Comment.query.all()
 
     return render_template(
         'admin_dashboard.html', 
         users=all_users, 
         posts=all_posts,
+        comments=all_comments,
         search_form=search_form # テンプレートにsearch_formを渡す
     )
+
+# 管理者によるコメントの強制削除
+@app.route('/admin/delete_comment/<int:comment_id>', methods=['POST'])
+@login_required
+def admin_delete_comment(comment_id):
+    if not current_user.is_admin:
+        abort(403)
+    
+    comment = Comment.query.get_or_404(comment_id)
+    post_id = comment.post_id
+    db.session.delete(comment)
+    db.session.commit()
+    
+    flash('コメントを削除しました。', 'success')
+    return redirect(url_for('admin_dashboard')) # 削除後は管理者ダッシュボードに戻る
 
 # 投稿を強制的に削除するルート
 @app.route('/admin/delete_post/<int:post_id>', methods=['POST'])
