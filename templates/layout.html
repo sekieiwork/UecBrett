@@ -62,19 +62,22 @@
         }
 
 	.comment-body {
-    	flex-grow: 1; /* 残りのスペースを埋める */
-	}
+    flex-grow: 1; /* 残りのスペースをすべて埋める */
+    display: flex;
+    flex-direction: column;
+}
 
 /* コメントのコンテナ全体のスタイルを修正 */
-	.comment-container {
+.comment-container {
     background-color: #fff;
     border: 1px solid #dee2e6;
     border-radius: 0.25rem;
     padding: 1em;
     margin-bottom: 1em;
-    display: flex;
-    flex-wrap: wrap; /* 子要素が折り返すように */
+    display: flex; /* Flexboxを適用 */
+    flex-wrap: nowrap; /* 子要素が折り返さないように */
     align-items: flex-start;
+    position: relative; /* 削除ボタンの配置基準に */
 }
 
 	/* 投稿本文のスタイル */
@@ -87,14 +90,14 @@
 	}
 
 	/* コメント本文のスタイル */
-	.comment-content {
-    max-height: 80px; /* 最大の高さを80pxに設定 */
-    overflow-y: auto;  /* 高さを超えたらスクロールバーを表示 */
-    padding: 1em;      /* 上下左右に余白を追加 */
-    background-color: #fff; /* 背景色を白に設定 */
-    border: 1px solid #dee2e6;
+.comment-content {
+    max-height: 80px; /* 最大の高さを固定 */
+    overflow-y: auto; /* 高さを超えたらスクロール */
+    padding: 1em;
+    background-color: #f8f9fa; /* 背景色を付けて見やすく */
     border-radius: 0.25rem;
     margin-bottom: 0.5em;
+    margin-left: 0;
 }
 
 
@@ -264,9 +267,17 @@
     margin-right: 1em;
 }
 
+/* ユーザーアイコンのコンテナ */
+.user-icon-link {
+    flex-shrink: 0; /* 縮小しないように */
+    margin-right: 1em;
+}
+
+/* コメントのメタ情報（投稿者、日時） */
 .comment-meta {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    margin-top: 5px;
 }
 
 .comment-body-content {
@@ -285,10 +296,10 @@
 }
 
 .comment-actions {
-    margin-left: auto; /* 右端に寄せる */
-    margin-top: 60px; /* ボタンを下に移動 
+    position: absolute;
+    bottom: 1em;
+    right: 1em;
 }
-
 .comment-header {
     display: flex;
     align-items: center;
