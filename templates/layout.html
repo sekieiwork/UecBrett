@@ -67,12 +67,12 @@
 
 /* コメントのコンテナ全体のスタイルを修正 */
 	.comment-container {
-    	background-color: #fff;
-    	border: 1px solid #dee2e6;
-    	border-radius: 0.25rem;
-    	padding: 1em; /* コンテナ全体の内側に余白を追加 */
-    	margin-bottom: 1em;
-	}
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 1em;
+    margin-bottom: 1em;
+}
 
 	/* 投稿本文のスタイル */
 	.post-content {
@@ -85,11 +85,14 @@
 
 	/* コメント本文のスタイル */
 	.comment-content {
-    	/* padding: 1em; を削除 */
-    	margin-bottom: 0.5em;
-    	background-color: #f8f9fa; /* 背景色を付けて見やすく */
-    	border-radius: 0.25rem;
-	}
+    max-height: 80px; /* 最大の高さを80pxに設定 */
+    overflow-y: auto;  /* 高さを超えたらスクロールバーを表示 */
+    padding: 1em;      /* 上下左右に余白を追加 */
+    background-color: #fff; /* 背景色を白に設定 */
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5em;
+}
 
 
         /* 投稿リストとフォームのスタイル */
