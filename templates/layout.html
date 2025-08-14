@@ -229,36 +229,36 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-    }
-
-    .header-left {
-        flex-shrink: 0; /* 縮小しないように */
-        white-space: nowrap; /* テキストが改行されないように */
+        flex-wrap: nowrap; /* 要素を強制的に折り返さないように */
     }
 
     .header-left h1 {
         margin: 0;
-        font-size: 1.2em;
+        font-size: 1.2em; /* タイトルを小さくする */
+        white-space: nowrap;
     }
 
     .header-center {
-        flex-grow: 1;
+        flex-grow: 1; /* 残りのスペースを埋める */
         display: flex;
-        justify-content: flex-end;
-        margin-left: 10px;
+        justify-content: flex-end; /* 検索フォームを右寄せ */
+        margin: 0 10px;
+    }
+
+    .search-form-header {
+        margin: 0;
     }
 
     .search-form-header input[type="text"] {
-        width: 100%;
-        max-width: 150px;
+        width: 100px; /* 検索バーの幅を固定 */
+        max-width: 100px;
     }
 
     .header-right {
         display: flex;
         align-items: center;
         flex-shrink: 0; /* 縮小しないように */
-        white-space: nowrap; /* アイコンが改行されないように */
-        margin-left: 10px;
+        white-space: nowrap;
     }
 
     .header-right > a {
