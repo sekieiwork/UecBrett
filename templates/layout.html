@@ -232,38 +232,37 @@
     }
 
     .header-left {
-        flex-shrink: 0;
-        white-space: nowrap; /* 親要素にも適用 */
+        flex-shrink: 0; /* 縮小しないように */
+        white-space: nowrap; /* テキストが改行されないように */
     }
 
     .header-left h1 {
         margin: 0;
         font-size: 1.2em;
     }
-    
+
     .header-center {
         flex-grow: 1;
         display: flex;
-        justify-content: flex-end; /* 右に寄せる */
+        justify-content: flex-end;
         margin-left: 10px;
     }
 
     .search-form-header input[type="text"] {
-        width: 100px;
+        width: 100%;
+        max-width: 150px;
     }
 
     .header-right {
         display: flex;
         align-items: center;
-        margin-left: 10px; /* 検索フォームとの間に余白 */
+        flex-shrink: 0; /* 縮小しないように */
+        white-space: nowrap; /* アイコンが改行されないように */
+        margin-left: 10px;
     }
 
     .header-right > a {
-        margin-right: 5px; /* アイコン間の余白を調整 */
-    }
-
-    body {
-        padding-top: 70px;
+        margin-right: 5px;
     }
 }
 </style>
