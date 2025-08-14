@@ -76,7 +76,12 @@ class Post(db.Model):
         lazy='dynamic', 
         cascade="all, delete", 
     )
-    notifications = db.relationship('Notification', backref='post', lazy='dynamic')
+    notifications = db.relationship(
+        'Notification', 
+        backref='post', 
+        lazy='dynamic', 
+        cascade="all, delete", 
+    )
 
     def __repr__(self):
         return f'<Post {self.id}>'
@@ -107,7 +112,7 @@ class Notification(db.Model):
     is_read = db.Column(db.Boolean, default=False)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id', ondelete="CASCADE"), nullable=False)
 
     def __repr__(self):
         return f'<Notification recipient_id={self.recipient_id}, post_id={self.post_id}>'
