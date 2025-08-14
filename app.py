@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_wtf import FlaskForm
@@ -431,6 +431,48 @@ def user_profile(username):
     search_form = SearchForm()
     
     return render_template('profile.html', user=user, posts=posts, comments=comments, active_tab=active_tab, markdown=markdown, search_form=search_form)
+
+# 管理者のみがアクセスできる管理画面
+@app.route('/admin')
+@login_required
+def admin_dashboard():
+    # 管理者でない場合は403 Forbiddenエラーを返す
+    if not current_user.is_admin:
+        abort(403)
+    
+    # ユーザーと投稿をすべて取得
+    all_users = User.query.all()
+    all_posts = Post.query.all()
+
+    return render_template('admin_dashboard.html', users=all_users, posts=all_posts)
+
+# 投稿を強制的に削除するルート
+@app.route('/admin/delete_post/<int:post_id>', methods=['POST'])
+@login_required
+def admin_delete_post(post_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    post = Post.query.get_or_404(post_id)
+    db.session.delete(post)
+    db.session.commit()
+    
+    flash('投稿を削除しました。')
+    return redirect(url_for('admin_dashboard'))
+
+# ユーザーを削除するルート（注意: ユーザーの削除は関連データも削除する必要があります）
+@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+@login_required
+def admin_delete_user(user_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    user = User.query.get_or_404(user_id)
+    db.session.delete(user)
+    db.session.commit()
+
+    flash('ユーザーを削除しました。')
+    return redirect(url_for('admin_dashboard'))
 
 
 @app.route('/notifications')

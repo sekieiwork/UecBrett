@@ -311,6 +311,9 @@
                 	<a href="{{ url_for('user_profile', username=current_user.username) }}">プロフィール</a>
                 	<a href="{{ url_for('edit_profile', username=current_user.username) }}">プロフィールの編集</a>
                 	<a href="{{ url_for('show_bookmarks') }}">ブックマーク一覧</a>
+ 			{% if current_user.is_admin %}
+        		<a href="{{ url_for('admin_dashboard') }}">管理者ダッシュボード</a>
+    			{% endif %}
                 	<a href="{{ url_for('logout') }}">ログアウト</a>
             	</div>
         	</div>
