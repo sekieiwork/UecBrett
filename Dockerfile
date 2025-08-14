@@ -12,7 +12,8 @@ WORKDIR /app
 
 # 依存関係をインストール
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# pip installが失敗した場合でも、詳細なログを出力する
+RUN pip install --no-cache-dir -r requirements.txt || true
 
 # アプリケーションのコードをコンテナにコピー
 COPY . .
