@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 import os
 from flask_wtf.file import FileField, FileAllowed
-from forms import SearchForm # SearchFormをインポート
+from forms import PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm
 import markdown
 
 app = Flask(__name__)
@@ -101,47 +101,6 @@ class Notification(db.Model):
 
     def __repr__(self):
         return f'<Notification recipient_id={self.recipient_id}, post_id={self.post_id}>'
-
-class PostForm(FlaskForm):
-    title = StringField('タイトル', validators=[DataRequired()])
-    content = TextAreaField('本文', validators=[DataRequired()])
-    submit = SubmitField('投稿')
-
-class CommentForm(FlaskForm):
-    content = TextAreaField('コメント', validators=[DataRequired(), Length(min=1)])
-    submit = SubmitField('コメントする')
-
-class RegisterForm(FlaskForm):
-    username = StringField('ユーザー名', validators=[DataRequired(), Length(min=2, max=20)])
-    password = PasswordField('パスワード', validators=[DataRequired(), Length(min=6)])
-    confirm_password = PasswordField('パスワード（確認）', validators=[DataRequired(), EqualTo('password')])
-    submit = SubmitField('登録')
-
-    def validate_username(self, username):
-        user = User.query.filter_by(username=username.data).first()
-        if user:
-            raise ValidationError('このユーザー名はすでに使われています。')
-
-class LoginForm(FlaskForm):
-    username = StringField('ユーザー名', validators=[DataRequired()])
-    password = PasswordField('パスワード', validators=[DataRequired()])
-    submit = SubmitField('ログイン')
-
-class SearchForm(FlaskForm):
-    search_query = StringField('検索', validators=[DataRequired()])
-    submit = SubmitField('検索')
-
-class ProfileForm(FlaskForm):
-    username = StringField('ユーザー名', validators=[DataRequired(), Length(min=2, max=20)])
-    bio = TextAreaField('自己紹介')
-    icon = FileField('新しいアイコン', validators=[FileAllowed(['jpg', 'png', 'gif'], '画像ファイルのみ')])
-    submit = SubmitField('更新')
-
-    def validate_username(self, username):
-        if username.data != current_user.username:
-            user = User.query.filter_by(username=username.data).first()
-            if user:
-                raise ValidationError('このユーザー名はすでに使われています。')
 
 @app.route('/', defaults={'page': 1}, methods=['GET', 'POST'])
 @app.route('/page/<int:page>', methods=['GET', 'POST'])
