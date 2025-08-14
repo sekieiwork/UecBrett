@@ -36,7 +36,12 @@ class User(db.Model, UserMixin):
     is_admin = db.Column(db.Boolean, default=False)
     bio = db.Column(db.Text, nullable=True)
     icon_url = db.Column(db.String(200), nullable=True)
-    posts = db.relationship('Post', backref='author', lazy=True)
+    posts = db.relationship(
+        'Post', 
+        backref='author', 
+        lazy=True, 
+        cascade="all, delete", 
+    )
     comments = db.relationship('Comment', backref='commenter', lazy=True)
     bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic')
     notifications = db.relationship('Notification', backref='recipient', lazy='dynamic')
@@ -63,7 +68,7 @@ class Post(db.Model):
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False) # <-- ここに追加
     comments = db.relationship('Comment', backref='post', lazy=True, cascade="all, delete")
     bookmarks = db.relationship('Bookmark', backref='post', lazy='dynamic')
     notifications = db.relationship('Notification', backref='post', lazy='dynamic')
