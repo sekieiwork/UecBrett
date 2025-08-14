@@ -64,8 +64,8 @@
                         <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="デフォルトアイコン" style="width: 40px; height: 40px; border-radius: 50%;">
                     {% endif %}
                 </a>
-                <div>
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="flex-grow: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <small>コメント投稿者: <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="{{ comment.commenter.get_username_class() }}">{{ comment.commenter.username }}</a></small> | 
                             <small>投稿日時: {{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
