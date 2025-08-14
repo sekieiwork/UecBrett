@@ -227,59 +227,55 @@
     .header-content {
         padding: 0 10px;
         display: flex;
-        flex-wrap: nowrap;
         align-items: center;
-        justify-content: space-between; /* 要素を両端に配置 */
+        justify-content: space-between;
     }
 
-    /* UEC 掲示板タイトルのスタイルを調整 */
+    .header-left {
+        flex-shrink: 0;
+        white-space: nowrap; /* 親要素にも適用 */
+    }
+
     .header-left h1 {
         margin: 0;
-        font-size: 1.5em; /* タイトルを小さくする */
-    }
-
-    /* 検索フォームのスタイルを調整 */
-    .header-center {
-        flex-grow: 1; /* 残りのスペースを埋める */
-        display: flex;
-        justify-content: center; /* 検索フォームを中央に配置 */
-        margin: 0 10px; /* 左右に余白を追加 */
+        font-size: 1.2em;
     }
     
-    .search-form-header {
-        margin: 0;
+    .header-center {
+        flex-grow: 1;
+        display: flex;
+        justify-content: flex-end; /* 右に寄せる */
+        margin-left: 10px;
     }
 
     .search-form-header input[type="text"] {
-        width: 100%;
-        max-width: 150px; /* 最大幅を設定して広がりすぎないように */
+        width: 100px;
     }
 
-    /* 右側のアイコン部分を調整 */
     .header-right {
         display: flex;
         align-items: center;
-        flex-shrink: 0; /* 縮小しないように */
-        white-space: nowrap; /* アイコンが改行されないように */
         margin-left: 10px; /* 検索フォームとの間に余白 */
     }
-    
+
     .header-right > a {
-        margin-right: 10px;
+        margin-right: 5px; /* アイコン間の余白を調整 */
     }
 
-    /* ヘッダーがbodyに食い込むのを防ぐ */
     body {
-        padding-top: 70px; /* ヘッダーの高さに合わせて調整 */
+        padding-top: 70px;
     }
-}    </style>
+}
+</style>
 </head>
 <body>
     <div class="header">
         <div class="header-content">
             <div class="header-left">
-                <h1><a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">UEC 掲示板</a></h1>
-            </div>
+    <div style="white-space: nowrap;">
+        <h1><a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">UEC 掲示板</a></h1>
+    </div>
+</div>
             <div class="header-center">
                 {% if request.endpoint != 'login' and request.endpoint != 'register' %}
                     <form method="POST" action="{{ url_for('search') }}" style="display: flex; align-items: center;">
