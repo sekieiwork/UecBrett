@@ -6,37 +6,44 @@
     <h1>管理者ダッシュボード</h1>
     
     <h2>ユーザー一覧</h2>
-    <ul>
-    {% for user in users %}
-        <li>
-            {{ user.username }}
-            <form action="{{ url_for('admin_delete_user', user_id=user.id) }}" method="POST" style="display:inline;">
-                <button type="submit">削除</button>
-            </form>
-        </li>
-    {% endfor %}
-    </ul>
+    <div class="admin-list-container">
+        <ul>
+        {% for user in users %}
+            <li>
+                {{ user.username }}
+                <form action="{{ url_for('admin_delete_user', user_id=user.id) }}" method="POST" style="display:inline;">
+                    <button type="submit">削除</button>
+                </form>
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
 
     <h2>投稿一覧</h2>
-    <ul>
-    {% for post in posts %}
-        <li>
-            {{ post.title }} (投稿者: {{ post.author.username }})
-            <form action="{{ url_for('admin_delete_post', post_id=post.id) }}" method="POST" style="display:inline;">
-                <button type="submit">削除</button>
-            </form>
-        </li>
-    {% endfor %}
-    </ul>
-
-	<h2>コメント一覧</h2>
-<ul>
-{% for comment in comments %}  <li>
-        {{ comment.content }} (投稿者: {{ comment.commenter.username }})
-        <form action="{{ url_for('admin_delete_comment', comment_id=comment.id) }}" method="POST" style="display:inline;">
-            <button type="submit">削除</button>
-        </form>
-    </li>
-{% endfor %}
-</ul>
+    <div class="admin-list-container">
+        <ul>
+        {% for post in posts %}
+            <li>
+                {{ post.title }} (投稿者: {{ post.author.username }})
+                <form action="{{ url_for('admin_delete_post', post_id=post.id) }}" method="POST" style="display:inline;">
+                    <button type="submit">削除</button>
+                </form>
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
+    
+    <h2>コメント一覧</h2>
+    <div class="admin-list-container">
+        <ul>
+        {% for comment in comments %}
+            <li>
+                {{ comment.content }} (投稿者: {{ comment.commenter.username }})
+                <form action="{{ url_for('admin_delete_comment', comment_id=comment.id) }}" method="POST" style="display:inline;">
+                    <button type="submit">削除</button>
+                </form>
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
 {% endblock %}
