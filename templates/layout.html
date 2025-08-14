@@ -35,191 +35,199 @@
         });
     </script>
     <style>
-        <style>
-    /*----------------------------------*/
-    /* 全体的な設定とリセット */
-    /*----------------------------------*/
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        margin: 1em;
-        line-height: 1.6;
-        color: #333;
-        background-color: #f8f9fa;
-        padding-top: 70px;
-    }
-    
-    a {
-        color: #007bff;
-        text-decoration: none;
-    }
-    a:hover {
-        text-decoration: underline;
-    }
+        /* 全体的な設定 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 1em;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+            padding-top: 70px;
+        }
+        
+        /* リンクの色と装飾 */
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
 
-    /* コンテナのスタイル */
-    .container {
-        max-width: 800px;
-        margin: auto;
-        padding: 1em;
-    }
+        /* コンテナの幅を制限 */
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 1em;
+        }
 
-    /* ボックスの共通スタイル */
-    .post, .post-form, .post-detail, .comment, .user-info {
-        background-color: #fff;
-        border: 1px solid #dee2e6;
-        border-radius: 0.25rem;
-        padding: 1em;
-        margin-bottom: 1em;
-    }
+	.comment-body {
+    	flex-grow: 1; /* 残りのスペースを埋める */
+	}
 
-    /* タイトルとヘッダー */
-    .post h3, .post-detail h1 {
-        margin-top: 0;
-        margin-bottom: 0.5em;
-    }
+/* コメントのコンテナ全体のスタイルを修正 */
+	.comment-container {
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 1em;
+    margin-bottom: 1em;
+    display: flex;
+    flex-wrap: wrap; /* 子要素が折り返すように */
+    align-items: flex-start;
+}
 
-    .post-form h2 {
-        margin-top: 0;
-        margin-bottom: 0.5em;
-        padding-bottom: 0.5em;
-        border-bottom: 1px solid #dee2e6;
-    }
+	/* 投稿本文のスタイル */
+	.post-content {
+    	max-height: 100px; /* 最大の高さを100pxに設定 */
+    	overflow-y: auto;  /* 高さを超えたらスクロールバーを表示 */
+    	padding: 10px;
+    	border: 1px solid #dee2e6;
+   	 border-radius: 0.25rem;
+	}
 
-    /* フォームのスタイル */
-    input[type="text"], input[type="password"], textarea {
-        width: 100%;
-        padding: 0.5em;
-        box-sizing: border-box;
-        border: 1px solid #ced4da;
-        border-radius: 0.25rem;
-    }
-    textarea {
-        resize: vertical;
-    }
+	/* コメント本文のスタイル */
+	.comment-content {
+    max-height: 80px; /* 最大の高さを80pxに設定 */
+    overflow-y: auto;  /* 高さを超えたらスクロールバーを表示 */
+    padding: 1em;      /* 上下左右に余白を追加 */
+    background-color: #fff; /* 背景色を白に設定 */
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5em;
+}
 
-    /* ボタンのスタイル */
-    input[type="submit"] {
-        padding: 0.5em 1em;
-        border: none;
-        border-radius: 0.25rem;
-        cursor: pointer;
-        background-color: #007bff;
-        color: #fff;
-    }
-    input[type="submit"]:hover {
-        background-color: #0056b3;
-    }
-    
-    .delete-button {
-        font-size: 0.8em;
-        padding: 0.2em 0.5em;
-        background-color: #dc3545;
-        color: white;
-        border: none;
-        border-radius: 0.25rem;
-        cursor: pointer;
-    }
-    .delete-button:hover {
-        background-color: #c82333;
-    }
-    .delete-button.yellow {
-        background-color: #ffc107;
-        color: black;
-    }
-    .delete-button.yellow:hover {
-        background-color: #e0a800;
-    }
 
-    /* ページネーション */
-    .pagination a {
-        padding: 0.5em 0.75em;
-        border: 1px solid #dee2e6;
-        margin: 0 0.25em;
-        border-radius: 0.25rem;
-    }
-    .pagination a[style="font-weight: bold;"] {
-        background-color: #007bff;
-        color: #fff;
-        border-color: #007bff;
-    }
-    
-    /*----------------------------------*/
-    /* ヘッダーのスタイル */
-    /*----------------------------------*/
-    .header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background-color: #fff;
-        z-index: 1000;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        padding: 0.5em 0;
-    }
+        /* 投稿リストとフォームのスタイル */
+        .post, .post-form, .post-detail, .comment, .form-field, .user-info 	{
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            padding: 1em;
+            margin-bottom: 1em;
+        }
 
-    .header-content {
-        max-width: 800px;
-        margin: auto;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-    }
+        .post h3, .post-detail h1 {
+            margin-top: 0;
+            margin-bottom: 0.5em;
+        }
 
-    .header-left {
-        flex-shrink: 0;
-        white-space: nowrap;
-    }
+        .post-form h2 {
+            margin-top: 0;
+            margin-bottom: 0.5em;
+            padding-bottom: 0.5em;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        /* フォームの入力欄 */
+        input[type="text"], input[type="password"], textarea {
+            width: 100%;
+            padding: 0.5em;
+            box-sizing: border-box;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+        }
+        textarea {
+            resize: vertical;
+        }
 
-    .header-left h1 {
-        margin: 0;
-        font-size: 1.2em; /* スマホ版のサイズをデフォルトに */
-    }
+        /* ボタンのスタイル */
+        input[type="submit"] {
+            padding: 0.5em 1em;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            background-color: #007bff;
+            color: #fff;
+        }
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+        
+        /* コメント削除ボタンのスタイル */
+        .delete-button {
+            font-size: 0.8em;
+            padding: 0.2em 0.5em;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+        .delete-button:hover {
+            background-color: #c82333;
+        }
+        .delete-button.yellow {
+            background-color: #ffc107;
+            color: black;
+        }
+        .delete-button.yellow:hover {
+            background-color: #e0a800;
+        }
 
-    .header-left h1 a {
-        text-decoration: none;
-        color: inherit;
-    }
+        /* ページネーション */
+        .pagination a {
+            padding: 0.5em 0.75em;
+            border: 1px solid #dee2e6;
+            margin: 0 0.25em;
+            border-radius: 0.25rem;
+        }
+        .pagination a[style="font-weight: bold;"] {
+            background-color: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+        
+        /* ヘッダー */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #fff;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 0.5em 0;
+        }
 
-    .header-center {
-        flex-grow: 1;
-        display: flex;
-        justify-content: flex-end;
-        margin-left: 1em;
-    }
-    
-    .search-form-header {
-        margin: 0;
-        display: flex;
-        align-items: center;
-    }
+        .header-content {
+            max-width: 800px;
+            margin: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
 
-    .search-form-header input[type="text"] {
-        width: 150px;
-        margin-right: 0.5em;
-    }
-    
-    .header-right {
-        display: flex;
-        align-items: center;
-        flex-shrink: 0;
-        white-space: nowrap;
-        margin-left: 1em;
-    }
+        .header-left, .header-right {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+        }
 
-    .notification-icon {
-        margin-right: 1em;
-    }
-    
-    .admin-username {
+        .header-left h1 {
+            margin: 0;
+            margin-right: 1em;
+        }
+
+        .search-form-header {
+            margin-right: 1em;
+        }
+
+        .search-form-header input[type="text"] {
+            width: 150px;
+        }
+
+        .admin-username {
         color: #dc3545 !important;
         font-weight: bold;
     }
 
-    /* ドロップダウンメニューのスタイル */
+    /* 新しいドロップダウンメニューのスタイル */
     .dropdown-container {
         position: relative;
         display: inline-block;
+        white-space: nowrap;
     }
 
     .dropdown-content {
@@ -249,64 +257,98 @@
         display: block;
     }
 
-    /* プロフィールアイコンのスタイル */
-    .user-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
+.user-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 1em;
+}
+
+.comment-meta {
+    display: flex;
+    flex-direction: column;
+}
+
+.comment-body-content {
+    flex-grow: 1;
+    margin-left: 1em;
+}
+
+.comment-content {
+    max-height: 80px;
+    overflow-y: auto;
+    padding: 1em;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5em;
+}
+
+.comment-actions {
+    margin-left: auto; /* 右端に寄せる */
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-basis: 100%; /* 横幅いっぱいに広げる */
+}
+
+/*----------------------------------*/
+/* スマホ版レイアウトの調整（768px以下） */
+/*----------------------------------*/
+@media (max-width: 768px) {
+    .header-content {
+        padding: 0 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: nowrap; /* 要素を強制的に折り返さないように */
     }
 
-    /* 投稿・コメントの書式設定 */
-    .post-content, .comment-content {
-        max-height: 100px;
-        overflow-y: auto;
-        padding: 1em;
-        border: 1px solid #dee2e6;
-        border-radius: 0.25rem;
+    .header-left h1 {
+        margin: 0;
+        font-size: 1.2em; /* タイトルを小さくする */
+        white-space: nowrap;
     }
 
-    /*----------------------------------*/
-    /* スマホ版レイアウトの調整（768px以下） */
-    /*----------------------------------*/
-    @media (max-width: 768px) {
-        body {
-            padding-top: 60px; /* ヘッダーの高さに合わせて調整 */
-        }
-        .header-content {
-            padding: 0 10px;
-            flex-wrap: nowrap;
-        }
-
-        .header-left h1 {
-            font-size: 1.2em;
-        }
-
-        .header-center {
-            margin: 0 5px;
-        }
-        
-        .search-form-header input[type="text"] {
-            width: 80px;
-        }
-        
-        .header-right {
-            margin-left: 5px;
-        }
-
-        .notification-icon {
-            margin-right: 5px;
-        }
-
-        .user-icon {
-            width: 30px;
-            height: 30px;
-        }
-
-        .comment-content {
-            max-height: 80px;
-        }
+    .header-center {
+        flex-grow: 1; /* 残りのスペースを埋める */
+        display: flex;
+        justify-content: flex-end; /* 検索フォームを右寄せ */
+        margin: 0 10px;
     }
-</style>
+
+    .search-form-header {
+        margin: 0;
+    }
+
+    .search-form-header input[type="text"] {
+        width: 100px; /* 検索バーの幅を固定 */
+        max-width: 100px;
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0; /* 縮小しないように */
+        white-space: nowrap;
+    }
+
+    .header-right > a {
+        margin-right: 5px;
+    }
+
+
+  /* 投稿フォームのテキストエリアのスタイル */
+    }
+	textarea {
+    	width: 100%;
+    	min-height: 100px; /* 最小の高さ */
+    	max-height: 300px; /* 最大の高さ */
+    	resize: vertical; /* ユーザーが縦方向にのみサイズ変更可能 */
+    }
 </style>
 </head>
 <body>
