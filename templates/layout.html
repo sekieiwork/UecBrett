@@ -61,6 +61,24 @@
             padding: 1em;
         }
 
+	/* 投稿本文のスタイル */
+	.post-content {
+    	max-height: 100px; /* 最大の高さを100pxに設定 */
+    	overflow-y: auto;  /* 高さを超えたらスクロールバーを表示 */
+    	padding: 10px;
+    	border: 1px solid #dee2e6;
+   	 border-radius: 0.25rem;
+	}
+
+	/* コメント本文のスタイル */
+	.comment-content {
+    	max-height: 80px; /* 最大の高さを80pxに設定 */
+    	overflow-y: auto;
+    	padding: 10px;
+    	border: 1px solid #dee2e6;
+	    border-radius: 0.25rem;
+	}
+
         /* 投稿リストとフォームのスタイル */
         .post, .post-form, .post-detail, .comment, .form-field, .user-info {
             background-color: #fff;
@@ -264,7 +282,16 @@
     .header-right > a {
         margin-right: 5px;
     }
-}
+
+
+  /* 投稿フォームのテキストエリアのスタイル */
+    }
+	textarea {
+    	width: 100%;
+    	min-height: 100px; /* 最小の高さ */
+    	max-height: 300px; /* 最大の高さ */
+    	resize: vertical; /* ユーザーが縦方向にのみサイズ変更可能 */
+    }
 </style>
 </head>
 <body>
