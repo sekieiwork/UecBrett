@@ -70,7 +70,12 @@ class Post(db.Model):
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False) # <-- ここに追加
     comments = db.relationship('Comment', backref='post', lazy=True, cascade="all, delete")
-    bookmarks = db.relationship('Bookmark', backref='post', lazy='dynamic')
+    bookmarks = db.relationship(
+        'Bookmark', 
+        backref='post', 
+        lazy='dynamic', 
+        cascade="all, delete", 
+    )
     notifications = db.relationship('Notification', backref='post', lazy='dynamic')
 
     def __repr__(self):
@@ -89,7 +94,7 @@ class Comment(db.Model):
 class Bookmark(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id', ondelete="CASCADE"), nullable=False)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     __table_args__ = (db.UniqueConstraint('user_id', 'post_id', name='_user_post_uc'),)
 
