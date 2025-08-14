@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 import os
 from flask_wtf.file import FileField, FileAllowed
-from .forms import SearchForm # SearchFormをインポート
+from forms import SearchForm # SearchFormをインポート
 import markdown
 
 app = Flask(__name__)
