@@ -50,8 +50,6 @@ class User(db.Model, UserMixin):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        if self.username == '二酸化ケイ素':
-            self.is_admin = True
         if not self.icon_url:
             self.icon_url = url_for('static', filename='icons/default_icon.png')
 
