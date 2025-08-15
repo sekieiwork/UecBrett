@@ -1,251 +1,252 @@
 <style>
-    /*----------------------------------*/
-    /* 全体的な設定とリセット */
-    /*----------------------------------*/
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        margin: 1em;
-        line-height: 1.6;
-        color: #333;
-        background-color: #f8f9fa;
-        padding-top: 70px;
-    }
-    
-    a {
-        color: #007bff;
-        text-decoration: none;
-    }
-    a:hover {
-        text-decoration: underline;
-    }
+/*----------------------------------*/
+/* 全体的な設定とリセット */
+/*----------------------------------*/
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 1em;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f8f9fa;
+    padding-top: 70px;
+}
 
-    /* コンテナの幅を制限 */
-    .container {
-        max-width: 800px;
-        margin: auto;
-        padding: 1em;
-    }
+a {
+    color: #007bff;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
 
-     /* ボックスの共通スタイル */
-    .post, .post-form, .post-detail, .comment-container, .comments, .form-field, .user-info {
-     background-color: #fff;
+/* コンテナの幅を制限 */
+.container {
+    max-width: 800px;
+    margin: auto;
+    padding: 1em;
+}
+
+/* ボックスの共通スタイル */
+/* コメント一覧と個々のコメントアイテムにも共通スタイルを適用 */
+.post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info {
+    background-color: #fff;
     border: 1px solid #dee2e6;
     border-radius: 0.25rem;
     padding: 1em;
     margin-bottom: 1em;
-    }
+}
 
-    /* タイトルとヘッダー */
-    .post h3, .post-detail h1 {
-        margin-top: 0;
-        margin-bottom: 0.5em;
-    }
+/* タイトルとヘッダー */
+.post h3, .post-detail h1 {
+    margin-top: 0;
+    margin-bottom: 0.5em;
+}
 
-    .post-form h2 {
-        margin-top: 0;
-        margin-bottom: 0.5em;
-        padding-bottom: 0.5em;
-        border-bottom: 1px solid #dee2e6;
-    }
+.post-form h2 {
+    margin-top: 0;
+    margin-bottom: 0.5em;
+    padding-bottom: 0.5em;
+    border-bottom: 1px solid #dee2e6;
+}
 
-    /* フォームの入力欄 */
-    input[type="text"], input[type="password"], textarea {
-        width: 100%;
-        padding: 0.5em;
-        box-sizing: border-box;
-        border: 1px solid #ced4da;
-        border-radius: 0.25rem;
-    }
-    textarea {
-        resize: vertical;
-    }
-    .textarea-content {
-        min-height: 100px;
-        max-height: 300px;
-        resize: vertical;
-    }
+/* フォームの入力欄 */
+input[type="text"], input[type="password"], textarea {
+    width: 100%;
+    padding: 0.5em;
+    box-sizing: border-box;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+}
+textarea {
+    resize: vertical;
+}
+.textarea-content {
+    min-height: 100px;
+    max-height: 300px;
+    resize: vertical;
+}
 
-    /* ボタンのスタイル */
-    input[type="submit"] {
-        padding: 0.5em 1em;
-        border: none;
-        border-radius: 0.25rem;
-        cursor: pointer;
-        background-color: #007bff;
-        color: #fff;
-    }
-    input[type="submit"]:hover {
-        background-color: #0056b3;
-    }
-    
-    .delete-button {
-        font-size: 0.8em;
-        padding: 0.2em 0.5em;
-        background-color: #dc3545;
-        color: white;
-        border: none;
-        border-radius: 0.25rem;
-        cursor: pointer;
-    }
-    .delete-button:hover {
-        background-color: #c82333;
-    }
-    .delete-button.yellow {
-        background-color: #ffc107;
-        color: black;
-    }
-    .delete-button.yellow:hover {
-        background-color: #e0a800;
-    }
+/* ボタンのスタイル */
+input[type="submit"] {
+    padding: 0.5em 1em;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    background-color: #007bff;
+    color: #fff;
+}
+input[type="submit"]:hover {
+    background-color: #0056b3;
+}
 
-    /* ページネーション */
-    .pagination a {
-        padding: 0.5em 0.75em;
-        border: 1px solid #dee2e6;
-        margin: 0 0.25em;
-        border-radius: 0.25rem;
-    }
-    .pagination a[style="font-weight: bold;"] {
-        background-color: #007bff;
-        color: #fff;
-        border-color: #007bff;
-    }
+.delete-button {
+    font-size: 0.8em;
+    padding: 0.2em 0.5em;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+}
+.delete-button:hover {
+    background-color: #c82333;
+}
+.delete-button.yellow {
+    background-color: #ffc107;
+    color: black;
+}
+.delete-button.yellow:hover {
+    background-color: #e0a800;
+}
 
-    .comments {
-       background-color: #fff;
-       border: 1px solid #dee2e6;
-       border-radius: 0.25rem;
-       padding: 1em;
-       margin-bottom: 1em;
-    }
-    
-    /*----------------------------------*/
-    /* ヘッダーのスタイル */
-    /*----------------------------------*/
-    .header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background-color: #fff;
-        z-index: 1000;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        padding: 0.5em 0;
-    }
+/* ページネーション */
+.pagination a {
+    padding: 0.5em 0.75em;
+    border: 1px solid #dee2e6;
+    margin: 0 0.25em;
+    border-radius: 0.25rem;
+}
+.pagination a[style="font-weight: bold;"] {
+    background-color: #007bff;
+    color: #fff;
+    border-color: #007bff;
+}
 
-    .header-content {
-        max-width: 800px;
-        margin: auto;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-    }
+/*----------------------------------*/
+/* ヘッダーのスタイル */
+/*----------------------------------*/
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: #fff;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 0.5em 0;
+}
 
-    .header-left, .header-right {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-    }
+.header-content {
+    max-width: 800px;
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
 
-    .header-left h1 {
-        margin: 0;
-        margin-right: 1em;
-    }
+.header-left, .header-right {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
 
-    .header-left h1 a {
-        text-decoration: none;
-        color: inherit;
-        white-space: nowrap;
-    }
+.header-left h1 {
+    margin: 0;
+    margin-right: 1em;
+}
 
-    /* ヘッダーの中央部分（検索フォーム） */
+.header-left h1 a {
+    text-decoration: none;
+    color: inherit;
+    white-space: nowrap;
+}
+
+/* ヘッダーの中央部分（検索フォーム）の調整 */
 .header-center {
     flex-grow: 1;
     display: flex;
     justify-content: flex-end;
     margin-left: 1em;
-    align-items: center; 
+    /* フォーム内の要素を垂直方向の中央に配置 */
+    align-items: center;
 }
-    
-    .search-form-header {
-      margin: 0;
-      display: flex;
-      align-items: center;
-    }
 
-    .search-form-header input[type="text"] {
-        width: 120px; /* 幅を150pxから120pxに調整 */
-        margin-right: 0.5em;
-    }
-    
-    .header-right {
-        display: flex;
-        align-items: center;
-        flex-shrink: 0;
-        white-space: nowrap;
-        margin-left: 1em;
-    }
+.search-form-header {
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
 
-    .notification-icon {
-        margin-right: 1em;
-    }
-    
-    .admin-username {
-        color: #dc3545 !important;
-        font-weight: bold;
-    }
+.search-form-header input[type="text"] {
+    width: 120px; /* 検索フォームの幅を調整 */
+    margin-right: 0.5em;
+    vertical-align: middle; /* 垂直方向の位置を調整 */
+}
 
-    /* 管理者ダッシュボードの一覧をスクロール可能にするスタイル */
-    .admin-list-container {
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid #dee2e6;
-        border-radius: 0.25rem;
-        padding: 1em;
-        margin-bottom: 1em;
-    }
+/* ヘッダーのボタンとアイコンの垂直位置を調整 */
+.header-right a {
+    vertical-align: middle;
+}
 
-    /* 新しいドロップダウンメニューのスタイル */
-    .dropdown-container {
-        position: relative;
-        display: inline-block;
-        white-space: nowrap;
-    }
+.header-right {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin-left: 1em;
+}
 
-    .dropdown-content {
-        display: none;
-        position: absolute;
-        right: 0;
-        background-color: #f9f9f9;
-        min-width: 160px;
-        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-        z-index: 1;
-        border-radius: 0.25rem;
-        padding: 0.5em 0;
-    }
+.notification-icon {
+    margin-right: 1em;
+}
 
-    .dropdown-content a {
-        color: black;
-        padding: 12px 16px;
-        text-decoration: none;
-        display: block;
-    }
+.admin-username {
+    color: #dc3545 !important;
+    font-weight: bold;
+}
 
-    .dropdown-content a:hover {
-        background-color: #f1f1f1;
-    }
+/* 管理者ダッシュボードの一覧をスクロール可能にするスタイル */
+.admin-list-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 1em;
+    margin-bottom: 1em;
+}
 
-    .dropdown-container:hover .dropdown-content {
-        display: block;
-    }
+/* 新しいドロップダウンメニューのスタイル */
+.dropdown-container {
+    position: relative;
+    display: inline-block;
+    white-space: nowrap;
+}
 
-    /* プロフィールアイコンのスタイル */
-    .user-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-    }
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    border-radius: 0.25rem;
+    padding: 0.5em 0;
+}
+
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown-content a:hover {
+    background-color: #f1f1f1;
+}
+
+.dropdown-container:hover .dropdown-content {
+    display: block;
+}
+
+/* プロフィールアイコンのスタイル */
+.user-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    vertical-align: middle; /* 垂直方向の位置を調整 */
+}
 
 /* 投稿・コメントの書式設定 */
 .post-content, .comment-content {
@@ -259,6 +260,7 @@
     box-sizing: border-box;
 }
 
+/* コメントアイテムとヘッダーのスタイル */
 .comment-item {
     background-color: #fff;
     border: 1px solid #dee2e6;
@@ -280,127 +282,109 @@
     align-items: center;
     width: 100%;
 }
-    
-    .user-icon-link {
-        flex-shrink: 0;
-        margin-right: 1em;
+
+.user-icon-link {
+    flex-shrink: 0;
+    margin-right: 1em;
+    vertical-align: middle; /* 垂直方向の位置を調整 */
+}
+
+.comment-body {
+    flex-grow: 1;
+}
+
+.comment-meta {
+    font-size: 0.8em;
+    color: #6c757d;
+}
+
+.comment-meta small {
+    white-space: nowrap;
+}
+
+.comment-meta form {
+    margin: 0;
+}
+
+.comment-actions {
+    margin-left: auto;
+}
+
+/* 新しい投稿ボタンのスタイル */
+#toggle-post-form-btn {
+    padding: 0.5em 1em;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    background-color: #007bff;
+    color: #fff;
+    font-size: 1em;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+#toggle-post-form-btn:hover {
+    background-color: #0056b3;
+}
+
+/*----------------------------------*/
+/* スマホ版レイアウトの調整（768px以下） */
+/*----------------------------------*/
+@media (max-width: 768px) {
+    body {
+        padding-top: 60px;
+    }
+    .header-content {
+        padding: 0 10px;
+        flex-wrap: nowrap; /* ヘッダーの要素を折り返さない */
+        justify-content: space-between; /* 要素を均等に配置 */
     }
 
-    .comment-body {
+    .header-left h1 {
+        font-size: 1.2em;
+        margin-right: 5px;
+    }
+
+    .header-center {
+        margin: 0 5px;
         flex-grow: 1;
+        justify-content: flex-start; /* 検索フォームを左寄せに */
     }
 
-    .comment-meta {
-        font-size: 0.8em;
-    	color: #6c757d;
+    .search-form-header {
+        width: 100%;
     }
-
-    .comment-meta small {
+    
+    .search-form-header input[type="text"] {
+        width: 100%; /* スマホでは幅を最大にする */
+    }
+    
+    .header-right {
+        margin-left: 5px;
+        flex-shrink: 0;
         white-space: nowrap;
     }
 
-    .comment-meta form {
-        margin: 0;
+    .notification-icon {
+        margin-right: 5px;
     }
 
-    .comment-actions {
-        margin-left: auto;
+    .user-icon {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .dropdown-content {
+        right: 10px;
+        top: 50px;
+        min-width: 150px;
     }
 
-/*----------------------------------*/
-    /* スマホ版レイアウトの調整（768px以下） */
-    /*----------------------------------*/
-    @media (max-width: 768px) {
-        body {
-            padding-top: 60px;
-        }
-        .header-content {
-            padding: 0 10px;
-            flex-wrap: nowrap; /* ヘッダーの要素を折り返さない */
-            justify-content: space-between; /* 要素を均等に配置 */
-        }
-
-        .header-left h1 {
-            font-size: 1.2em;
-        }
-
-        .header-center {
-            margin: 0 5px;
-            flex-grow: 1;
-        }
-        
-        .search-form-header {
-            width: 100%;
-        }
-
-        .search-form-header input[type="text"] {
-            width: 100%; /* スマホでは幅を最大にする */
-            margin-right: 0.5em;
-        }
-        
-        .header-right {
-            margin-left: 5px;
-            flex-shrink: 0;
-            white-space: nowrap;
-        }
-
-        .notification-icon {
-            margin-right: 5px;
-        }
-
-        .user-icon {
-            width: 30px;
-            height: 30px;
-        }
-        
-        .dropdown-container {
-            position: static;
-        }
-        
-        .dropdown-content {
-            position: absolute;
-            right: 10px;
-            top: 50px; /* ヘッダーの高さに合わせて調整 */
-            min-width: 150px;
-        }
-
-        .comment-content, .post-content {
-            max-height: 100px; /* スマホでも見やすい高さに調整 */
-        }
+    .comment-content {
+        max-height: 80px;
     }
-
-    .hidden {
-        display: none;
-    }
-
-    /* Markdownが生成するリンクのスタイル */
-    .markdown-body a {
-        color: #007bff;
-        text-decoration: underline;
-    }
-
-    /* Markdownが生成するリストのスタイル */
-    .markdown-body ul, .markdown-body ol {
-        padding-left: 20px;
-    }
-
-    /* 新しい投稿ボタンのスタイル */
-    #toggle-post-form-btn {
-        padding: 0.5em 1em;
-        border: none;
-        border-radius: 0.25rem;
-        cursor: pointer;
-        background-color: #007bff;
-        color: #fff;
-        font-size: 1em;
-        display: flex;
-        align-items: center;
-        gap: 0.5em;
-    }
-
-    #toggle-post-form-btn:hover {
-        background-color: #0056b3;
-    }
+}
     </style>
 </head>
 <body>
