@@ -26,8 +26,8 @@
         padding: 1em;
     }
 
-    /* ボックスの共通スタイル */
-    .post, .post-form, .post-detail, .comment-container, .form-field, .user-info {
+     /* ボックスの共通スタイル */
+    .post, .post-form, .post-detail, .comment-container, .comments, .form-field, .user-info {
      background-color: #fff;
     border: 1px solid #dee2e6;
     border-radius: 0.25rem;
@@ -165,20 +165,17 @@
     display: flex;
     justify-content: flex-end;
     margin-left: 1em;
-    /* フォーム内の要素を垂直方向の中央に配置 */
     align-items: center; 
 }
     
     .search-form-header {
       margin: 0;
       display: flex;
-      /* フォーム内のアイテムを垂直方向で中央に揃える */
       align-items: center;
     }
 
-
     .search-form-header input[type="text"] {
-        width: 150px;
+        width: 120px; /* 幅を150pxから120pxに調整 */
         margin-right: 0.5em;
     }
     
@@ -310,7 +307,7 @@
         margin-left: auto;
     }
 
-    /*----------------------------------*/
+/*----------------------------------*/
     /* スマホ版レイアウトの調整（768px以下） */
     /*----------------------------------*/
     @media (max-width: 768px) {
@@ -319,7 +316,8 @@
         }
         .header-content {
             padding: 0 10px;
-            flex-wrap: nowrap;
+            flex-wrap: nowrap; /* ヘッダーの要素を折り返さない */
+            justify-content: space-between; /* 要素を均等に配置 */
         }
 
         .header-left h1 {
@@ -328,14 +326,22 @@
 
         .header-center {
             margin: 0 5px;
+            flex-grow: 1;
         }
         
+        .search-form-header {
+            width: 100%;
+        }
+
         .search-form-header input[type="text"] {
-            width: 80px;
+            width: 100%; /* スマホでは幅を最大にする */
+            margin-right: 0.5em;
         }
         
         .header-right {
             margin-left: 5px;
+            flex-shrink: 0;
+            white-space: nowrap;
         }
 
         .notification-icon {
@@ -346,9 +352,20 @@
             width: 30px;
             height: 30px;
         }
+        
+        .dropdown-container {
+            position: static;
+        }
+        
+        .dropdown-content {
+            position: absolute;
+            right: 10px;
+            top: 50px; /* ヘッダーの高さに合わせて調整 */
+            min-width: 150px;
+        }
 
-        .comment-content {
-            max-height: 80px;
+        .comment-content, .post-content {
+            max-height: 100px; /* スマホでも見やすい高さに調整 */
         }
     }
 
