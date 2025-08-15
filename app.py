@@ -217,7 +217,7 @@ def show_bookmarks():
             post.updated_at_jst = None
         post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
 
-    return render_template('bookmarks.html', posts=bookmarked_posts, search_form=search_form, markdown=markdown)
+    return render_template('bookmarks.html', posts=bookmarked_posts, search_form=search_form, markdown=md)
 
 @app.route('/post/<int:post_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -319,7 +319,7 @@ def search(page=1):
             
             post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
         
-        return render_template('search_results.html', form=form, posts=posts, search_query=search_query, markdown=markdown, search_form=form)
+        return render_template('search_results.html', form=form, posts=posts, search_query=search_query, markdown=md, search_form=form)
 
     if request.method == 'GET' and 'search_query' in request.args:
         search_query = request.args.get('search_query')
@@ -339,9 +339,9 @@ def search(page=1):
             
             post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
 
-        return render_template('search_results.html', form=form, posts=posts, search_query=search_query, markdown=markdown, search_form=form)
+        return render_template('search_results.html', form=form, posts=posts, search_query=search_query, markdown=md, search_form=form)
     
-    return render_template('search_results.html', form=form, posts=posts, markdown=markdown, search_form=form)
+    return render_template('search_results.html', form=form, posts=posts, markdown=md, search_form=form)
 
 @app.route('/profile/edit/<string:username>', methods=['GET', 'POST'])
 @login_required
