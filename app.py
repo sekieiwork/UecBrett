@@ -20,7 +20,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
 db = SQLAlchemy(app)
-md = markdown.Markdown()
+md = markdown.Markdown() # md変数にMarkdownのインスタンスを代入
 migrate = Migrate(app, db)
 
 login_manager = LoginManager(app)
@@ -402,6 +402,7 @@ def user_profile(username):
     search_form = SearchForm()
     
     return render_template('profile.html', user=user, posts=posts, comments=comments, active_tab=active_tab, linkify_urls=linkify_urls, markdown=md, search_form=search_form)
+
 # 管理者のみがアクセスできる管理画面
 @app.route('/admin')
 @login_required
@@ -492,3 +493,4 @@ def linkify_urls(text):
 
 if __name__ == '__main__':
     app.run(debug=True)
+と送ったんだけど、markdownがうまく読み込めてないのか、linkify_urlsが使えてないのか分からないからそのエラーを修正してほしい
