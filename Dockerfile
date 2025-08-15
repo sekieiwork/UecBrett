@@ -12,8 +12,7 @@ WORKDIR /app
 
 # 依存関係をインストール
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
-RUN pip install markdown-urlize --no-cache-dir --upgrade
+RUN pip install --no-cache-dir -r requirements.txt
 
 # アプリケーションのコードをコンテナにコピー
 COPY . .
