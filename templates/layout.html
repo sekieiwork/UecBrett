@@ -39,6 +39,10 @@ a:hover {
     border-radius: 0.25rem;
     padding: 1em;
     margin-bottom: 1em;
+    /* コメント一覧の幅を揃えるための修正 */
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* タイトルとヘッダー */
@@ -192,6 +196,12 @@ input[type="submit"]:hover {
 
 .notification-icon {
     margin-right: 1em;
+}
+/* 通知アイコンを少し下げる修正 */
+.notification-icon img {
+    vertical-align: middle;
+    position: relative;
+    top: 2px;
 }
 
 .admin-username {
