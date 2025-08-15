@@ -349,6 +349,13 @@ input[type="submit"]:hover {
     body {
         padding-top: 60px;
     }
+
+    .comments, .comment-item, .post-detail, .post {
+        max-width: 95%; /* 画面幅の95%に制限 */
+        margin-left: auto;
+        margin-right: auto;
+    }
+
     .header-content {
         padding: 0 5px; /* 左右のパディングを狭くする */
         flex-wrap: nowrap; /* 要素を折り返さないようにする */
@@ -390,11 +397,11 @@ input[type="submit"]:hover {
     }
 
     .notification-icon {
-        margin-right: 5px;
+        margin-right: 3px;
     }
     .user-icon {
-        width: 25px; /* アイコンサイズを小さくする */
-        height: 25px;
+        width: 40px; /* アイコンサイズを小さくする */
+        height: 40px;
     }
     .dropdown-content {
         right: 10px;
