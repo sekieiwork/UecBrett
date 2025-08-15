@@ -395,15 +395,15 @@
                 </div>
             </div>
             <div class="header-center">
-                {% if request.endpoint != 'login' and request.endpoint != 'register' %}
-                    <form method="POST" action="{{ url_for('search') }}" style="display: flex; align-items: center;">
-                        {{ search_form.csrf_token }}
-                        {{ search_form.search_query.label(style="display: none;") }}
-                        {{ search_form.search_query(size=20) }}
-                        {{ search_form.submit }}
-                    </form>
-                {% endif %}
-            </div>
+    {% if request.endpoint != 'login' and request.endpoint != 'register' %}
+        <form method="POST" action="{{ url_for('search') }}" style="display: flex; align-items: center; width: 100%;">
+            {{ search_form.csrf_token }}
+            {{ search_form.search_query.label(style="display: none;") }}
+            {{ search_form.search_query(size=20, style="vertical-align: middle;") }}
+            {{ search_form.submit(style="vertical-align: middle;") }}
+        </form>
+    {% endif %}
+</div>
             <div class="header-right">
                 {% if current_user.is_authenticated %}
                     <a href="{{ url_for('show_notifications') }}" style="margin-right: 1em;">
