@@ -1,4 +1,10 @@
-<style>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UEC 掲示板</title>
+    <style>
 /*----------------------------------*/
 /* 全体的な設定とリセット */
 /*----------------------------------*/
@@ -130,9 +136,10 @@ input[type="submit"]:hover {
     margin: auto;
     display: flex;
     justify-content: space-between;
-    align-items: center; /* ヘッダーの要素を垂直方向に中央揃え */
-    flex-wrap: nowrap; /* ヘッダーの要素が改行しないように設定 */
+    align-items: center;
+    flex-wrap: nowrap;
 }
+
 .header-left, .header-right {
     display: flex;
     align-items: center;
@@ -154,8 +161,7 @@ input[type="submit"]:hover {
 .header-center {
     flex-grow: 1;
     display: flex;
-    justify-content: flex-end;
-    margin-left: 1em;
+    justify-content: center; /* フォームを中央に配置 */
     align-items: center;
 }
 
@@ -166,21 +172,16 @@ input[type="submit"]:hover {
 }
 
 .search-form-header input[type="text"] {
-    width: 120px;
+    width: 200px; /* 検索フォームの幅を広げる */
     margin-right: 0.5em;
-    vertical-align: middle; /* 垂直方向の位置を調整 */
-}
-
-.search-form-header input[type="submit"] {
-    vertical-align: middle; /* 垂直方向の位置を調整 */
-}
-
-
-/* ヘッダーのボタンとアイコンの垂直位置を調整 */
-.header-right a {
     vertical-align: middle;
 }
 
+.search-form-header input[type="submit"] {
+    vertical-align: middle;
+}
+
+/* ヘッダーのボタンとアイコンの垂直位置を調整 */
 .header-right {
     display: flex;
     align-items: center;
@@ -209,27 +210,23 @@ input[type="submit"]:hover {
 }
 
 /* 新しいドロップダウンメニューのスタイル */
-}
 .dropdown-container {
-    display: flex;
-    align-items: center;
     position: relative;
+    display: inline-block;
+    white-space: nowrap;
 }
+
 .dropdown-content {
     display: none;
     position: absolute;
     right: 0;
-    top: 100%; /* 親要素の下に配置 */
+    top: 100%;
     background-color: #f9f9f9;
     min-width: 160px;
     box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
     z-index: 1;
     border-radius: 0.25rem;
     padding: 0.5em 0;
-}
-
-.dropdown-container:hover .dropdown-content {
-    display: block;
 }
 
 .dropdown-content a {
@@ -242,8 +239,6 @@ input[type="submit"]:hover {
 .dropdown-content a:hover {
     background-color: #f1f1f1;
 }
-
-
 
 /* プロフィールアイコンとドロップダウンのスタイル */
 .user-icon {
@@ -291,7 +286,7 @@ input[type="submit"]:hover {
 .user-icon-link {
     flex-shrink: 0;
     margin-right: 1em;
-    vertical-align: middle; /* 垂直方向の位置を調整 */
+    vertical-align: middle;
 }
 
 .comment-body {
@@ -337,7 +332,6 @@ input[type="submit"]:hover {
     display: none;
 }
 
-
 /*----------------------------------*/
 /* スマホ版レイアウトの調整（768px以下） */
 /*----------------------------------*/
@@ -345,72 +339,59 @@ input[type="submit"]:hover {
     body {
         padding-top: 60px;
     }
-
     .header-content {
-        flex-wrap: wrap; /* スマホ版では要素を折り返す */
+        flex-wrap: wrap;
     }
     .header-content {
         padding: 0 10px;
         flex-wrap: nowrap;
         justify-content: space-between;
     }
-
     .header-left h1 {
         font-size: 1.2em;
         margin-right: 5px;
     }
-
     .header-center {
-        order: 1; /* 検索フォームを下に配置 */
+        order: 1;
         width: 100%;
         justify-content: center;
         margin: 0.5em 0;
     }
-    
     .search-form-header {
         width: 100%;
         justify-content: center;
     }
-
     .search-form-header input[type="text"] {
-        width: 80%; /* 幅を調整 */
+        width: 80%;
     }
-    
     .header-left, .header-right {
-        order: 0; /* ヘッダーの左右を上に配置 */
+        order: 0;
         width: auto;
     }
-
     .notification-icon {
         margin-right: 5px;
     }
-
     .user-icon {
         width: 30px;
         height: 30px;
     }
-}
-    
     .dropdown-content {
         right: 10px;
         top: 50px;
         min-width: 150px;
     }
-
     .comment-content {
         max-height: 80px;
     }
-
     .header-right {
         margin-left: auto;
     }
-
     .user-icon {
         width: 30px;
         height: 30px;
     }
 }
-    </style>
+</style>
 </head>
 <body>
     <div class="header">
@@ -419,16 +400,17 @@ input[type="submit"]:hover {
                 <div style="white-space: nowrap;">
                     <h1><a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">UEC 掲示板</a></h1>
                 </div>
+            </div>
             <div class="header-center">
-    {% if request.endpoint != 'login' and request.endpoint != 'register' %}
-        <form method="POST" action="{{ url_for('search') }}" class="search-form-header">
-            {{ search_form.csrf_token }}
-            {{ search_form.search_query.label(style="display: none;") }}
-            {{ search_form.search_query(size=20) }}
-            {{ search_form.submit }}
-        </form>
-    {% endif %}
-</div>
+                {% if request.endpoint != 'login' and request.endpoint != 'register' %}
+                    <form method="POST" action="{{ url_for('search') }}" class="search-form-header">
+                        {{ search_form.csrf_token }}
+                        {{ search_form.search_query.label(style="display: none;") }}
+                        {{ search_form.search_query(size=20) }}
+                        {{ search_form.submit }}
+                    </form>
+                {% endif %}
+            </div>
             <div class="header-right">
                 {% if current_user.is_authenticated %}
                     <a href="{{ url_for('show_notifications') }}" style="margin-right: 1em;">
@@ -439,11 +421,11 @@ input[type="submit"]:hover {
                         {% endif %}
                     </a>
                     <div class="dropdown-container">
-                        <a href="#" style="margin-right: 1em;">
+                        <a href="#">
                             {% if current_user.icon_url %}
-                                <img src="{{ current_user.icon_url }}" alt="{{ current_user.username }}のアイコン" style="width: 40px; height: 40px; border-radius: 50%;">
+                                <img src="{{ current_user.icon_url }}" alt="{{ current_user.username }}のアイコン" class="user-icon">
                             {% else %}
-                                <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="デフォルトアイコン" style="width: 40px; height: 40px; border-radius: 50%;">
+                                <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="デフォルトアイコン" class="user-icon">
                             {% endif %}
                         </a>
                         <div class="dropdown-content">
@@ -476,16 +458,28 @@ input[type="submit"]:hover {
     document.addEventListener('DOMContentLoaded', function() {
         const toggleButton = document.getElementById('toggle-post-form-btn');
         const postFormContainer = document.getElementById('post-form-container');
-
         if (toggleButton && postFormContainer) {
             toggleButton.addEventListener('click', function() {
                 postFormContainer.classList.toggle('hidden');
-                
                 const icon = toggleButton.querySelector('i');
                 if (postFormContainer.classList.contains('hidden')) {
                     toggleButton.innerHTML = '新しい投稿をする <i class="fas fa-plus"></i>';
                 } else {
                     toggleButton.innerHTML = 'フォームを閉じる <i class="fas fa-minus"></i>';
+                }
+            });
+        }
+        
+        const dropdownContainer = document.querySelector('.dropdown-container');
+        const dropdownContent = document.querySelector('.dropdown-content');
+        if (dropdownContainer && dropdownContent) {
+            dropdownContainer.addEventListener('click', function(event) {
+                event.stopPropagation();
+                dropdownContent.style.display = dropdownContent.style.display === 'block' ? 'none' : 'block';
+            });
+            document.addEventListener('click', function(event) {
+                if (!dropdownContainer.contains(event.target)) {
+                    dropdownContent.style.display = 'none';
                 }
             });
         }
