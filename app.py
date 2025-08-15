@@ -14,12 +14,13 @@ import os
 from flask_wtf.file import FileField, FileAllowed
 from forms import PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm
 import markdown
+import re
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
 db = SQLAlchemy(app)
-md=markdown
+md = markdown.Markdown()
 migrate = Migrate(app, db)
 
 login_manager = LoginManager(app)
@@ -143,9 +144,8 @@ def index(page):
             post.updated_at_jst = None
         
         post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
-
-
-    return render_template('index.html', form=form, search_form=search_form, posts=posts, markdown=md)
+    
+    return render_template('index.html', form=form, search_form=search_form, posts=posts, linkify_urls=linkify_urls, markdown=md)
 
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
@@ -177,7 +177,7 @@ def post_detail(post_id):
     
     post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
     
-    return render_template('detail.html', post=post, form=form, markdown=md, search_form=search_form)
+    return render_template('detail.html', post=post, form=form, linkify_urls=linkify_urls, markdown=md, search_form=search_form)
 
 @app.route('/bookmark_post/<int:post_id>', methods=['POST'])
 @login_required
@@ -406,8 +406,7 @@ def user_profile(username):
     
     search_form = SearchForm()
     
-    return render_template('profile.html', user=user, posts=posts, comments=comments, active_tab=active_tab, markdown=md, search_form=search_form)
-
+    return render_template('profile.html', user=user, posts=posts, comments=comments, active_tab=active_tab, linkify_urls=linkify_urls, markdown=md, search_form=search_form)
 # 管理者のみがアクセスできる管理画面
 @app.route('/admin')
 @login_required
@@ -486,6 +485,15 @@ def show_notifications():
     db.session.commit()
     
     return render_template('notifications.html', notifications=notifications, search_form=search_form)
+
+def linkify_urls(text):
+    """テキスト内のURLを<a>タグに変換する関数"""
+    url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
+    return re.sub(
+        url_pattern,
+        lambda match: f'<a href="{match.group(0)}" target="_blank">{match.group(0)}</a>',
+        text
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)

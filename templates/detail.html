@@ -24,7 +24,8 @@
         </form>
         {% endif %}
     </h1>
-        <div class="post-content">{{ markdown.markdown(post.content) | safe }}</div>
+       <div class="post-content">{{ linkify_urls(post.content) | safe }}</div>
+
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">
             <div>
                 <small>投稿者: <a href="{{ url_for('user_profile', username=post.author.username) }}" class="{{ post.author.get_username_class() }}">{{ post.author.username }}</a></small> | 
