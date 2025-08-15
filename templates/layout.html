@@ -130,13 +130,13 @@ input[type="submit"]:hover {
     margin: auto;
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
+    align-items: center; /* ヘッダーの要素を垂直方向に中央揃え */
+    flex-wrap: nowrap; /* ヘッダーの要素が改行しないように設定 */
 }
 .header-left, .header-right {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 
 .header-left h1 {
@@ -162,14 +162,19 @@ input[type="submit"]:hover {
 .search-form-header {
     margin: 0;
     display: flex;
-    align-items: center; /* フォーム内の要素を垂直方向に中央揃え */
-    width: 120px; /* フォーム全体の幅を制御 */
+    align-items: center;
 }
 
 .search-form-header input[type="text"] {
-    width: 100px; /* フォームの幅に合わせて調整 */
+    width: 120px;
     margin-right: 0.5em;
+    vertical-align: middle; /* 垂直方向の位置を調整 */
 }
+
+.search-form-header input[type="submit"] {
+    vertical-align: middle; /* 垂直方向の位置を調整 */
+}
+
 
 /* ヘッダーのボタンとアイコンの垂直位置を調整 */
 .header-right a {
@@ -178,7 +183,7 @@ input[type="submit"]:hover {
 
 .header-right {
     display: flex;
-    align-items: center; /* アイコンやドロップダウンを垂直方向に中央揃え */
+    align-items: center;
     flex-shrink: 0;
     white-space: nowrap;
     margin-left: 1em;
@@ -204,22 +209,27 @@ input[type="submit"]:hover {
 }
 
 /* 新しいドロップダウンメニューのスタイル */
-.dropdown-container {
-    position: relative;
-    display: inline-block;
-    white-space: nowrap;
 }
-
+.dropdown-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
 .dropdown-content {
     display: none;
     position: absolute;
     right: 0;
+    top: 100%; /* 親要素の下に配置 */
     background-color: #f9f9f9;
     min-width: 160px;
     box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
     z-index: 1;
     border-radius: 0.25rem;
     padding: 0.5em 0;
+}
+
+.dropdown-container:hover .dropdown-content {
+    display: block;
 }
 
 .dropdown-content a {
@@ -233,16 +243,14 @@ input[type="submit"]:hover {
     background-color: #f1f1f1;
 }
 
-.dropdown-container:hover .dropdown-content {
-    display: block;
-}
 
-/* プロフィールアイコンのスタイル */
+
+/* プロフィールアイコンとドロップダウンのスタイル */
 .user-icon {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    vertical-align: middle; /* 垂直方向の位置を調整 */
+    vertical-align: middle;
 }
 
 /* 投稿・コメントの書式設定 */
@@ -337,6 +345,10 @@ input[type="submit"]:hover {
     body {
         padding-top: 60px;
     }
+
+    .header-content {
+        flex-wrap: wrap; /* スマホ版では要素を折り返す */
+    }
     .header-content {
         padding: 0 10px;
         flex-wrap: nowrap;
@@ -349,23 +361,24 @@ input[type="submit"]:hover {
     }
 
     .header-center {
-        margin: 0; /* マージンをリセット */
-        flex-grow: 1;
+        order: 1; /* 検索フォームを下に配置 */
+        width: 100%;
+        justify-content: center;
+        margin: 0.5em 0;
     }
     
     .search-form-header {
         width: 100%;
-        margin-right: 5px; /* 右側のアイコンとの間にスペースを確保 */
+        justify-content: center;
     }
 
     .search-form-header input[type="text"] {
-        width: 100%;
+        width: 80%; /* 幅を調整 */
     }
     
-    .header-right {
-        margin-left: 5px;
-        flex-shrink: 0;
-        white-space: nowrap;
+    .header-left, .header-right {
+        order: 0; /* ヘッダーの左右を上に配置 */
+        width: auto;
     }
 
     .notification-icon {
@@ -386,6 +399,15 @@ input[type="submit"]:hover {
 
     .comment-content {
         max-height: 80px;
+    }
+
+    .header-right {
+        margin-left: auto;
+    }
+
+    .user-icon {
+        width: 30px;
+        height: 30px;
     }
 }
     </style>
