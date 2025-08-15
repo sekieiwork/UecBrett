@@ -493,4 +493,3 @@ def linkify_urls(text):
 
 if __name__ == '__main__':
     app.run(debug=True)
-と送ったんだけど、markdownがうまく読み込めてないのか、linkify_urlsが使えてないのか分からないからそのエラーを修正してほしい
