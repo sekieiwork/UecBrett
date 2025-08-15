@@ -4,7 +4,7 @@
 
 {% block content %}
     
-    {% if current_user.is_authenticated %}
+{% if current_user.is_authenticated %}
     <div style="margin-bottom: 1em;">
         <button id="toggle-post-form-btn">
             新しい投稿をする <i class="fas fa-plus"></i>
@@ -28,11 +28,11 @@
             </form>
         </div>
     </div>
-    {% else %}
+{% else %}
     <div class="post-form">
         <p>投稿するには<a href="{{ url_for('login') }}">ログイン</a>してください。</p>
     </div>
-    {% endif %}
+{% endif %}
 
     <h2>投稿一覧</h2>
     {% for post in posts.items %}

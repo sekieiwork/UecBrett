@@ -350,14 +350,14 @@
 	/* 新しい投稿ボタンのスタイル */
 	#toggle-post-form-btn {
     	padding: 0.5em 1em;
-    	border: 1px solid #ced4da;
-    	border-radius: 0.25rem;
-    	background-color: #e9ecef;
-    	cursor: pointer;
-    	font-size: 1em;
-    	display: flex;
-    	align-items: center;
-    	gap: 0.5em;
+   	border: 1px solid #ced4da;
+  	border-radius: 0.25rem;
+ 	background-color: #e9ecef;
+ 	cursor: pointer;
+ 	font-size: 1em;
+	display: flex;
+ 	align-items: center;
+	gap: 0.5em;
 	}
 
 	#toggle-post-form-btn:hover {
@@ -425,5 +425,36 @@
             {% block content %}{% endblock %}
         </div>
     </main>
+
+<script>
+    // jQueryのdocument.readyを使用
+    $(document).ready(function() {
+        // ... 既存のブックマークボタンのAjax処理 ...
+
+        // 投稿フォームの表示/非表示を切り替える処理
+        const toggleButton = document.getElementById('toggle-post-form-btn');
+        const postFormContainer = document.getElementById('post-form-container');
+
+        // ボタンとフォームが存在する場合のみ処理を行う
+        if (toggleButton && postFormContainer) {
+            toggleButton.addEventListener('click', function() {
+                // `hidden`クラスをトグルすることで表示・非表示を切り替える
+                postFormContainer.classList.toggle('hidden');
+                
+                // ボタンのテキストとアイコンを切り替える
+                const icon = toggleButton.querySelector('i');
+                if (postFormContainer.classList.contains('hidden')) {
+                    // フォームが非表示の時
+                    toggleButton.innerHTML = '新しい投稿をする <i class="fas fa-plus"></i>';
+                } else {
+                    // フォームが表示されている時
+                    toggleButton.innerHTML = 'フォームを閉じる <i class="fas fa-minus"></i>';
+                }
+            });
+        }
+    });
+</script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </body>
 </html>
