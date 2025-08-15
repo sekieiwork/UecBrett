@@ -12,8 +12,8 @@ WORKDIR /app
 
 # 依存関係をインストール
 COPY requirements.txt .
-# pip installを強制的にアップグレードしてキャッシュを無効化
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
+RUN pip install markdown-urlize --no-cache-dir --upgrade
 
 # アプリケーションのコードをコンテナにコピー
 COPY . .
