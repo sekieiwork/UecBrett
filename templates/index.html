@@ -5,20 +5,28 @@
 {% block content %}
     
     {% if current_user.is_authenticated %}
-    <div class="post-form">
-        <h2>新しい投稿</h2>
-        <form method="POST">
-            {{ form.csrf_token }}
-            <div class="form-field">
-                {{ form.title.label }}<br>
-                {{ form.title(size=32) }}
-            </div>
-            <div class="form-field">
-                {{ form.content.label }}<br>
-                {{ form.content(cols=40, rows=5, class="textarea-content") }}
-            </div>
-            {{ form.submit }}
-        </form>
+    <div style="margin-bottom: 1em;">
+        <button id="toggle-post-form-btn">
+            新しい投稿をする <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <div id="post-form-container" class="hidden">
+        <div class="post-form">
+            <h2>新しい投稿</h2>
+            <form method="POST">
+                {{ form.csrf_token }}
+                <div class="form-field">
+                    {{ form.title.label }}<br>
+                    {{ form.title(size=32) }}
+                </div>
+                <div class="form-field">
+                    {{ form.content.label }}<br>
+                    {{ form.content(cols=40, rows=5, class="textarea-content") }}
+                </div>
+                {{ form.submit }}
+            </form>
+        </div>
     </div>
     {% else %}
     <div class="post-form">
