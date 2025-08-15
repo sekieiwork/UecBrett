@@ -66,7 +66,7 @@
                 {% endif %}
             </div>
             <div class="comment-body">
-                <div class="comment-content">{{ markdown.markdown(comment.content) | safe }}</div>
+                <div class="comment-content">{{ markdown.convert(comment.content) | safe }}</div>
                 <div class="comment-meta">
                     <small>コメント投稿者: <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="{{ comment.commenter.get_username_class() }}">{{ comment.commenter.username }}</a></small> | 
                     <small>投稿日時: {{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
