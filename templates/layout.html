@@ -40,7 +40,7 @@ a:hover {
     padding: 1em;
     margin-bottom: 1em;
     /* コメント一覧の幅を揃えるための修正 */
-    max-width: 800px;
+    max-width: 790px;
     margin-left: auto;
     margin-right: auto;
 }
@@ -350,22 +350,27 @@ input[type="submit"]:hover {
         padding-top: 60px;
     }
     .header-content {
-        flex-wrap: wrap;
-    }
-    .header-content {
         padding: 0 10px;
-        flex-wrap: nowrap;
-        justify-content: space-between;
+        flex-wrap: wrap; /* スマホでは要素を折り返す */
     }
-    .header-left h1 {
-        font-size: 1.2em;
-        margin-right: 5px;
+    .header-left {
+        width: 50%;
+        justify-content: flex-start;
+        order: 0;
+    }
+    .header-right {
+        width: 50%;
+        justify-content: flex-end;
+        margin-left: auto;
+        margin-right: 0;
+        order: 0;
     }
     .header-center {
         order: 1;
         width: 100%;
+        margin-top: 0.5em;
+        margin-left: 0;
         justify-content: center;
-        margin: 0.5em 0;
     }
     .search-form-header {
         width: 100%;
@@ -373,10 +378,6 @@ input[type="submit"]:hover {
     }
     .search-form-header input[type="text"] {
         width: 80%;
-    }
-    .header-left, .header-right {
-        order: 0;
-        width: auto;
     }
     .notification-icon {
         margin-right: 5px;
@@ -392,13 +393,6 @@ input[type="submit"]:hover {
     }
     .comment-content {
         max-height: 80px;
-    }
-    .header-right {
-        margin-left: auto;
-    }
-    .user-icon {
-        width: 30px;
-        height: 30px;
     }
 }
 </style>

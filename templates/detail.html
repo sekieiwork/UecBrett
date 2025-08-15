@@ -55,7 +55,6 @@
 </div>
 </div>
 
-<div class="comments-wrapper">
 <div class="comments">
     <h3>コメント ({{ post.comments|length }})</h3>
     {% for comment in post.comments %}
@@ -85,7 +84,6 @@
         <div class="comment-content">{{ markdown.convert(comment.content) | safe }}</div>
     </div>
     {% endfor %}
-</div>
 </div>
 
 
