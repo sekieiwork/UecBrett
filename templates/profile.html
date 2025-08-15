@@ -23,7 +23,7 @@
     {% if user.bio %}
         <div class="bio">
             <h3>自己紹介</h3>
-            <div class="post-content">{{ markdown.markdown(user.bio) | safe }}</div>
+            <div class="post-content markdown-body">{{ markdown.markdown(user.bio) | safe }}</div>
         </div>
     {% endif %}
 
@@ -43,7 +43,7 @@
                 {% endif %}
                 <span style="color: black; font-size: 0.7em;">コメント数({{ post.comments|length }})</span>
             </h3>
-            <div class="post-content">{{ markdown.markdown(post.content) | safe }}</div>
+            <div class="post-content markdown-body">{{ markdown.markdown(post.content) | safe }}</div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">
                 <div>
                     <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
@@ -105,7 +105,7 @@
                         <a href="{{ url_for('post_detail', post_id=comment.post.id) }}">「{{ comment.post.title }}」</a>へのコメント:
                     </p>
                 </div>
-                <div class="comment-content" style="margin-left: 4em;">
+                <div class="comment-content markdown-body">{{ markdown.markdown(comment.content) | safe }}</div>
                     {{ markdown.markdown(comment.content) | safe }}
                 </div>
                 <small style="margin-left: 4em;">投稿日時: {{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>

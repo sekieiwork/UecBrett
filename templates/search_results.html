@@ -16,7 +16,7 @@
             {% endif %}
             <span style="color: black; font-size: 0.7em;">コメント数({{ post.comments|length }})</span>
         </h3>
-        <div class="post-content">{{ markdown.markdown(post.content) | safe }}</div>
+        <div class="post-content markdown-body">{{ markdown.markdown(post.content) | safe }}</div>
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">
             <div>

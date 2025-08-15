@@ -76,7 +76,7 @@
                             </form>
                         {% endif %}
                     </div>
-                    <div class="post-content">{{ markdown.markdown(comment.content) | safe }}</div>
+                    <div class="post-content markdown-body">{{ markdown.markdown(post.content) | safe }}</div>
                 </div>
             </div>
         </div>
