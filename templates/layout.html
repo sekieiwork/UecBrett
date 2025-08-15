@@ -1,40 +1,4 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{% endblock %} - UEC 掲示板</title>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            // ブックマークボタンのAjax処理
-            $(document).on('submit', 'form[action*="bookmark_post"]', function(e) {
-                e.preventDefault();
-                var form = $(this);
-                var url = form.attr('action');
-                var button = form.find('button');
-                var img = button.find('img');
-                
-                $.ajax({
-                    type: 'POST',
-                    url: url,
-                    success: function(response) {
-                        if (response.is_bookmarked) {
-                            img.attr('src', '{{ url_for("static", filename="icons/bookmarked.png") }}');
-                            img.attr('alt', 'ブックマーク済み');
-                        } else {
-                            img.attr('src', '{{ url_for("static", filename="icons/bookmark.png") }}');
-                            img.attr('alt', 'ブックマーク');
-                        }
-                    },
-                    error: function(error) {
-                        console.log(error);
-                    }
-                });
-            });
-        });
-    </script>
-    <style>
+<style>
     /*----------------------------------*/
     /* 全体的な設定とリセット */
     /*----------------------------------*/
@@ -62,21 +26,13 @@
         padding: 1em;
     }
 
-.comment-container {
-    /* ... 既存のスタイル ... */
-    display: flex;
-    align-items: flex-start;
-    position: relative;
-}
-
-
     /* ボックスの共通スタイル */
     .post, .post-form, .post-detail, .comment-container, .form-field, .user-info {
-           background-color: #fff;
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    padding: 1em;
-    margin-bottom: 1em;
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 1em;
+        margin-bottom: 1em;
     }
 
     /* タイトルとヘッダー */
@@ -231,14 +187,14 @@
     }
 
     /* 管理者ダッシュボードの一覧をスクロール可能にするスタイル */
-.admin-list-container {
-    max-height: 200px; /* 一覧の最大高さを固定（お好みの高さに調整可能） */
-    overflow-y: auto;  /* 縦方向にスクロールバーを表示 */
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    padding: 1em;
-    margin-bottom: 1em;
-}
+    .admin-list-container {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 1em;
+        margin-bottom: 1em;
+    }
 
     /* 新しいドロップダウンメニューのスタイル */
     .dropdown-container {
@@ -281,50 +237,48 @@
         border-radius: 50%;
     }
 
-.user-icon-link {
-    flex-shrink: 0;
-    margin-right: 1em;
-}
-
-/* コメント本文とメタ情報のコンテナ */
-.comment-body {
-    flex-grow: 1; /* 残りのスペースをすべて埋める */
-    display: flex;
-    flex-direction: column;
-}
-
     /* 投稿・コメントの書式設定 */
     .post-content, .comment-content {
- 	max-height: 100px;
-    overflow-y: auto;
-    padding: 1em; /* 内側の余白を修正 */
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    margin-top: 10px;
-    width: 100%; /* 親要素の幅いっぱいに広げる */
-    box-sizing: border-box; /* パディングを含めて幅を計算 */
+        max-height: 100px;
+        overflow-y: auto;
+        padding: 1em;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        margin-top: 10px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .user-icon-link {
+        flex-shrink: 0;
+        margin-right: 1em;
     }
 
-	/* コメントのメタ情報と削除ボタンを横並びにするスタイル */
-	.comment-meta {
-    display: flex;
-    align-items: center;
-    margin-top: 5px;
-}
+    .comment-body {
+        flex-grow: 1;
+    }
 
-.comment-actions {
-    position: absolute;
-    bottom: 1em;
-    right: 1em;
-}
+    .comment-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        margin-top: 5px;
+    }
 
-	.comment-meta small {
-    	white-space: nowrap;
-	}
+    .comment-meta small {
+        white-space: nowrap;
+    }
 
-	.comment-meta form {
-	    margin: 0;
-	}
+    .comment-meta form {
+        margin: 0;
+    }
+
+    .comment-actions {
+        position: absolute;
+        bottom: 1em;
+        right: 1em;
+    }
 
     /*----------------------------------*/
     /* スマホ版レイアウトの調整（768px以下） */
@@ -364,60 +318,52 @@
         }
 
         .comment-content {
-                max-height: 80px;
-    overflow-y: auto;
-    padding: 1em;
-    background-color: #fff;
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    margin-bottom: 0.5em;
-    margin-left: 0;
-    width: auto; /* width: 100%;を削除 */
-    box-sizing: border-box; /* パディングを含めて幅を計算 */
+            max-height: 80px;
         }
-   }
-	.hidden {
-	    display: none;
-	}
+    }
 
-/* Markdownが生成するリンクのスタイル */
-.markdown-body a {
-    color: #007bff;
-    text-decoration: underline;
-}
+    .hidden {
+        display: none;
+    }
 
-/* Markdownが生成するリストのスタイル */
-.markdown-body ul, .markdown-body ol {
-    padding-left: 20px;
-}
+    /* Markdownが生成するリンクのスタイル */
+    .markdown-body a {
+        color: #007bff;
+        text-decoration: underline;
+    }
 
-/* 新しい投稿ボタンのスタイル */
-#toggle-post-form-btn {
-    padding: 0.5em 1em;
-    border: none; /* 枠線を消す */
-    border-radius: 0.25rem;
-    cursor: pointer;
-    background-color: #007bff; /* 背景色を青に変更 */
-    color: #fff; /* 文字色を白に変更 */
-    font-size: 1em;
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-}
+    /* Markdownが生成するリストのスタイル */
+    .markdown-body ul, .markdown-body ol {
+        padding-left: 20px;
+    }
 
-	#toggle-post-form-btn:hover {
-    	background-color: #0056b3;
-	}
-</style>
+    /* 新しい投稿ボタンのスタイル */
+    #toggle-post-form-btn {
+        padding: 0.5em 1em;
+        border: none;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        background-color: #007bff;
+        color: #fff;
+        font-size: 1em;
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+    }
+
+    #toggle-post-form-btn:hover {
+        background-color: #0056b3;
+    }
+    </style>
 </head>
 <body>
     <div class="header">
         <div class="header-content">
             <div class="header-left">
-    <div style="white-space: nowrap;">
-        <h1><a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">UEC 掲示板</a></h1>
-    </div>
-</div>
+                <div style="white-space: nowrap;">
+                    <h1><a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">UEC 掲示板</a></h1>
+                </div>
+            </div>
             <div class="header-center">
                 {% if request.endpoint != 'login' and request.endpoint != 'register' %}
                     <form method="POST" action="{{ url_for('search') }}" style="display: flex; align-items: center;">
@@ -429,39 +375,39 @@
                 {% endif %}
             </div>
             <div class="header-right">
-    		{% if current_user.is_authenticated %}
-        		<a href="{{ url_for('show_notifications') }}" style="margin-right: 1em;">
-            			{% if current_user.has_unread_notifications() %}
-                			<img src="{{ url_for('static', filename='icons/notification_unread.png') }}" alt="未読通知" style="width: 20px; height: 20px;">
-            			{% else %}
-                	<img src="{{ url_for('static', filename='icons/notification.png') }}" alt="通知" style="width: 20px; height: 20px;">
-            			{% endif %}
-        		</a>
-        	<div class="dropdown-container">
-            		<a href="#" style="margin-right: 1em;">
-                		{% if current_user.icon_url %}
-                    			<img src="{{ current_user.icon_url }}" alt="{{ current_user.username }}のアイコン" style="width: 40px; height: 40px; border-radius: 50%;">
-                		{% else %}
-                    			<img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="デフォルトアイコン" style="width: 40px; height: 40px; border-radius: 50%;">
-                		{% endif %}
-            		</a>
-            	<div class="dropdown-content">
-                	<a href="{{ url_for('user_profile', username=current_user.username) }}">プロフィール</a>
-                	<a href="{{ url_for('edit_profile', username=current_user.username) }}">プロフィールの編集</a>
-                	<a href="{{ url_for('show_bookmarks') }}">ブックマーク一覧</a>
- 			{% if current_user.is_admin %}
-        		<a href="{{ url_for('admin_dashboard') }}">管理者ダッシュボード</a>
-    			{% endif %}
-                	<a href="{{ url_for('logout') }}">ログアウト</a>
-            	</div>
-        	</div>
-    		{% else %}
-        		<div>
-            			<a href="{{ url_for('login') }}">ログイン</a> |
-            			<a href="{{ url_for('register') }}">ユーザー登録</a>
-        		</div>
-    		{% endif %}
-	    </div>
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('show_notifications') }}" style="margin-right: 1em;">
+                        {% if current_user.has_unread_notifications() %}
+                            <img src="{{ url_for('static', filename='icons/notification_unread.png') }}" alt="未読通知" style="width: 20px; height: 20px;">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='icons/notification.png') }}" alt="通知" style="width: 20px; height: 20px;">
+                        {% endif %}
+                    </a>
+                    <div class="dropdown-container">
+                        <a href="#" style="margin-right: 1em;">
+                            {% if current_user.icon_url %}
+                                <img src="{{ current_user.icon_url }}" alt="{{ current_user.username }}のアイコン" style="width: 40px; height: 40px; border-radius: 50%;">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="デフォルトアイコン" style="width: 40px; height: 40px; border-radius: 50%;">
+                            {% endif %}
+                        </a>
+                        <div class="dropdown-content">
+                            <a href="{{ url_for('user_profile', username=current_user.username) }}">プロフィール</a>
+                            <a href="{{ url_for('edit_profile', username=current_user.username) }}">プロフィールの編集</a>
+                            <a href="{{ url_for('show_bookmarks') }}">ブックマーク一覧</a>
+                            {% if current_user.is_admin %}
+                                <a href="{{ url_for('admin_dashboard') }}">管理者ダッシュボード</a>
+                            {% endif %}
+                            <a href="{{ url_for('logout') }}">ログアウト</a>
+                        </div>
+                    </div>
+                {% else %}
+                    <div>
+                        <a href="{{ url_for('login') }}">ログイン</a> |
+                        <a href="{{ url_for('register') }}">ユーザー登録</a>
+                    </div>
+                {% endif %}
+            </div>
         </div>
     </div>
     
