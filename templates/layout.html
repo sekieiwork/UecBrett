@@ -130,10 +130,9 @@ input[type="submit"]:hover {
     margin: auto;
     display: flex;
     justify-content: space-between;
-    align-items: center; /* ヘッダーの要素を垂直方向に中央揃え */
+    align-items: center;
     flex-wrap: wrap;
 }
-
 .header-left, .header-right {
     display: flex;
     align-items: center;
@@ -163,11 +162,12 @@ input[type="submit"]:hover {
 .search-form-header {
     margin: 0;
     display: flex;
-    align-items: center;
+    align-items: center; /* フォーム内の要素を垂直方向に中央揃え */
+    width: 120px; /* フォーム全体の幅を制御 */
 }
 
 .search-form-header input[type="text"] {
-    width: 120px;
+    width: 100px; /* フォームの幅に合わせて調整 */
     margin-right: 0.5em;
 }
 
@@ -397,14 +397,13 @@ input[type="submit"]:hover {
                 <div style="white-space: nowrap;">
                     <h1><a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">UEC 掲示板</a></h1>
                 </div>
-            </div>
             <div class="header-center">
     {% if request.endpoint != 'login' and request.endpoint != 'register' %}
-        <form method="POST" action="{{ url_for('search') }}" style="display: flex; align-items: center; width: 100%;">
+        <form method="POST" action="{{ url_for('search') }}" class="search-form-header">
             {{ search_form.csrf_token }}
             {{ search_form.search_query.label(style="display: none;") }}
-            {{ search_form.search_query(size=20, style="vertical-align: middle;") }}
-            {{ search_form.submit(style="vertical-align: middle;") }}
+            {{ search_form.search_query(size=20) }}
+            {{ search_form.submit }}
         </form>
     {% endif %}
 </div>
@@ -452,34 +451,24 @@ input[type="submit"]:hover {
     </main>
 
 <script>
-    // jQueryのdocument.readyを使用
-    $(document).ready(function() {
-        // ... 既存のブックマークボタンのAjax処理 ...
-
-        // 投稿フォームの表示/非表示を切り替える処理
+    document.addEventListener('DOMContentLoaded', function() {
         const toggleButton = document.getElementById('toggle-post-form-btn');
         const postFormContainer = document.getElementById('post-form-container');
 
-        // ボタンとフォームが存在する場合のみ処理を行う
         if (toggleButton && postFormContainer) {
             toggleButton.addEventListener('click', function() {
-                // `hidden`クラスをトグルすることで表示・非表示を切り替える
                 postFormContainer.classList.toggle('hidden');
                 
-                // ボタンのテキストとアイコンを切り替える
                 const icon = toggleButton.querySelector('i');
                 if (postFormContainer.classList.contains('hidden')) {
-                    // フォームが非表示の時
                     toggleButton.innerHTML = '新しい投稿をする <i class="fas fa-plus"></i>';
                 } else {
-                    // フォームが表示されている時
                     toggleButton.innerHTML = 'フォームを閉じる <i class="fas fa-minus"></i>';
                 }
             });
         }
     });
 </script>
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </body>
 </html>
