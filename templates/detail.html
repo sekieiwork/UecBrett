@@ -58,7 +58,8 @@
 <div class="comments">
     <h3>コメント ({{ post.comments|length }})</h3>
     {% for comment in post.comments %}
-    <div class="post"> <div class="comment-header">
+    <div class="comment-item">
+    <div class="comment-header">
             <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="user-icon-link">
                 {% if comment.commenter.icon_url %}
                     <img src="{{ comment.commenter.icon_url }}" alt="{{ comment.commenter.username }}のアイコン" class="user-icon">
