@@ -53,18 +53,13 @@
         {{ form.submit }}
     </form>
 </div>
-    </div>
+
+</div>
 <div class="comments">
     <h3>コメント ({{ post.comments|length }})</h3>
     {% for comment in post.comments %}
-        <div class="comment-container">
-            <div class="user-icon-link">
-                {% if comment.commenter.icon_url %}
-                    <img src="{{ comment.commenter.icon_url }}" alt="{{ comment.commenter.username }}のアイコン" class="user-icon">
-                {% else %}
-                    <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="デフォルトアイコン" class="user-icon">
-                {% endif %}
-            </div>
+        <div class="post"> <div class="user-icon-link">
+                </div>
             <div class="comment-body">
                 <div class="comment-content">{{ markdown.convert(comment.content) | safe }}</div>
                 <div class="comment-meta">
@@ -81,4 +76,5 @@
             {% endif %}
         </div>
     {% endfor %}
-</div>{% endblock %}
+</div>
+{% endblock %}
