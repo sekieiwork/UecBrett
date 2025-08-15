@@ -19,7 +19,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
 db = SQLAlchemy(app)
-md = markdown.Markdown(extensions=['markdown_urlize'])
+md=markdown
 migrate = Migrate(app, db)
 
 login_manager = LoginManager(app)
