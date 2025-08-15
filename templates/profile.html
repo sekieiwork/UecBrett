@@ -105,9 +105,7 @@
                         <a href="{{ url_for('post_detail', post_id=comment.post.id) }}">「{{ comment.post.title }}」</a>へのコメント:
                     </p>
                 </div>
-                <div class="comment-content markdown-body">{{ markdown.convert(post.content) | safe }}</div>
-                    {{ markdown.convert(comment.content) | safe }}
-                </div>
+                <div class="comment-content markdown-body">{{ markdown.convert(comment.content) | safe }}</div>
                 <small style="margin-left: 4em;">投稿日時: {{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
             </div>
         {% endfor %}
