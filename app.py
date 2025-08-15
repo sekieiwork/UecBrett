@@ -71,7 +71,7 @@ class Post(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False) # <-- ここに追加
-    comments = db.relationship('Comment', backref='post', lazy=True, cascade="all, delete", ondelete="CASCADE")
+    comments = db.relationship('Comment', backref='post', lazy=True, cascade="all, delete")
     bookmarks = db.relationship(
         'Bookmark', 
         backref='post', 
