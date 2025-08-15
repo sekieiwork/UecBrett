@@ -44,14 +44,15 @@
         <hr>
     </div>
 
-    <div class="comment-form">
-        <h3>コメントする</h3>
-        <form method="POST">
-            {{ form.csrf_token }}
-            {{ form.content.label }}<br>
-            {{ form.content(cols=40, rows=5) }}
-            {{ form.submit }}
-        </form>
+  <div class="comment-form">
+    <h3>コメントする</h3>
+    <form method="POST">
+        {{ form.csrf_token }}
+        {{ form.content.label }}<br>
+        {{ form.content(cols=40, rows=5) }}
+        {{ form.submit }}
+    </form>
+</div>
     </div>
 <div class="comments">
     <h3>コメント ({{ post.comments|length }})</h3>
