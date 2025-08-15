@@ -58,32 +58,30 @@
 <div class="comments">
     <h3>コメント ({{ post.comments|length }})</h3>
     {% for comment in post.comments %}
-        <div class="post comment-item">
-            <div class="comment-header">
-                <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="user-icon-link">
-                    {% if comment.commenter.icon_url %}
-                        <img src="{{ comment.commenter.icon_url }}" alt="{{ comment.commenter.username }}のアイコン" class="user-icon">
-                    {% else %}
-                        <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="デフォルトアイコン" class="user-icon">
-                    {% endif %}
-                </a>
-                <div class="comment-meta-and-actions">
-                    <div class="comment-meta">
-                        <small>コメント投稿者: <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="{{ comment.commenter.get_username_class() }}">{{ comment.commenter.username }}</a></small> | 
-                        <small>投稿日時: {{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
-                    </div>
-                    {% if current_user.is_authenticated and (current_user == comment.commenter or current_user == post.author or current_user.is_admin) %}
-                        <div class="comment-actions">
-                            <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="POST">
-                                <button type="submit" class="delete-button" onclick="return confirm('本当に削除しますか？');">削除</button>
-                            </form>
-                        </div>
-                    {% endif %}
+    <div class="post"> <div class="comment-header">
+            <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="user-icon-link">
+                {% if comment.commenter.icon_url %}
+                    <img src="{{ comment.commenter.icon_url }}" alt="{{ comment.commenter.username }}のアイコン" class="user-icon">
+                {% else %}
+                    <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="デフォルトアイコン" class="user-icon">
+                {% endif %}
+            </a>
+            <div class="comment-meta-and-actions">
+                <div class="comment-meta">
+                    <small>コメント投稿者: <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="{{ comment.commenter.get_username_class() }}">{{ comment.commenter.username }}</a></small> | 
+                    <small>投稿日時: {{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
                 </div>
+                {% if current_user.is_authenticated and (current_user == comment.commenter or current_user == post.author or current_user.is_admin) %}
+                    <div class="comment-actions">
+                        <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="POST">
+                            <button type="submit" class="delete-button" onclick="return confirm('本当に削除しますか？');">削除</button>
+                        </form>
+                    </div>
+                {% endif %}
             </div>
-            <div class="comment-content">{{ markdown.convert(comment.content) | safe }}</div>
         </div>
+        <div class="comment-content">{{ markdown.convert(comment.content) | safe }}</div>
+    </div>
     {% endfor %}
 </div>
-
 {% endblock %}
