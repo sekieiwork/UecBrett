@@ -5,35 +5,42 @@
 {% block content %}
     <h2>ブックマーク一覧</h2>
 
-    {% for post in posts %}
-    <div class="post">
-        <h3>
-            <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a>
-            {% if post.updated_at and post.created_at_jst.strftime('%Y%m%d%H%M%S') != post.updated_at_jst.strftime('%Y%m%d%H%M%S') %}
-                <small style="color: gray; font-size: 0.3em;">(編集済み)</small>
-            {% endif %}
-            <span style="color: black; font-size: 0.7em;">コメント数({{ post.comments|length }})</span>
-        </h3>
-        <div class="post-content">{{ markdown.markdown(post.content) | safe }}</div>
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">
-            <div>
-                <small>投稿者: <a href="{{ url_for('user_profile', username=post.author.username) }}" class="{{ post.author.get_username_class() }}">{{ post.author.username }}</a></small> | 
-                <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
-            </div>
+    {% if posts %}
+        {% for post in posts %}
+        <div class="post">
+            <h3>
+                <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a>
+                {% if post.updated_at and post.created_at_jst.strftime('%Y%m%d%H%M%S') != post.updated_at_jst.strftime('%Y%m%d%H%M%S') %}
+                    <small style="color: gray; font-size: 0.3em;">(編集済み)</small>
+                {% endif %}
+                <span style="color: black; font-size: 0.7em;">コメント数({{ post.comments|length }})</span>
+            </h3>
+            <div class="post-content">{{ markdown.markdown(post.content) | safe }}</div>
             
-            {% if current_user.is_authenticated %}
-            <form class="bookmark-form" data-post-id="{{ post.id }}">
-    <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
-        <span id="bookmark-icon-{{ post.id }}">
-            <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
-        </span>
-    </button>
-</form>
-            {% endif %}
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">
+                <div>
+                    <small>投稿者: <a href="{{ url_for('user_profile', username=post.author.username) }}" class="{{ post.author.get_username_class() }}">{{ post.author.username }}</a></small> | 
+                    <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                </div>
+                
+                {% if current_user.is_authenticated %}
+                <form class="bookmark-form" data-post-id="{{ post.id }}">
+                    <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
+                        <span id="bookmark-icon-{{ post.id }}">
+                            {# Use the is_bookmarked variable passed from the view function for consistency #}
+                            {% if post.is_bookmarked %}
+                                <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
+                            {% endif %}
+                        </span>
+                    </button>
+                </form>
+                {% endif %}
+            </div>
         </div>
-    </div>
+        {% endfor %}
     {% else %}
-    <p>ブックマークされた投稿はありません。</p>
-    {% endfor %}
+        <p>ブックマークされた投稿はありません。</p>
+    {% endif %}
 {% endblock %}
