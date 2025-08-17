@@ -53,16 +53,18 @@
                 </div>
                 
                 {% if current_user.is_authenticated %}
-                <form action="{{ url_for('bookmark_post', post_id=post.id) }}" method="POST" style="display: inline;">
-                    <button type="submit" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
-                        {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
-                        {% if is_bookmarked %}
-                            <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
-                        {% else %}
-                            <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
-                        {% endif %}
-                    </button>
-                </form>
+                <form class="bookmark-form" data-post-id="{{ post.id }}">
+    <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
+        <span id="bookmark-icon-{{ post.id }}">
+            {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
+            {% if is_bookmarked %}
+                <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
+            {% else %}
+                <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
+            {% endif %}
+        </span>
+    </button>
+</form>
                 {% endif %}
             </div>
         </div>

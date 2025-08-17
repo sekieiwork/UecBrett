@@ -505,6 +505,34 @@ input[type="submit"]:hover {
             });
         }
     });
+
+	document.querySelectorAll('.bookmark-toggle-btn').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const form = this.closest('.bookmark-form');
+                    const postId = form.dataset.postId;
+                    const url = `{{ url_for('bookmark_post', post_id=0) }}`.slice(0, -1) + postId;
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        const iconSpan = document.getElementById(`bookmark-icon-${postId}`);
+                        if (data.is_bookmarked) {
+                            iconSpan.innerHTML = '<img src="{{ url_for("static", filename="icons/bookmarked.png") }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">';
+                        } else {
+                            iconSpan.innerHTML = '<img src="{{ url_for("static", filename="icons/bookmark.png") }}" alt="ブックマーク" style="width: 20px; height: 20px;">';
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                });
+            });
+        });
 </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </body>
