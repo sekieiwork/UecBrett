@@ -526,31 +526,26 @@ input[type="submit"]:hover {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- グローバルなクリックイベントの管理 ---
+
+    // --- ヘッダーのユーザーメニューのドロップダウン処理 ---
     const headerDropdownContainer = document.querySelector('.dropdown-container');
-    const headerDropdownContent = headerDropdownContainer ? headerDropdownContainer.querySelector('.dropdown-content') : null;
-    
-    const templateDropdown = document.querySelector('.template-dropdown');
-    const templateDropdownContent = templateDropdown ? templateDropdown.querySelector('.template-dropdown-content') : null;
-
-    document.addEventListener('click', function(event) {
-        // ヘッダーのドロップダウンを閉じる処理
-        if (headerDropdownContainer && !headerDropdownContainer.contains(event.target)) {
-            if (headerDropdownContent) headerDropdownContent.style.display = 'none';
+    if (headerDropdownContainer) {
+        const headerDropdownContent = headerDropdownContainer.querySelector('.dropdown-content');
+        if (headerDropdownContent) {
+            headerDropdownContainer.addEventListener('click', function(event) {
+                event.stopPropagation();
+                const isHidden = headerDropdownContent.style.display === 'none' || headerDropdownContent.style.display === '';
+                headerDropdownContent.style.display = isHidden ? 'block' : 'none';
+            });
         }
-        // テンプレートのドロップダウンを閉じる処理
-        if (templateDropdown && !templateDropdown.contains(event.target)) {
-            if (templateDropdownContent) templateDropdownContent.classList.add('hidden');
-        }
-    });
+    }
 
-    // --- 「新しい投稿をする」ボタンの処理 ---
+    // --- 「新しい投稿をする」ボタンの表示/非表示処理 ---
     const toggleButton = document.getElementById('toggle-post-form-btn');
     const postFormContainer = document.getElementById('post-form-container');
     if (toggleButton && postFormContainer) {
         toggleButton.addEventListener('click', function() {
             postFormContainer.classList.toggle('hidden');
-            const icon = toggleButton.querySelector('i');
             if (postFormContainer.classList.contains('hidden')) {
                 toggleButton.innerHTML = '新しい投稿をする <i class="fas fa-plus"></i>';
             } else {
@@ -558,41 +553,43 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
-    // --- ヘッダーのドロップダウンメニューの処理 ---
-    if (headerDropdownContainer && headerDropdownContent) {
-        headerDropdownContainer.addEventListener('click', function(event) {
-            event.stopPropagation(); // 親要素へのクリックイベントの伝播を停止
-            const isHidden = headerDropdownContent.style.display === 'none' || headerDropdownContent.style.display === '';
-            headerDropdownContent.style.display = isHidden ? 'block' : 'none';
-        });
-    }
 
-    // --- テンプレート機能のJS ---
-    if (templateDropdown && typeof TEMPLATES_DATA !== 'undefined' && templateDropdownContent) {
-        const selectBtn = templateDropdown.querySelector('.template-select-btn');
-        const templateItems = templateDropdown.querySelectorAll('.template-item');
+    // --- テンプレート機能の処理 ---
+    const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
+    // TEMPLATES_DATAが定義されており、中身がある場合のみ実行
+    if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
+        allTemplateDropdowns.forEach(dropdown => {
+            const selectBtn = dropdown.querySelector('.template-select-btn');
+            const dropdownContent = dropdown.querySelector('.template-dropdown-content');
+            const templateItems = dropdown.querySelectorAll('.template-item');
 
-        selectBtn.addEventListener('click', function(event) {
-            event.stopPropagation(); // 親要素へのクリックイベントの伝播を停止
-            templateDropdownContent.classList.toggle('hidden');
-        });
+            if (selectBtn && dropdownContent && templateItems.length > 0) {
+                // 「テンプレートを選択」ボタンをクリックしたらドロップダウンを開閉
+                selectBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    dropdownContent.classList.toggle('hidden');
+                });
 
-        templateItems.forEach(function(item) {
-            item.addEventListener('click', function(e) {
-                e.preventDefault();
-                const templateIndex = parseInt(this.dataset.index, 10);
-                const template = TEMPLATES_DATA[templateIndex];
+                // 各テンプレート項目をクリックしたらフォームに内容を反映
+                templateItems.forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const templateIndex = parseInt(item.dataset.index, 10);
+                        const template = TEMPLATES_DATA[templateIndex];
 
-                if (template) {
-                    const titleInput = document.querySelector('input[name="title"]');
-                    const contentTextarea = document.querySelector('textarea[name="content"]');
-                    if (titleInput) titleInput.value = template.title;
-                    if (contentTextarea) contentTextarea.value = template.body;
-                }
-                templateDropdownContent.classList.add('hidden');
+                        if (template) {
+                            // ページ内の投稿フォーム要素を特定して値を入れる
+                            const titleInput = document.querySelector('input[name="title"]');
+                            const contentTextarea = document.querySelector('textarea[name="content"]');
 
-            });
+                            if (titleInput) titleInput.value = template.title;
+                            if (contentTextarea) contentTextarea.value = template.body;
+                        }
+                        // ドロップダウンを閉じる
+                        dropdownContent.classList.add('hidden');
+                    });
+                });
+            }
         });
     }
 
@@ -606,10 +603,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             fetch(url, {
                 method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
             })
             .then(response => response.json())
             .then(data => {
@@ -623,6 +617,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => console.error('Error:', error));
+        });
+    });
+
+    // --- 画面のどこかをクリックした時に開いているドロップダウンを閉じる処理 ---
+    document.addEventListener('click', function(event) {
+        // ヘッダーのドロップダウンを閉じる
+        if (headerDropdownContainer && !headerDropdownContainer.contains(event.target)) {
+            const content = headerDropdownContainer.querySelector('.dropdown-content');
+            if (content) content.style.display = 'none';
+        }
+
+        // テンプレートのドロップダウンを閉じる
+        allTemplateDropdowns.forEach(dropdown => {
+            if (!dropdown.contains(event.target)) {
+                const content = dropdown.querySelector('.template-dropdown-content');
+                if (content) content.classList.add('hidden');
+            }
         });
     });
 });
