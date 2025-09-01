@@ -321,52 +321,48 @@ def logout():
 @app.route('/search/page/<int:page>', methods=['GET', 'POST'])
 def search(page=1):
     form = SearchForm()
-    posts = []
-    search_query = ""
-    japan_tz = timezone('Asia/Tokyo')
+    search_query = None
+    posts = None
 
+    # 新規検索(POST)かページ移動(GET)かを判断
     if form.validate_on_submit():
         search_query = form.search_query.data
-        posts_query = Post.query.filter(
-            (Post.title.like(f'%{search_query}%')) | (Post.content.like(f'%{search_query}%'))
-        ).order_by(Post.created_at.desc())
-        posts = posts_query.paginate(
-            page=page, per_page=5, error_out=False
-        )
-        
-        for post in posts.items:
-            post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
-            if post.updated_at:
-                post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
-            else:
-                post.updated_at_jst = None
-            
-            post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
-        
-      # 検索結果が見つかった場合に呼ばれる render_template
-            return render_template('search_results.html', form=form, posts=posts, search_query=search_query, md=md, search_form=form, linkify_urls=linkify_urls)
-
-    if request.method == 'GET' and 'search_query' in request.args:
+    elif request.method == 'GET' and request.args.get('search_query'):
         search_query = request.args.get('search_query')
+        form.search_query.data = search_query # ページ移動後も検索ボックスにクエリを残す
+
+    if search_query:
+        # 検索クエリがある場合のみ、DB検索とデータ処理を行う
         posts_query = Post.query.filter(
             (Post.title.like(f'%{search_query}%')) | (Post.content.like(f'%{search_query}%'))
         ).order_by(Post.created_at.desc())
-        posts = posts_query.paginate(
-            page=page, per_page=5, error_out=False
-        )
-        
+
+        posts = posts_query.paginate(page=page, per_page=5, error_out=False)
+
+        # 投稿データの時刻情報などを追加する処理
+        japan_tz = timezone('Asia/Tokyo')
         for post in posts.items:
             post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
             if post.updated_at:
                 post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
             else:
                 post.updated_at_jst = None
-            
-            post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
 
-        return render_template('search_results.html', form=form, posts=posts, search_query=search_query, md=md, search_form=form, linkify_urls=linkify_urls)
-    
-    return render_template('search_results.html', form=form, posts=posts, md=md, search_form=form, linkify_urls=linkify_urls)
+            if current_user.is_authenticated:
+                post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
+            else:
+                post.is_bookmarked = False
+    else:
+        # 検索していない場合は、空のページネーションオブジェクトを作成
+        posts = db.paginate(db.select(Post).where(False), page=page, per_page=5, error_out=False)
+
+    return render_template('search_results.html',
+                           form=form,
+                           posts=posts,
+                           search_query=search_query,
+                           md=md, # 以前の修正を反映
+                           search_form=form,
+                           linkify_urls=linkify_urls)
 
 @app.route('/profile/edit/<string:username>', methods=['GET', 'POST'])
 @login_required
