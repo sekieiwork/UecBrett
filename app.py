@@ -255,7 +255,7 @@ def edit_post(post_id):
         {
             'name': 'UECreview',
             'title': f'○年 ○期 {current_user.username}の授業review',
-            'body': '○○　成績:○\n　*本文を入力'
+            'body': '**○○**　成績:**○**\n　*本文を入力'
         }
     ]
     
