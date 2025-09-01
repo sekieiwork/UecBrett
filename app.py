@@ -158,7 +158,7 @@ def index(page):
             {
                 'name': 'UECreview',
                 'title': f'○年 ○期 {current_user.username}の授業review',
-                'body': '**ここに科目を入力(**は消さないこと)**　成績:**ここに成績を入力(**は消さないこと)**\n本文を入力'
+                'body': '<span class="text-large">**ここに科目を入力(**は消さないこと)</span>**　成績:<span class="text-red text-large">**ここに成績を入力(**は消さないこと)**</span>\n本文を入力'
             }
         ]
     
@@ -252,11 +252,11 @@ def edit_post(post_id):
         return redirect(url_for('post_detail', post_id=post.id))
 
     templates = [
-        {
-            'name': 'UECreview',
-            'title': f'○年 ○期 {current_user.username}の授業review',
-            'body': '**ここに科目を入力(**は消さないこと)**　成績:**ここに成績を入力(**は消さないこと)**\n本文を入力'
-        }
+            {
+                'name': 'UECreview',
+                'title': f'○年 ○期 {current_user.username}の授業review',
+                'body': '<span class="text-large">**ここに科目を入力(**は消さないこと)</span>**　成績:<span class="text-red text-large">**ここに成績を入力(**は消さないこと)**</span>\n本文を入力'
+            }
     ]
     
     return render_template('edit.html', form=form, post=post, search_form=search_form, templates=templates, templates_for_js=json.dumps(templates))
