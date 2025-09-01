@@ -572,33 +572,46 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- テンプレートの各項目をクリックした時の処理 ---
-    if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
-        const allTemplateItems = document.querySelectorAll('.template-item');
-        allTemplateItems.forEach(item => {
-            item.addEventListener('click', function(event) {
-                event.preventDefault(); // リンクのデフォルト動作を無効化
-                const templateIndex = parseInt(item.dataset.index, 10);
-                const template = TEMPLATES_DATA[templateIndex];
+// --- テンプレートの各項目をクリックした時の処理 ---
+if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
+    const allTemplateItems = document.querySelectorAll('.template-item');
+    allTemplateItems.forEach(item => {
+        item.addEventListener('click', function(event) {
+            // 1. デフォルトのリンク動作を停止
+            event.preventDefault();
+            console.log("テンプレート項目がクリックされました:", item.textContent);
 
-                if (template) {
-                    // 現在のページにあるフォームの要素を取得
-                    const titleInput = document.querySelector('input[name="title"]');
-                    const contentTextarea = document.querySelector('textarea[name="content"]');
+            // 2. data-index属性からテンプレートの情報を取得
+            const templateIndex = parseInt(item.dataset.index, 10);
+            const template = TEMPLATES_DATA[templateIndex];
+            console.log("選択されたテンプレートのデータ:", template);
 
-                    // フォームに値を自動入力
-                    if (titleInput) titleInput.value = template.title;
-                    if (contentTextarea) contentTextarea.value = template.body;
+            if (template) {
+                // 3. ページ内のタイトルと本文の入力欄を探す
+                const titleInput = document.querySelector('input[name="title"]');
+                const contentTextarea = document.querySelector('textarea[name="content"]');
+
+                // 4. 入力欄が見つかったら、値を上書き（元の中身は消えます）
+                if (titleInput && contentTextarea) {
+                    console.log("入力欄に値を設定します。");
+                    titleInput.value = template.title;
+                    contentTextarea.value = template.body;
+                    console.log("自動入力を完了しました。");
+                } else {
+                    console.error("エラー: タイトルまたは本文の入力欄が見つかりません。");
                 }
+            } else {
+                console.error("エラー: テンプレートのデータが見つかりません。");
+            }
 
-                // メニューを閉じる
-                const parentDropdownContent = item.closest('.template-dropdown-content');
-                if (parentDropdownContent) {
-                    parentDropdownContent.classList.add('hidden');
-                }
-            });
+            // 5. 最後にドロップダウンメニューを閉じる
+            const parentDropdownContent = item.closest('.template-dropdown-content');
+            if (parentDropdownContent) {
+                parentDropdownContent.classList.add('hidden');
+            }
         });
-    }
+    });
+}
 
     // --- ブックマークボタンの処理 ---
     document.querySelectorAll('.bookmark-toggle-btn').forEach(button => {
