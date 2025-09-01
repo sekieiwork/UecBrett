@@ -17,6 +17,17 @@ import markdown
 import re
 import json
 
+# ▼▼▼ ここに貼り付ける ▼▼▼
+def linkify_urls(text):
+    """テキスト内のURLを<a>タグに変換する関数"""
+    url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
+    return re.sub(
+        url_pattern,
+        lambda match: f'<a href="{match.group(0)}" target="_blank">{match.group(0)}</a>',
+        text
+    )
+# ▲▲▲ ここまで ▲▲▲
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
@@ -501,14 +512,6 @@ def show_notifications():
     
     return render_template('notifications.html', notifications=notifications, search_form=search_form)
 
-def linkify_urls(text):
-    """テキスト内のURLを<a>タグに変換する関数"""
-    url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
-    return re.sub(
-        url_pattern,
-        lambda match: f'<a href="{match.group(0)}" target="_blank">{match.group(0)}</a>',
-        text
-    )
 
 if __name__ == '__main__':
     app.run(debug=True)
