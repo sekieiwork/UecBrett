@@ -233,7 +233,7 @@ def show_bookmarks():
             post.updated_at_jst = None
         post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
 
-    return render_template('bookmarks.html', posts=bookmarked_posts, search_form=search_form, md=md)
+    return render_template('bookmarks.html', posts=bookmarked_posts, search_form=search_form, md=md, linkify_urls=linkify_urls)
 
 @app.route('/post/<int:post_id>/edit', methods=['GET', 'POST'])
 @login_required
