@@ -6,8 +6,8 @@
     <title>UEC 掲示板</title>
     {% if templates_for_js %}
     <script>
-        const TEMPLATES_DATA = JSON.parse('{{ templates_for_js | safe }}');
-    </script>
+    const TEMPLATES_DATA = {{ templates_for_js | safe }};
+</script>
     {% endif %}
     <style>
 /*----------------------------------*/
