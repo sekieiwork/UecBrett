@@ -541,7 +541,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // ドロップダウンメニューの処理
+    // ヘッダーのドロップダウンメニューの処理
     const dropdownContainer = document.querySelector('.dropdown-container');
     const dropdownContent = document.querySelector('.dropdown-content');
     if (dropdownContainer && dropdownContent) {
@@ -555,7 +555,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-	// ▼▼▼ ここからテンプレート機能のJSを追加 ▼▼▼
+
+    // テンプレート機能のJS
     const templateDropdown = document.querySelector('.template-dropdown');
     if (templateDropdown && typeof TEMPLATES_DATA !== 'undefined') {
         const selectBtn = templateDropdown.querySelector('.template-select-btn');
@@ -591,12 +592,17 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        // ▼▼▼ ここから修正 ▼▼▼
         // ドキュメントの他の場所をクリックしたらドロップダウンを閉じる
-        document.addEventListener('click', function() {
-            if (!dropdownContent.classList.contains('hidden')) {
-                dropdownContent.classList.add('hidden');
+        document.addEventListener('click', function(event) {
+            // クリックされたのがドロップダウンの外側の場合のみ閉じる
+            if (!templateDropdown.contains(event.target)) {
+                if (!dropdownContent.classList.contains('hidden')) {
+                    dropdownContent.classList.add('hidden');
+                }
             }
         });
+        // ▲▲▲ ここまで修正 ▲▲▲
     }
 
     // ブックマークボタンの処理
