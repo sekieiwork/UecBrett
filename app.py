@@ -158,7 +158,7 @@ def index(page):
             {
                 'name': 'UECreview',
                 'title': f'○年 ○期 {current_user.username}の授業review',
-                'body': '**○○**　成績:**○**\n　*本文を入力'
+                'body': '**ここに科目を入力(**は消さないこと)**　成績:**ここに成績を入力(**は消さないこと)**\n本文を入力'
             }
         ]
     
@@ -255,7 +255,7 @@ def edit_post(post_id):
         {
             'name': 'UECreview',
             'title': f'○年 ○期 {current_user.username}の授業review',
-            'body': '**○○**　成績:**○**\n　*本文を入力'
+            'body': '**ここに科目を入力(**は消さないこと)**　成績:**ここに成績を入力(**は消さないこと)**\n本文を入力'
         }
     ]
     
