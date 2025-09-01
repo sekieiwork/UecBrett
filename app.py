@@ -343,7 +343,8 @@ def search(page=1):
             
             post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
         
-        return render_template('search_results.html', form=form, posts=posts, search_query=search_query, markdown=md, search_form=form, linkify_urls=linkify_urls)
+      # 検索結果が見つかった場合に呼ばれる render_template
+            return render_template('search_results.html', form=form, posts=posts, search_query=search_query, md=md, search_form=form, linkify_urls=linkify_urls)
 
     if request.method == 'GET' and 'search_query' in request.args:
         search_query = request.args.get('search_query')
@@ -363,7 +364,7 @@ def search(page=1):
             
             post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
 
-        return render_template('search_results.html', form=form, posts=posts, search_query=search_query, markdown=md, search_form=form, linkify_urls=linkify_urls)
+        return render_template('search_results.html', form=form, posts=posts, search_query=search_query, md=md, search_form=form, linkify_urls=linkify_urls)
     
     return render_template('search_results.html', form=form, posts=posts, md=md, search_form=form, linkify_urls=linkify_urls)
 
