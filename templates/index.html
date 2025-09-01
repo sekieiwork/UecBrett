@@ -3,7 +3,7 @@
 {% block title %}トップページ{% endblock %}
 
 {% block content %}
-    
+
 {% if current_user.is_authenticated %}
     <div style="margin-bottom: 1em;">
         <button id="toggle-post-form-btn">
@@ -11,21 +11,21 @@
         </button>
     </div>
 
-     <div id="post-form-container" class="hidden">
+    <div id="post-form-container" class="hidden">
         <div class="post-form">
-           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em;">
-              <h2>新しい投稿</h2>
-               {% if templates %}
-                 <div class="template-dropdown">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em;">
+                <h2>新しい投稿</h2>
+                {% if templates %}
+                <div class="template-dropdown">
                     <button type="button" class="template-select-btn">テンプレートを選択</button>
-                 <div class="template-dropdown-content hidden">
-               {% for t in templates %}
-                 <a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
-               {% endfor %}
-           </div>
-        </div>
-               {% endif %}
-      </div>
+                    <div class="template-dropdown-content hidden">
+                        {% for t in templates %}
+                        <a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
             <form method="POST">
                 {{ form.csrf_token }}
                 <div class="form-field">
