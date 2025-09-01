@@ -10,7 +10,7 @@
         
          <h1>
         {{ post.title }}
-        <span style="color: black; font-size: 0.7em;">コメント数({{ post.comments|length }})</span>
+        <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
         {% if current_user.is_authenticated %}
         <form class="bookmark-form" data-post-id="{{ post.id }}">
     <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
