@@ -158,7 +158,7 @@ def index(page):
             {
                 'name': 'UECreview',
                 'title': f'○年 ○期 {current_user.username}の授業review',
-                'body': '<span class="text-large">**ここに科目を入力(**は消さないこと)</span>**　成績:<span class="text-red text-large">**ここに成績を入力(**は消さないこと)**</span>担当教員:ここに担当教員を入力\n本文を入力'
+                'body': '<span class="text-large">**ここに科目を入力(**は消さないこと)</span>** 成績:<span class="text-red text-large">**ここに成績を入力(**は消さないこと)**</span> 担当教員:ここに担当教員を入力\n本文を入力'
             }
         ]
     
@@ -255,7 +255,7 @@ def edit_post(post_id):
             {
                 'name': 'UECreview',
                 'title': f'○年 ○期 {current_user.username}の授業review',
-                'body': '<span class="text-large">**ここに科目を入力(**は消さないこと)</span>**　成績:<span class="text-red text-large">**ここに成績を入力(**は消さないこと)**</span>担当教員:ここに担当教員を入力\n本文を入力'
+                'body': '<span class="text-large">**ここに科目を入力(**は消さないこと)</span>** 成績:<span class="text-red text-large">**ここに成績を入力(**は消さないこと)**</span> 担当教員:ここに担当教員を入力\n本文を入力'
             }
     ]
     
