@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UEC 掲示板</title>
+    {% if templates_for_js %}
+    <script>
+        const TEMPLATES_DATA = JSON.parse('{{ templates_for_js | safe }}');
+    </script>
+    {% endif %}
     <style>
 /*----------------------------------*/
 /* 全体的な設定とリセット */
@@ -342,6 +347,50 @@ input[type="submit"]:hover {
     display: none;
 }
 
+/* styleタグの末尾などに追加 */
+
+/* テンプレートドロップダウンのスタイル */
+.template-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.template-select-btn {
+    background-color: #6c757d;
+    color: white;
+    padding: 8px 12px;
+    font-size: 0.9em;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.template-select-btn:hover {
+    background-color: #5a6268;
+}
+
+.template-dropdown-content {
+    position: absolute;
+    right: 0;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    border-radius: 4px;
+    overflow: hidden; /* 角丸を効かせるため */
+}
+
+.template-dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.template-dropdown-content a:hover {
+    background-color: #f1f1f1;
+}
+
 /*----------------------------------*/
 /* スマホ版レイアウトの調整（768px以下） */
 /*----------------------------------*/
@@ -503,6 +552,49 @@ document.addEventListener('DOMContentLoaded', function() {
         document.addEventListener('click', function(event) {
             if (!dropdownContainer.contains(event.target)) {
                 dropdownContent.style.display = 'none';
+            }
+        });
+    }
+	// ▼▼▼ ここからテンプレート機能のJSを追加 ▼▼▼
+    const templateDropdown = document.querySelector('.template-dropdown');
+    if (templateDropdown && typeof TEMPLATES_DATA !== 'undefined') {
+        const selectBtn = templateDropdown.querySelector('.template-select-btn');
+        const dropdownContent = templateDropdown.querySelector('.template-dropdown-content');
+        const templateItems = templateDropdown.querySelectorAll('.template-item');
+
+        // 「テンプレートを選択」ボタンのクリックイベント
+        selectBtn.addEventListener('click', function(event) {
+            event.stopPropagation();
+            dropdownContent.classList.toggle('hidden');
+        });
+
+        // 各テンプレート項目のクリックイベント
+        templateItems.forEach(function(item) {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                const templateIndex = parseInt(this.dataset.index, 10);
+                const template = TEMPLATES_DATA[templateIndex];
+
+                if (template) {
+                    const titleInput = document.querySelector('input[name="title"]');
+                    const contentTextarea = document.querySelector('textarea[name="content"]');
+
+                    if (titleInput) {
+                        titleInput.value = template.title;
+                    }
+                    if (contentTextarea) {
+                        contentTextarea.value = template.body;
+                    }
+                }
+                dropdownContent.classList.add('hidden');
+            });
+        });
+
+        // ドキュメントの他の場所をクリックしたらドロップダウンを閉じる
+        document.addEventListener('click', function() {
+            if (!dropdownContent.classList.contains('hidden')) {
+                dropdownContent.classList.add('hidden');
             }
         });
     }

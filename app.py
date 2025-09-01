@@ -15,6 +15,7 @@ from flask_wtf.file import FileField, FileAllowed
 from forms import PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm
 import markdown
 import re
+import json
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -139,8 +140,18 @@ def index(page):
             post.updated_at_jst = None
         
         post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
+
+    templates = []
+    if current_user.is_authenticated:
+        templates = [
+            {
+                'name': 'UECreview',
+                'title': f'○年 ○期 {current_user.username}の授業review',
+                'body': '○○　成績:○\n　*本文を入力'
+            }
+        ]
     
-    return render_template('index.html', form=form, search_form=search_form, posts=posts, linkify_urls=linkify_urls, markdown=md)
+    return render_template('index.html', form=form, search_form=search_form, posts=posts, linkify_urls=linkify_urls, markdown=md, templates=templates, templates_for_js=json.dumps(templates))
 
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
@@ -229,8 +240,16 @@ def edit_post(post_id):
         post.content = form.content.data
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id))
+
+    templates = [
+        {
+            'name': 'UECreview',
+            'title': f'○年 ○期 {current_user.username}の授業review',
+            'body': '○○　成績:○\n　*本文を入力'
+        }
+    ]
     
-    return render_template('edit.html', form=form, post=post, search_form=search_form)
+    return render_template('edit.html', form=form, post=post, search_form=search_form, templates=templates, templates_for_js=json.dumps(templates))
 
 @app.route('/post/<int:post_id>/delete', methods=['POST'])
 @login_required
