@@ -563,7 +563,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const dropdownContent = dropdown.querySelector('.template-dropdown-content');
             const templateItems = dropdown.querySelectorAll('.template-item');
 
-            if (selectBtn && dropdownContent && templateItems.length > 0) {
+            if (selectBtn && dropdownContent) {
                 // 「テンプレートを選択」ボタンをクリックしたらドロップダウンを開閉
                 selectBtn.addEventListener('click', (event) => {
                     event.stopPropagation();

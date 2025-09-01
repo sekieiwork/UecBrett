@@ -1,8 +1,8 @@
-"""empty message
+"""Re-sync database state
 
-Revision ID: 914930830c4c
+Revision ID: 02ebbabcaa8b
 Revises: 
-Create Date: 2025-08-14 03:40:41.184905
+Create Date: 2025-09-01 10:35:39.270245
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '914930830c4c'
+revision = '02ebbabcaa8b'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -21,7 +21,7 @@ def upgrade():
     op.create_table('user',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('username', sa.String(length=20), nullable=False),
-    sa.Column('password', sa.String(length=60), nullable=False),
+    sa.Column('password', sa.String(length=500), nullable=False),
     sa.Column('is_admin', sa.Boolean(), nullable=True),
     sa.Column('bio', sa.Text(), nullable=True),
     sa.Column('icon_url', sa.String(length=200), nullable=True),
@@ -35,7 +35,7 @@ def upgrade():
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['user.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('bookmark',
@@ -43,7 +43,7 @@ def upgrade():
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('post_id', sa.Integer(), nullable=False),
     sa.Column('timestamp', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['post_id'], ['post.id'], ),
+    sa.ForeignKeyConstraint(['post_id'], ['post.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id', 'post_id', name='_user_post_uc')
@@ -57,8 +57,8 @@ def upgrade():
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('post_id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['post_id'], ['post.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
+    sa.ForeignKeyConstraint(['post_id'], ['post.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['user.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('notification',
@@ -68,7 +68,7 @@ def upgrade():
     sa.Column('timestamp', sa.DateTime(), nullable=True),
     sa.Column('recipient_id', sa.Integer(), nullable=False),
     sa.Column('post_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['post_id'], ['post.id'], ),
+    sa.ForeignKeyConstraint(['post_id'], ['post.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['recipient_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
