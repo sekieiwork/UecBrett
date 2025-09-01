@@ -5,7 +5,7 @@
 {% block content %}
    
     <h2>検索結果一覧</h2>
-    {% if posts.items %}
+    {% if posts and posts.items %}
         <p>「{{ search_query }}」の検索結果: {{ posts.total }}件</p>
         {% for post in posts.items %}
        <div class="post">
@@ -62,6 +62,10 @@
             {% endif %}
         </div>
     {% else %}
-        <p>検索結果が見つかりませんでした。</p>
+        {% if search_query %}
+            <p>「{{ search_query }}」に一致する投稿は見つかりませんでした。</p>
+        {% else %}
+            <p>検索キーワードを入力してください。</p>
+        {% endif %}
     {% endif %}
 {% endblock %}
