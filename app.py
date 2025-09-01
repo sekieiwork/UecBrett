@@ -162,8 +162,7 @@ def index(page):
             }
         ]
     
-    return render_template('index.html', form=form, search_form=search_form, posts=posts, linkify_urls=linkify_urls, markdown=md, templates=templates, templates_for_js=json.dumps(templates))
-
+    return render_template('index.html', form=form, search_form=search_form, posts=posts, linkify_urls=linkify_urls, md=md, templates=templates, templates_for_js=json.dumps(templates))
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
     post = Post.query.get_or_404(post_id)
@@ -194,7 +193,7 @@ def post_detail(post_id):
     
     post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
     
-    return render_template('detail.html', post=post, form=form, linkify_urls=linkify_urls, markdown=md, search_form=search_form)
+    return render_template('detail.html', post=post, form=form, linkify_urls=linkify_urls, md=md, search_form=search_form)
 
 @app.route('/bookmark_post/<int:post_id>', methods=['POST'])
 @login_required
@@ -234,7 +233,7 @@ def show_bookmarks():
             post.updated_at_jst = None
         post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
 
-    return render_template('bookmarks.html', posts=bookmarked_posts, search_form=search_form, markdown=md)
+    return render_template('bookmarks.html', posts=bookmarked_posts, search_form=search_form, md=md)
 
 @app.route('/post/<int:post_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -366,7 +365,7 @@ def search(page=1):
 
         return render_template('search_results.html', form=form, posts=posts, search_query=search_query, markdown=md, search_form=form, linkify_urls=linkify_urls)
     
-    return render_template('search_results.html', form=form, posts=posts, markdown=md, search_form=form, linkify_urls=linkify_urls)
+    return render_template('search_results.html', form=form, posts=posts, md=md, search_form=form, linkify_urls=linkify_urls)
 
 @app.route('/profile/edit/<string:username>', methods=['GET', 'POST'])
 @login_required
@@ -431,7 +430,7 @@ def user_profile(username):
     
     search_form = SearchForm()
     
-    return render_template('profile.html', user=user, posts=posts, comments=comments, active_tab=active_tab, linkify_urls=linkify_urls, markdown=md, search_form=search_form)
+    return render_template('profile.html', user=user, posts=posts, comments=comments, active_tab=active_tab, linkify_urls=linkify_urls, md=md, search_form=search_form)
 
 # 管理者のみがアクセスできる管理画面
 @app.route('/admin')
