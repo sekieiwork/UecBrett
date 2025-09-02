@@ -83,7 +83,7 @@
                 {% endif %}
             </div>
         </div>
-        <div class="comment-content">{{ markdown.convert(comment.content) | safe }}</div>
+        <div class="comment-content">{{ md.convert(comment.content) | safe }}</div>
     </div>
     {% endfor %}
 </div>
