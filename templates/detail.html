@@ -9,23 +9,23 @@
         {% endif %}
         
          <h1>
-        {{ post.title }}
-        <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
-        {% if current_user.is_authenticated %}
-        <form class="bookmark-form" data-post-id="{{ post.id }}">
-    <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
-        <span id="bookmark-icon-{{ post.id }}">
-            {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
-            {% if is_bookmarked %}
-                <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
-            {% else %}
-                <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
+            {{ post.title }}
+            <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
+            {% if current_user.is_authenticated %}
+            <form class="bookmark-form" data-post-id="{{ post.id }}" style="display: inline-block; vertical-align: middle; margin-left: 10px;">
+                <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
+                    <span id="bookmark-icon-{{ post.id }}">
+                        {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
+                        {% if is_bookmarked %}
+                            <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
+                        {% endif %}
+                    </span>
+                </button>
+            </form>
             {% endif %}
-        </span>
-    </button>
-</form>
-        {% endif %}
-    </h1>
+        </h1>
        <div class="post-content">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">
