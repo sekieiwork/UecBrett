@@ -80,6 +80,12 @@ textarea {
     resize: vertical;
 }
 
+/* テキストエリアの自動リサイズに関するスタイル */
+.auto-resize-textarea {
+    overflow-y: hidden; /* 縦方向のスクロールバーを常に非表示にする */
+    resize: none;       /* ユーザーによる手動リサイズを無効化 */
+}
+
 /* ボタンのスタイル */
 input[type="submit"] {
     padding: 0.5em 1em;
