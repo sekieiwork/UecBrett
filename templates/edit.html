@@ -24,7 +24,7 @@
         </div>
         <div class="form-field">
             {{ form.content.label }}<br>
-            {{ form.content(cols=40, rows=5) }}
+            {{ form.content(cols=40, rows=5, class="auto-resize-textarea") }}
         </div>
         {{ form.submit(value='更新') }}
     </form>
