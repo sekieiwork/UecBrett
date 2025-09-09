@@ -159,7 +159,7 @@ def index(page):
     if form.validate_on_submit() and current_user.is_authenticated:
         image_file = None
         if form.image.data:
-        image_file = save_picture(form.image.data)
+            image_file = save_picture(form.image.data)
 
         post = Post(title=form.title.data, content=form.content.data, author=current_user, image_filename=image_file)
         db.session.add(post)
