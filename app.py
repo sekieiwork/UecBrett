@@ -61,6 +61,19 @@ def save_icon(form_icon):
     # アップロードされた画像の安全なURLを返す
     return upload_result.get('secure_url')
 
+def delete_from_cloudinary(image_url):
+    if not image_url:
+        return # URLがなければ何もしない
+    try:
+        # URLからpublic_idを抽出します (例: .../upload/v123/folder/file.jpg -> folder/file)
+        public_id_with_ext = '/'.join(image_url.split('/')[-2:])
+        public_id = os.path.splitext(public_id_with_ext)[0]
+        # Cloudinaryに削除を命令
+        cloudinary.uploader.destroy(public_id)
+    except Exception as e:
+        # エラーが起きてもプログラムは止めないように、ログだけ表示（任意）
+        print(f"Error deleting image from Cloudinary: {e}")
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -244,6 +257,11 @@ def edit_post(post_id):
         post.title = form.title.data
         post.content = form.content.data
         if form.image.data:
+            # ▼▼▼ ここから追加 ▼▼▼
+                # 古い画像があればURLを取得し、Cloudinaryから削除
+            if post.image_url:
+                delete_from_cloudinary(post.image_url)
+            # ▲▲▲ ここまで ▲▲▲
             image_url_str = save_picture(form.image.data)
             post.image_url = image_url_str # image_filenameをimage_urlに変更
         db.session.commit()
@@ -263,11 +281,14 @@ def edit_post(post_id):
     ]
 
     return render_template('edit.html', form=form, post=post, search_form=search_form, md=md, templates=templates, templates_for_js=json.dumps(templates), linkify_urls=linkify_urls)
+
 @app.route('/post/<int:post_id>/delete', methods=['POST'])
 @login_required
 def delete_post(post_id):
     post = Post.query.get_or_404(post_id)
     if post.author == current_user or current_user.is_admin:
+        if post.image_url:
+            delete_from_cloudinary(post.image_url)
         db.session.delete(post)
         db.session.commit()
         return redirect(url_for('index'))
@@ -382,6 +403,11 @@ def edit_profile(username):
         user.bio = form.bio.data
         
         if form.icon.data:
+            # ▼▼▼ ここから追加 ▼▼▼
+            # 古いアイコンがあればURLを取得し、Cloudinaryから削除
+            if user.icon_url:
+                delete_from_cloudinary(user.icon_url)
+            # ▲▲▲ ここまで ▲▲▲
             # Cloudinaryにアイコンを保存し、URLを取得
             icon_url = save_icon(form.icon.data)
             user.icon_url = icon_url
