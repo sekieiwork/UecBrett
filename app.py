@@ -474,6 +474,23 @@ def show_notifications():
     
     return render_template('notifications.html', notifications=notifications, search_form=search_form, md=md, linkify_urls=linkify_urls)
 
+# 特定のユーザーを管理者に設定するための、一時的な特別なルート
+@app.route('/make-admin/<username>')
+@login_required
+def make_admin(username):
+    # 自分自身が管理者である場合のみ、この機能を使えるようにする（セキュリティのため）
+    if not current_user.is_admin and current_user.username != '二酸化ケイ素':
+         # もし最初の管理者がいない場合は、'二酸化ケイ素'さんのみが実行できるようにする
+         return "権限がありません。", 403
+
+    user = User.query.filter_by(username=username).first()
+    if user:
+        user.is_admin = True
+        db.session.commit()
+        return f"ユーザー '{username}' が管理者に設定されました。"
+    else:
+        return f"ユーザー '{username}' が見つかりませんでした。"
+
 
 if __name__ == '__main__':
     app.run(debug=True)
