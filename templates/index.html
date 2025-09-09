@@ -47,7 +47,6 @@
             </form>
         </div>
     </div>
-
 {% else %}
     <div class="post-form">
         <p>投稿するには<a href="{{ url_for('login') }}">ログイン</a>してください。</p>
@@ -64,17 +63,16 @@
             {% endif %}
             <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
         </h3>
-	{% if post.image_filename %}
-        <div class="post-image-container" style="margin-top: 10px;">
-            <a href="{{ url_for('post_detail', post_id=post.id) }}">
-                <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" style="max-width: 100%; height: auto; border-radius: 5px;">
-            </a>
-        </div>
+
+        {% if post.image_filename %}
+        <a href="{{ url_for('post_detail', post_id=post.id) }}">
+            <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" class="post-image">
+        </a>
         {% endif %}
+        
         <div class="post-content">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
         
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">
+        <div class="post-meta">
             <div>
                 <small>投稿者: <a href="{{ url_for('user_profile', username=post.author.username) }}" class="{{ post.author.get_username_class() }}">{{ post.author.username }}</a></small> | 
                 <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
@@ -99,22 +97,5 @@
     {% endfor %}
 
     <div class="pagination">
-        {% if posts.has_prev %}
-            <a href="{{ url_for('index', page=posts.prev_num) }}">前へ</a>
-        {% endif %}
-        {% for p in posts.iter_pages() %}
-            {% if p %}
-                {% if p == posts.page %}
-                    <a href="{{ url_for('index', page=p) }}" style="font-weight: bold;">{{ p }}</a>
-                {% else %}
-                    <a href="{{ url_for('index', page=p) }}">{{ p }}</a>
-                {% endif %}
-            {% else %}
-                <span>...</span>
-            {% endif %}
-        {% endfor %}
-        {% if posts.has_next %}
-            <a href="{{ url_for('index', page=posts.next_num) }}">次へ</a>
-        {% endif %}
-    </div>
+        </div>
 {% endblock %}

@@ -7,110 +7,140 @@
     {% if templates_for_js %}
     <script>
     const TEMPLATES_DATA = {{ templates_for_js | safe }};
-</script>
+    </script>
     {% endif %}
     <style>
-/*----------------------------------*/
-/* 全体的な設定とリセット */
-/*----------------------------------*/
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    margin: 1em;
-    line-height: 1.6;
-    color: #333;
-    background-color: #f8f9fa;
-    padding-top: 70px;
-}
+    /*----------------------------------*/
+    /* 全体的な設定とリセット */
+    /*----------------------------------*/
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        margin: 0; /* bodyのマージンをリセット */
+        line-height: 1.6;
+        color: #333;
+        background-color: #f8f9fa;
+        padding-top: 70px;
+    }
 
-a {
-    color: #007bff;
-    text-decoration: none;
-}
-a:hover {
-    text-decoration: underline;
-}
+    a {
+        color: #007bff;
+        text-decoration: none;
+    }
+    a:hover {
+        text-decoration: underline;
+    }
 
-/* コンテナの幅を制限 */
-.container {
-    max-width: 800px;
-    margin: auto;
-    padding: 1em;
-}
+    /* コンテナの幅を制限 */
+    .container {
+        max-width: 800px;
+        margin: 2em auto; /* 上下のマージンを調整 */
+        padding: 1em;
+    }
 
-/* ボックスの共通スタイル */
-.post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info {
-    background-color: #fff;
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    padding: 1em;
-    margin-bottom: 1em;
-    /* コメント一覧の幅を揃えるための修正 */
-    max-width: 770px;
-    margin-left: auto;
-    margin-right: auto;
-}
+    /* ボックスの共通スタイル */
+    .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 1.5em; /* パディングを少し広げる */
+        margin-bottom: 1.5em; /* 下のマージンを広げる */
+        max-width: 770px;
+        margin-left: auto;
+        margin-right: auto;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 影を追加して立体感を出す */
+    }
 
-/* タイトルとヘッダー */
-.post h3, .post-detail h1 {
-    margin-top: 0;
-    margin-bottom: 0.5em;
-}
+    /* タイトルとヘッダー */
+    .post h3, .post-detail h1 {
+        margin-top: 0;
+        margin-bottom: 0.5em;
+        font-size: 1.5em;
+    }
 
-.post-form h2 {
-    margin-top: 0;
-    margin-bottom: 0.5em;
-    padding-bottom: 0.5em;
-    border-bottom: 1px solid #dee2e6;
-}
+    .post-form h2 {
+        margin-top: 0;
+        margin-bottom: 0.5em;
+        padding-bottom: 0.5em;
+        border-bottom: 1px solid #dee2e6;
+    }
 
-/* フォームの入力欄 */
-input[type="text"], input[type="password"], textarea {
-    width: 100%;
-    padding: 0.5em;
-    box-sizing: border-box;
-    border: 1px solid #ced4da;
-    border-radius: 0.25rem;
-}
-textarea {
-    resize: vertical;
-}
-.textarea-content {
-    min-height: 100px;
-    max-height: 300px;
-    resize: vertical;
-}
+    /* フォームの入力欄 */
+    input[type="text"], input[type="password"], textarea {
+        width: 100%;
+        padding: 0.5em;
+        box-sizing: border-box;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+    }
+    
+    .textarea-content {
+        min-height: 100px;
+        max-height: 300px;
+        resize: vertical;
+    }
+    
+    .auto-resize-textarea {
+        overflow-y: hidden;
+        resize: none;
+    }
 
-/* テキストエリアの自動リサイズに関するスタイル */
-.auto-resize-textarea {
-    overflow-y: hidden; /* 縦方向のスクロールバーを常に非表示にする */
-    resize: none;       /* ユーザーによる手動リサイズを無効化 */
-}
+    /* 投稿・コメントの本文表示エリア */
+    .post-content, .comment-content {
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 1em;
+        margin-top: 15px;
+        white-space: pre-wrap;
+        max-height: 150px; /* 一覧での高さ制限 */
+        overflow-y: auto;
+    }
 
-/* ボタンのスタイル */
-input[type="submit"] {
-    padding: 0.5em 1em;
-    border: none;
-    border-radius: 0.25rem;
-    cursor: pointer;
-    background-color: #007bff;
-    color: #fff;
-}
-input[type="submit"]:hover {
-    background-color: #0056b3;
-}
+    /* 投稿された画像のスタイル */
+    .post-image {
+        max-width: 100%;
+        height: auto;
+        border-radius: 5px;
+        margin-top: 15px;
+    }
 
-.delete-button {
-    font-size: 0.8em;
-    padding: 0.2em 0.5em;
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 0.25rem;
-    cursor: pointer;
-}
-.delete-button:hover {
-    background-color: #c82333;
-}
+    /* 投稿フッター（投稿者情報、ブックマーク）のスタイル */
+    .post-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1em;
+        font-size: 0.9em;
+        color: #6c757d;
+    }
+    .post-meta small {
+        white-space: nowrap;
+    }
+
+    /* ボタンのスタイル */
+    input[type="submit"] {
+        padding: 0.5em 1em;
+        border: none;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        background-color: #007bff;
+        color: #fff;
+    }
+    input[type="submit"]:hover {
+        background-color: #0056b3;
+    }
+
+    .delete-button {
+        font-size: 0.8em;
+        padding: 0.2em 0.5em;
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 0.25rem;
+        cursor: pointer;
+    }
+    .delete-button:hover {
+        background-color: #c82333;
+    }
 .delete-button.yellow {
     background-color: #ffc107;
     color: black;

@@ -3,7 +3,7 @@
 {% block title %}{{ user.username }}さんのプロフィール{% endblock %}
 
 {% block content %}
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1em;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1em;" class="user-info">
         <div style="display: flex; align-items: center;">
             <p style="margin-right: 1em;">
                 {% if user.icon_url %}
@@ -16,14 +16,14 @@
         </div>
         
        {% if current_user.is_authenticated and current_user.username == user.username %}
-    <a href="{{ url_for('edit_profile', username=user.username) }}" style="align-self: flex-end;">プロフィールの編集</a>
-{% endif %}
+            <a href="{{ url_for('edit_profile', username=user.username) }}">プロフィールの編集</a>
+        {% endif %}
     </div>
 
     {% if user.bio %}
-        <div class="bio">
+        <div class="bio post-form">
             <h3>自己紹介</h3>
-             <div class="post-content">{{ linkify_urls(user.bio) | safe }}</div>
+             <div class="post-content" style="max-height: none; overflow-y: visible;">{{ linkify_urls(user.bio) | safe }}</div>
         </div>
     {% endif %}
 
@@ -43,15 +43,16 @@
                 {% endif %}
                 <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
             </h3>
-            <div class="post-content">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
+
             {% if post.image_filename %}
-            <div class="post-image-container" style="margin-top: 10px;">
-                <a href="{{ url_for('post_detail', post_id=post.id) }}">
-                    <img src="{{ url_for('static', filename='post_images/' ' + post.image_filename) }}" alt="投稿画像" style="max-width: 100%; height: auto; border-radius: 5px;">
-                </a>
-            </div>
+            <a href="{{ url_for('post_detail', post_id=post.id) }}">
+                <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" class="post-image">
+            </a>
             {% endif %}
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">
+
+            <div class="post-content">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
+            
+            <div class="post-meta">
                 <div>
                     <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
                     {% if post.updated_at %}
@@ -61,82 +62,26 @@
                 
                 {% if current_user.is_authenticated %}
                 <form class="bookmark-form" data-post-id="{{ post.id }}">
-    <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
-        <span id="bookmark-icon-{{ post.id }}">
-            {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
-            {% if is_bookmarked %}
-                <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
-            {% else %}
-                <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
-            {% endif %}
-        </span>
-    </button>
-</form>
+                    <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
+                        <span id="bookmark-icon-{{ post.id }}">
+                            {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
+                            {% if is_bookmarked %}
+                                <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
+                            {% endif %}
+                        </span>
+                    </button>
+                </form>
                 {% endif %}
             </div>
         </div>
         {% endfor %}
         
         <div class="pagination">
-            {% if posts.has_prev %}
-                <a href="{{ url_for('user_profile', username=user.username, active_tab='posts', post_page=posts.prev_num) }}">前へ</a>
-            {% endif %}
-            {% for p in posts.iter_pages() %}
-                {% if p %}
-                    {% if p == posts.page %}
-                        <a href="{{ url_for('user_profile', username=user.username, active_tab='posts', post_page=p) }}" style="font-weight: bold;">{{ p }}</a>
-                    {% else %}
-                        <a href="{{ url_for('user_profile', username=user.username, active_tab='posts', post_page=p) }}">{{ p }}</a>
-                    {% endif %}
-                {% else %}
-                    <span>...</span>
-                {% endif %}
-            {% endfor %}
-            {% if posts.has_next %}
-                <a href="{{ url_for('user_profile', username=user.username, active_tab='posts', post_page=posts.next_num) }}">次へ</a>
-            {% endif %}
-        </div>
+            </div>
     </div>
     
     <div id="comments" class="tab-content" style="display: {% if active_tab == 'comments' %}block{% else %}none{% endif %};">
-        <h3>コメント履歴</h3>
-        {% for comment in comments.items %}
-            <div class="comment">
-                <div style="display: flex; align-items: center;">
-                    <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" style="margin-right: 1em;">
-                        {% if comment.commenter.icon_url %}
-                            <img src="{{ comment.commenter.icon_url }}" alt="{{ comment.commenter.username }}のアイコン" style="width: 30px; height: 30px; border-radius: 50%;">
-                        {% else %}
-                            <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="デフォルトアイコン" style="width: 30px; height: 30px; border-radius: 50%;">
-                        {% endif %}
-                    </a>
-                    <p style="margin: 0;">
-                        <a href="{{ url_for('post_detail', post_id=comment.post.id) }}">「{{ comment.post.title }}」</a>へのコメント:
-                    </p>
-                </div>
-                <div class="comment-content markdown-body">{{ md.convert(comment.content) | safe }}</div>
-                <small style="margin-left: 4em;">投稿日時: {{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
-            </div>
-        {% endfor %}
-
-        <div class="pagination">
-            {% if comments.has_prev %}
-                <a href="{{ url_for('user_profile', username=user.username, active_tab='comments', comment_page=comments.prev_num) }}">前へ</a>
-            {% endif %}
-            {% for p in comments.iter_pages() %}
-                {% if p %}
-                    {% if p == comments.page %}
-                        <a href="{{ url_for('user_profile', username=user.username, active_tab='comments', comment_page=p) }}" style="font-weight: bold;">{{ p }}</a>
-                    {% else %}
-                        <a href="{{ url_for('user_profile', username=user.username, active_tab='comments', comment_page=p) }}">{{ p }}</a>
-                    {% endif %}
-                {% else %}
-                    <span>...</span>
-                {% endif %}
-            {% endfor %}
-            {% if comments.has_next %}
-                <a href="{{ url_for('user_profile', username=user.username, active_tab='comments', comment_page=comments.next_num) }}">次へ</a>
-            {% endif %}
         </div>
-    </div>
 {% endblock %}
