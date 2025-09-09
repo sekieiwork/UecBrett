@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
+from flask_migrate import Migrate, upgrade
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, Length, EqualTo, ValidationError
@@ -8,8 +8,6 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, curren
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from pytz import timezone, utc
-from werkzeug.utils import secure_filename
-from werkzeug.datastructures import FileStorage
 import os
 from flask_wtf.file import FileField, FileAllowed
 from forms import PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm
@@ -207,7 +205,8 @@ def bookmark_post(post_id):
 @login_required
 def show_bookmarks():
     search_form = SearchForm()
-    bookmarked_posts = Post.query.join(Bookmark, Post.id == Bookmark.post_id).filter(Bookmark.user_id == current_user.id).order_by(Bookmark.timestamp.desc()).all()
+    bookmarked_posts_query = Post.query.join(Bookmark, Post.id == Bookmark.post_id).filter(Bookmark.user_id == current_user.id).order_by(Bookmark.timestamp.desc())
+    bookmarked_posts = bookmarked_posts_query.all()
     
     japan_tz = timezone('Asia/Tokyo')
     for post in bookmarked_posts:
@@ -471,6 +470,17 @@ def show_notifications():
     
     return render_template('notifications.html', notifications=notifications, search_form=search_form, md=md, linkify_urls=linkify_urls)
 
+# This is a temporary route for database migration on Render
+@app.route('/upgrade/<secret_key>')
+def upgrade_database(secret_key):
+    if secret_key == os.environ.get('UPGRADE_SECRET_KEY'):
+        try:
+            upgrade()
+            return "データベースの更新が成功しました！"
+        except Exception as e:
+            return f"エラーが発生しました: {e}"
+    else:
+        abort(403)
 
 if __name__ == '__main__':
     app.run(debug=True)

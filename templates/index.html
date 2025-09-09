@@ -26,7 +26,7 @@
                 </div>
                 {% endif %}
             </div>
-<form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data">
                 {{ form.csrf_token }}
                 <div class="form-field">
                     {{ form.title.label }}<br>
@@ -65,20 +65,13 @@
             <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
         </h3>
         <div class="post-content">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
-{% if post.image_filename %}
-<div class="post-image-container" style="margin-top: 10px;">
-    <a href="{{ url_for('post_detail', post_id=post.id) }}">
-        <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" style="max-width: 100%; height: auto; border-radius: 5px;">
-    </a>
-</div>
-{% endif %}
-
-	{% if post.image_filename %}
-	<div class="post-image-container" style="margin-top: 10px;">
-   	 <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" 	style="max-width: 100%; height: auto; border-radius: 5px;">
-	</div>
-	{% endif %}
-
+        {% if post.image_filename %}
+        <div class="post-image-container" style="margin-top: 10px;">
+            <a href="{{ url_for('post_detail', post_id=post.id) }}">
+                <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" style="max-width: 100%; height: auto; border-radius: 5px;">
+            </a>
+        </div>
+        {% endif %}
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">
             <div>
@@ -88,17 +81,17 @@
             
             {% if current_user.is_authenticated %}
             <form class="bookmark-form" data-post-id="{{ post.id }}">
-    <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
-        <span id="bookmark-icon-{{ post.id }}">
-            {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
-            {% if is_bookmarked %}
-                <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
-            {% else %}
-                <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
-            {% endif %}
-        </span>
-    </button>
-</form>
+                <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
+                    <span id="bookmark-icon-{{ post.id }}">
+                        {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
+                        {% if is_bookmarked %}
+                            <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
+                        {% endif %}
+                    </span>
+                </button>
+            </form>
             {% endif %}
         </div>
     </div>
