@@ -17,11 +17,19 @@
             <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
         </h3>
         <div class="post-content">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
+<<<<<<< HEAD
 {% if post.image_filename %}
 <div class="post-image-container" style="margin-top: 10px;">
     <a href="{{ url_for('post_detail', post_id=post.id) }}">
         <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" style="max-width: 100%; height: auto; border-radius: 5px;">
     </a>
+=======
+<div class="post-content">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
+
+{% if post.image_filename %}
+<div class="post-image-container" style="margin-top: 10px;">
+    <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" style="max-width: 100%; height: auto; border-radius: 5px;">
+>>>>>>> 9d1182a5107c4025322e3808843e0b3319508a53
 </div>
 {% endif %}
         

@@ -31,6 +31,10 @@
     <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" style="max-width: 100%; height: auto; border-radius: 5px;">
 </div>
 {% endif %}
+<<<<<<< HEAD
+=======
+<div class="post-content" style="max-height: none; overflow-y: visible;">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
+>>>>>>> 9d1182a5107c4025322e3808843e0b3319508a53
        <div class="post-content" style="max-height: none; overflow-y: visible;">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">

@@ -16,9 +16,14 @@ from forms import PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, Pr
 import markdown
 import re
 import json
+<<<<<<< HEAD
 from PIL import Image
+=======
+from PIL import Image # <-- この行を追加
+from flask_migrate import upgrade
 
-# ▼▼▼ ここに貼り付ける ▼▼▼
+>>>>>>> 9d1182a5107c4025322e3808843e0b3319508a53
+
 def linkify_urls(text):
     """テキスト内のURLを<a>タグに変換する関数"""
     url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
@@ -27,7 +32,26 @@ def linkify_urls(text):
         lambda match: f'<a href="{match.group(0)}" target="_blank">{match.group(0)}</a>',
         text
     )
-# ▲▲▲ ここまで ▲▲▲
+
+def save_picture(form_picture):
+    # ファイル名をランダム化して衝突を防ぐ
+    random_hex = os.urandom(8).hex()
+    _, f_ext = os.path.splitext(form_picture.filename)
+    picture_fn = random_hex + f_ext
+    picture_path = os.path.join(app.root_path, 'static/post_images', picture_fn)
+
+    # 保存先フォルダがなければ作成
+    output_folder = os.path.join(app.root_path, 'static/post_images')
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    # 画像をリサイズして保存
+    output_size = (500, 500) # 画像の最大サイズを500x500に設定
+    i = Image.open(form_picture)
+    i.thumbnail(output_size)
+    i.save(picture_path)
+
+    return picture_fn
 
 # ▼▼▼ 画像処理関数をここに追加 ▼▼▼
 def save_picture(form_picture):
@@ -116,6 +140,16 @@ class Post(db.Model):
     )
     notifications = db.relationship('Notification', backref='post', lazy='dynamic', cascade="all, delete")
 
+<<<<<<< HEAD
+=======
+
+class PostForm(FlaskForm):
+    title = StringField('タイトル', validators=[DataRequired()])
+    content = TextAreaField('本文', validators=[DataRequired()])
+    image = FileField('画像', validators=[FileAllowed(['jpg', 'png', 'gif', 'jpeg'], '画像ファイルのみ！')]) # <-- この行を追加
+    submit = SubmitField('投稿')
+
+>>>>>>> 9d1182a5107c4025322e3808843e0b3319508a53
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
@@ -274,6 +308,11 @@ def edit_post(post_id):
         post.title = form.title.data
         post.content = form.content.data
         if form.image.data:
+<<<<<<< HEAD
+=======
+        # 新しい画像がアップロードされたら、古い画像を削除（任意）して新しい画像を保存
+        # ここでは簡単のため、古い画像の削除は省略
+>>>>>>> 9d1182a5107c4025322e3808843e0b3319508a53
             image_file = save_picture(form.image.data)
             post.image_filename = image_file
         db.session.commit()
@@ -536,6 +575,20 @@ def show_notifications():
     
     return render_template('notifications.html', notifications=notifications, search_form=search_form)
 
+
+@app.route('/upgrade/<secret_key>')
+def upgrade_database(secret_key):
+    # 環境変数に設定した秘密のキーとURLのキーが一致するか確認
+    if secret_key == os.environ.get('UPGRADE_SECRET_KEY'):
+        try:
+            # flask db upgrade と同じコマンドを実行
+            upgrade()
+            return "データベースの更新が成功しました！"
+        except Exception as e:
+            return f"エラーが発生しました: {e}"
+    else:
+        # キーが一致しない場合はアクセスを拒否
+        abort(403)
 
 if __name__ == '__main__':
     app.run(debug=True)
