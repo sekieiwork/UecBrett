@@ -15,6 +15,15 @@ import markdown
 import re
 import json
 from PIL import Image
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config(
+  cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
+  api_key = os.environ.get('CLOUDINARY_API_KEY'), 
+  api_secret = os.environ.get('CLOUDINARY_API_SECRET'),
+  secure = True
+)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -37,20 +46,10 @@ def linkify_urls(text):
     )
 
 def save_picture(form_picture):
-    random_hex = os.urandom(8).hex()
-    _, f_ext = os.path.splitext(form_picture.filename)
-    picture_fn = random_hex + f_ext
-    picture_path = os.path.join(app.root_path, 'static/post_images', picture_fn)
-    
-    output_folder = os.path.join(app.root_path, 'static/post_images')
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-
-    output_size = (500, 500)
-    i = Image.open(form_picture)
-    i.thumbnail(output_size)
-    i.save(picture_path)
-    return picture_fn
+    # Cloudinaryに画像をアップロード
+    upload_result = cloudinary.uploader.upload(form_picture, folder="post_images", width=500, height=500, crop="limit")
+    # アップロードされた画像の安全なURLを返す
+    return upload_result.get('secure_url')
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -79,7 +78,7 @@ class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    image_filename = db.Column(db.String(100), nullable=True)
+    image_url = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
@@ -116,11 +115,11 @@ def index(page):
     form = PostForm()
     search_form = SearchForm()
     if form.validate_on_submit() and current_user.is_authenticated:
-        image_file = None
+        image_url_str = None # 変数名を変更
         if form.image.data:
-            image_file = save_picture(form.image.data)
-        
-        post = Post(title=form.title.data, content=form.content.data, author=current_user, image_filename=image_file)
+            image_url_str = save_picture(form.image.data)
+
+        post = Post(title=form.title.data, content=form.content.data, author=current_user, image_url=image_url_str) # image_filenameをimage_urlに変更
         db.session.add(post)
         db.session.commit()
         return redirect(url_for('index'))
@@ -231,14 +230,13 @@ def edit_post(post_id):
     form = PostForm() # まず空のフォームを作成
     search_form = SearchForm()
 
-    if form.validate_on_submit(): # POSTリクエスト（更新ボタンが押された時）
+    if form.validate_on_submit():
         post.title = form.title.data
         post.content = form.content.data
         if form.image.data:
-            image_file = save_picture(form.image.data)
-            post.image_filename = image_file
+            image_url_str = save_picture(form.image.data)
+            post.image_url = image_url_str # image_filenameをimage_urlに変更
         db.session.commit()
-        flash('投稿が更新されました。')
         return redirect(url_for('post_detail', post_id=post.id))
 
     elif request.method == 'GET': # GETリクエスト（ページを最初に開いた時）

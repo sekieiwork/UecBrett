@@ -14,7 +14,7 @@
         </h1>
 
         {% if post.image_filename %}
-        <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" class="post-image">
+        <img src="{{ post.image_url }}" alt="投稿画像" class="post-image">
         {% endif %}
         
         <div class="post-content" style="max-height: none; overflow-y: visible;">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
