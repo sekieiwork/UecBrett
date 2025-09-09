@@ -50,6 +50,17 @@ def save_picture(form_picture):
     # アップロードされた画像の安全なURLを返す
     return upload_result.get('secure_url')
 
+def save_icon(form_icon):
+    # Cloudinaryにアイコンをアップロード（150x150の正方形に顔を認識してクロップ）
+    upload_result = cloudinary.uploader.upload(form_icon, 
+                                               folder="profile_icons", 
+                                               width=150, 
+                                               height=150, 
+                                               crop="fill", 
+                                               gravity="face")
+    # アップロードされた画像の安全なURLを返す
+    return upload_result.get('secure_url')
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -371,17 +382,9 @@ def edit_profile(username):
         user.bio = form.bio.data
         
         if form.icon.data:
-            # アイコン画像の保存処理
-            random_hex = os.urandom(8).hex()
-            _, f_ext = os.path.splitext(form.icon.data.filename)
-            icon_fn = random_hex + f_ext
-            icon_path = os.path.join(app.root_path, 'static/icons', icon_fn)
-            
-            output_size = (128, 128)
-            i = Image.open(form.icon.data)
-            i.thumbnail(output_size)
-            i.save(icon_path)
-            user.icon_url = url_for('static', filename=f'icons/{icon_fn}')
+            # Cloudinaryにアイコンを保存し、URLを取得
+            icon_url = save_icon(form.icon.data)
+            user.icon_url = icon_url
         
         db.session.commit()
         return redirect(url_for('user_profile', username=user.username))
