@@ -13,9 +13,12 @@
             <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
         </h1>
 
-        {% if post.image_filename %}
-        <img src="{{ post.image_url }}" alt="投稿画像" class="post-image">
+        {% if post.image_url %}
+        <a href="{{ url_for('post_detail', post_id=post.id) }}">
+            <img src="{{ post.image_url }}" alt="投稿画像" class="post-image">
+        </a>
         {% endif %}
+
         
         <div class="post-content" style="max-height: none; overflow-y: visible;">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
 
