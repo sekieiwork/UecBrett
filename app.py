@@ -24,8 +24,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 db = SQLAlchemy(app)
 md = markdown.Markdown(extensions=['nl2br'])
 migrate = Migrate(app, db)
-with app.app_context():
-    db.create_all()
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 

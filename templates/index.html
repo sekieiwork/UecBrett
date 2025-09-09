@@ -26,40 +26,28 @@
                 </div>
                 {% endif %}
             </div>
-            <form method="POST" enctype="multipart/form-data">
-<<<<<<< HEAD
-    {{ form.csrf_token }}
-    <div class="form-field">
-        {{ form.content.label }}<br>
-        {{ form.content(cols=40, rows=5, class="textarea-content auto-resize-textarea") }}
-    </div>
+<form method="POST" enctype="multipart/form-data">
+                {{ form.csrf_token }}
+                <div class="form-field">
+                    {{ form.title.label }}<br>
+                    {{ form.title(size=32) }}
+                </div>
+                <div class="form-field">
+                    {{ form.content.label }}<br>
+                    {{ form.content(cols=40, rows=5, class="textarea-content auto-resize-textarea") }}
+                </div>
 
-    <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
-        {{ form.submit }}
-        <label for="image" style="cursor: pointer;">
-            <img src="{{ url_for('static', filename='icons/image_upload.png') }}" alt="画像アップロード" style="width: 24px; height: 24px; vertical-align: middle;">
-        </label>
-        {{ form.image(style="display: none;") }}
-    </div>
-</form>
-=======
-    		{{ form.csrf_token }}
-    		<div class="form-field">
-        		{{ form.content.label }}<br>
-        		{{ form.content(cols=40, rows=5, class="textarea-content auto-resize-textarea") }}
-    		</div>
-
-    		<div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
-        		{{ form.submit }}
-        		<label for="image" style="cursor: pointer;">
-            			<img src="{{ url_for('static', filename='icons/image_upload.png') }}" alt="画像アップロード" style="width: 24px; height: 24px; vertical-align: middle;">
-        		</label>
-        		{{ form.image(style="display: none;") }}
-    		</div>
-		</form>
->>>>>>> 9d1182a5107c4025322e3808843e0b3319508a53
+                <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
+                    {{ form.submit }}
+                    <label for="image" style="cursor: pointer;">
+                        <img src="{{ url_for('static', filename='icons/image_upload.png') }}" alt="画像アップロード" style="width: 24px; height: 24px; vertical-align: middle;">
+                    </label>
+                    {{ form.image(style="display: none;") }}
+                </div>
+            </form>
         </div>
     </div>
+
 {% else %}
     <div class="post-form">
         <p>投稿するには<a href="{{ url_for('login') }}">ログイン</a>してください。</p>
