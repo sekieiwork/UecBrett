@@ -26,6 +26,12 @@
             </form>
             {% endif %}
         </h1>
+{% if post.image_filename %}
+<div class="post-image-container" style="margin-bottom: 15px;">
+    <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" style="max-width: 100%; height: auto; border-radius: 5px;">
+</div>
+{% endif %}
+<div class="post-content" style="max-height: none; overflow-y: visible;">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
        <div class="post-content" style="max-height: none; overflow-y: visible;">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">

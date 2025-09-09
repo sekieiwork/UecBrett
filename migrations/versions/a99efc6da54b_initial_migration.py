@@ -1,8 +1,8 @@
-"""Re-sync database state
+"""Initial migration
 
-Revision ID: 02ebbabcaa8b
+Revision ID: a99efc6da54b
 Revises: 
-Create Date: 2025-09-01 10:35:39.270245
+Create Date: 2025-09-10 02:06:42.935182
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '02ebbabcaa8b'
+revision = 'a99efc6da54b'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -32,6 +32,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=100), nullable=False),
     sa.Column('content', sa.Text(), nullable=False),
+    sa.Column('image_filename', sa.String(length=100), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('user_id', sa.Integer(), nullable=False),

@@ -16,8 +16,9 @@ from forms import PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, Pr
 import markdown
 import re
 import json
+from PIL import Image # <-- この行を追加
 
-# ▼▼▼ ここに貼り付ける ▼▼▼
+
 def linkify_urls(text):
     """テキスト内のURLを<a>タグに変換する関数"""
     url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
@@ -26,7 +27,26 @@ def linkify_urls(text):
         lambda match: f'<a href="{match.group(0)}" target="_blank">{match.group(0)}</a>',
         text
     )
-# ▲▲▲ ここまで ▲▲▲
+
+def save_picture(form_picture):
+    # ファイル名をランダム化して衝突を防ぐ
+    random_hex = os.urandom(8).hex()
+    _, f_ext = os.path.splitext(form_picture.filename)
+    picture_fn = random_hex + f_ext
+    picture_path = os.path.join(app.root_path, 'static/post_images', picture_fn)
+
+    # 保存先フォルダがなければ作成
+    output_folder = os.path.join(app.root_path, 'static/post_images')
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    # 画像をリサイズして保存
+    output_size = (500, 500) # 画像の最大サイズを500x500に設定
+    i = Image.open(form_picture)
+    i.thumbnail(output_size)
+    i.save(picture_path)
+
+    return picture_fn
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -80,9 +100,10 @@ class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
+    image_filename = db.Column(db.String(100), nullable=True) # <-- この行を追加
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False) # <-- ここに追加
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
     comments = db.relationship('Comment', backref='post', lazy=True, cascade="all, delete")
     bookmarks = db.relationship(
         'Bookmark', 
@@ -92,8 +113,12 @@ class Post(db.Model):
     )
     notifications = db.relationship('Notification', backref='post', lazy='dynamic', cascade="all, delete")
 
-    def __repr__(self):
-        return f'<Post {self.id}>'
+
+class PostForm(FlaskForm):
+    title = StringField('タイトル', validators=[DataRequired()])
+    content = TextAreaField('本文', validators=[DataRequired()])
+    image = FileField('画像', validators=[FileAllowed(['jpg', 'png', 'gif', 'jpeg'], '画像ファイルのみ！')]) # <-- この行を追加
+    submit = SubmitField('投稿')
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -132,7 +157,11 @@ def index(page):
     form = PostForm()
     search_form = SearchForm()
     if form.validate_on_submit() and current_user.is_authenticated:
-        post = Post(title=form.title.data, content=form.content.data, author=current_user)
+        image_file = None
+        if form.image.data:
+        image_file = save_picture(form.image.data)
+
+        post = Post(title=form.title.data, content=form.content.data, author=current_user, image_filename=image_file)
         db.session.add(post)
         db.session.commit()
         return redirect(url_for('index'))
@@ -248,6 +277,11 @@ def edit_post(post_id):
     if form.validate_on_submit():
         post.title = form.title.data
         post.content = form.content.data
+        if form.image.data:
+        # 新しい画像がアップロードされたら、古い画像を削除（任意）して新しい画像を保存
+        # ここでは簡単のため、古い画像の削除は省略
+            image_file = save_picture(form.image.data)
+            post.image_filename = image_file
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id))
 
