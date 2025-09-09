@@ -26,18 +26,21 @@
                 </div>
                 {% endif %}
             </div>
-            <form method="POST">
-                {{ form.csrf_token }}
-                <div class="form-field">
-                    {{ form.title.label }}<br>
-                    {{ form.title(size=32) }}
-                </div>
-                <div class="form-field">
-                    {{ form.content.label }}<br>
-                    {{ form.content(cols=40, rows=5, class="textarea-content auto-resize-textarea") }}
-                </div>
-                {{ form.submit }}
-            </form>
+            <form method="POST" enctype="multipart/form-data">
+    {{ form.csrf_token }}
+    <div class="form-field">
+        {{ form.content.label }}<br>
+        {{ form.content(cols=40, rows=5, class="textarea-content auto-resize-textarea") }}
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
+        {{ form.submit }}
+        <label for="image" style="cursor: pointer;">
+            <img src="{{ url_for('static', filename='icons/image_upload.png') }}" alt="画像アップロード" style="width: 24px; height: 24px; vertical-align: middle;">
+        </label>
+        {{ form.image(style="display: none;") }}
+    </div>
+</form>
         </div>
     </div>
 {% else %}
@@ -57,6 +60,13 @@
             <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
         </h3>
         <div class="post-content">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
+{% if post.image_filename %}
+<div class="post-image-container" style="margin-top: 10px;">
+    <a href="{{ url_for('post_detail', post_id=post.id) }}">
+        <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" style="max-width: 100%; height: auto; border-radius: 5px;">
+    </a>
+</div>
+{% endif %}
 
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">

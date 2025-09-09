@@ -16,16 +16,19 @@
     </div>
     {% endif %}
     </div>
-    <form method="POST">
-        {{ form.csrf_token }}
-        <div class="form-field">
-            {{ form.title.label }}<br>
-            {{ form.title(size=32) }}
-        </div>
-        <div class="form-field">
-            {{ form.content.label }}<br>
-            {{ form.content(cols=40, rows=5, class="auto-resize-textarea") }}
-        </div>
+    <form method="POST" enctype="multipart/form-data">
+    {{ form.csrf_token }}
+    <div class="form-field">
+        {{ form.content.label }}<br>
+        {{ form.content(cols=40, rows=5, class="auto-resize-textarea") }}
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
         {{ form.submit(value='更新') }}
-    </form>
+        <label for="image" style="cursor: pointer;">
+            <img src="{{ url_for('static', filename='icons/image_upload.png') }}" alt="画像アップロード" style="width: 24px; height: 24px; vertical-align: middle;">
+        </label>
+        {{ form.image(style="display: none;") }}
+    </div>
+</form>
 {% endblock %}

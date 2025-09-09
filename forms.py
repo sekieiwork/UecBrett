@@ -6,6 +6,7 @@ from flask_wtf.file import FileField, FileAllowed
 class PostForm(FlaskForm):
     title = StringField('タイトル', validators=[DataRequired()])
     content = TextAreaField('本文', validators=[DataRequired()])
+    image = FileField('画像', validators=[FileAllowed(['jpg', 'png', 'gif', 'jpeg'], '画像ファイルのみ！')]) # <-- この行を追加
     submit = SubmitField('投稿')
 
 class CommentForm(FlaskForm):

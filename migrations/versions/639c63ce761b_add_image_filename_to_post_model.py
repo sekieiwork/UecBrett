@@ -1,8 +1,8 @@
-"""Initial migration
+"""Add image_filename to Post model
 
-Revision ID: a99efc6da54b
+Revision ID: 639c63ce761b
 Revises: 
-Create Date: 2025-09-10 02:06:42.935182
+Create Date: 2025-09-10 03:45:50.527755
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'a99efc6da54b'
+revision = '639c63ce761b'
 down_revision = None
 branch_labels = None
 depends_on = None
