@@ -64,7 +64,7 @@
             <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
         </h3>
 
-        {% if post.image_filename %}
+        {% if post.image_url %}
         <a href="{{ url_for('post_detail', post_id=post.id) }}">
             <img src="{{ post.image_url }}" alt="投稿画像" class="post-image">
         </a>
