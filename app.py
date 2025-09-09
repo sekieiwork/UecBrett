@@ -227,18 +227,24 @@ def edit_post(post_id):
     post = Post.query.get_or_404(post_id)
     if post.author != current_user:
         abort(403)
-    
-    form = PostForm(obj=post)
+
+    form = PostForm() # まず空のフォームを作成
     search_form = SearchForm()
-    
-    if form.validate_on_submit():
+
+    if form.validate_on_submit(): # POSTリクエスト（更新ボタンが押された時）
         post.title = form.title.data
         post.content = form.content.data
         if form.image.data:
             image_file = save_picture(form.image.data)
             post.image_filename = image_file
         db.session.commit()
+        flash('投稿が更新されました。')
         return redirect(url_for('post_detail', post_id=post.id))
+
+    elif request.method == 'GET': # GETリクエスト（ページを最初に開いた時）
+        # フォームに現在の投稿データをセットする
+        form.title.data = post.title
+        form.content.data = post.content
 
     templates = [
         {
@@ -247,9 +253,8 @@ def edit_post(post_id):
             'body': '<span class="text-large">**ここに科目名を入力**</span> 成績:<span class="text-red text-large">**ここに成績を入力**</span> 担当教員:ここに担当教員名を入力\n本文を入力'
         }
     ]
-    
-    return render_template('edit.html', form=form, post=post, search_form=search_form, md=md, templates=templates, templates_for_js=json.dumps(templates), linkify_urls=linkify_urls)
 
+    return render_template('edit.html', form=form, post=post, search_form=search_form, md=md, templates=templates, templates_for_js=json.dumps(templates), linkify_urls=linkify_urls)
 @app.route('/post/<int:post_id>/delete', methods=['POST'])
 @login_required
 def delete_post(post_id):
@@ -471,6 +476,23 @@ def show_notifications():
     db.session.commit()
     
     return render_template('notifications.html', notifications=notifications, search_form=search_form, md=md, linkify_urls=linkify_urls)
+
+# 特定のユーザーを管理者に設定するための、一時的な特別なルート
+@app.route('/make-admin/<username>')
+@login_required
+def make_admin(username):
+    # 自分自身が管理者である場合のみ、この機能を使えるようにする（セキュリティのため）
+    if not current_user.is_admin and current_user.username != '二酸化ケイ素':
+         # もし最初の管理者がいない場合は、'二酸化ケイ素'さんのみが実行できるようにする
+         return "権限がありません。", 403
+
+    user = User.query.filter_by(username=username).first()
+    if user:
+        user.is_admin = True
+        db.session.commit()
+        return f"ユーザー '{username}' が管理者に設定されました。"
+    else:
+        return f"ユーザー '{username}' が見つかりませんでした。"
 
 
 if __name__ == '__main__':
