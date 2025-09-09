@@ -17,7 +17,6 @@ import markdown
 import re
 import json
 from PIL import Image
-from flask_migrate import upgrade
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -25,6 +24,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 db = SQLAlchemy(app)
 md = markdown.Markdown(extensions=['nl2br'])
 migrate = Migrate(app, db)
+with app.app_context():
+    db.create_all()
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -472,16 +473,6 @@ def show_notifications():
     
     return render_template('notifications.html', notifications=notifications, search_form=search_form, md=md, linkify_urls=linkify_urls)
 
-@app.route('/upgrade/<secret_key>')
-def upgrade_database(secret_key):
-    if secret_key == os.environ.get('UPGRADE_SECRET_KEY'):
-        try:
-            upgrade()
-            return "データベースの更新が成功しました！"
-        except Exception as e:
-            return f"エラーが発生しました: {e}"
-    else:
-        abort(403)
 
 if __name__ == '__main__':
     app.run(debug=True)
