@@ -1,52 +1,96 @@
 {% extends "layout.html" %}
 
-{% block title %}ブックマーク一覧{% endblock %}
+{% block title %}{{ post.title }}{% endblock %}
 
 {% block content %}
-    <h2>ブックマーク一覧</h2>
-
-    {% if posts %}
-        {% for post in posts %}
-        <div class="post">
-            <h3>
-                <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a>
-                {% if post.updated_at and post.created_at_jst.strftime('%Y%m%d%H%M%S') != post.updated_at_jst.strftime('%Y%m%d%H%M%S') %}
-                    <small style="color: gray; font-size: 0.3em;">(編集済み)</small>
-                {% endif %}
-                <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
-            </h3>
-            <div class="post-content">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
-            {% if post.image_filename %}
-            <div class="post-image-container" style="margin-top: 10px;">
-                <a href="{{ url_for('post_detail', post_id=post.id) }}">
-                    <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" style="max-width: 100%; height: auto; border-radius: 5px;">
-                </a>
-            </div>
+    <div class="post-detail" style="position: relative;">
+        {% if current_user.is_authenticated and current_user == post.author %}
+            <a href="{{ url_for('edit_post', post_id=post.id) }}" style="position: absolute; top: 1em; right: 1em; font-size: 0.9em;">編集</a>
+        {% endif %}
+        
+        <h1>
+            {{ post.title }}
+            <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
+            {% if current_user.is_authenticated %}
+            <form class="bookmark-form" data-post-id="{{ post.id }}" style="display: inline-block; vertical-align: middle; margin-left: 10px;">
+                <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
+                    <span id="bookmark-icon-{{ post.id }}">
+                        {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
+                        {% if is_bookmarked %}
+                            <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
+                        {% endif %}
+                    </span>
+                </button>
+            </form>
             {% endif %}
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">
-                <div>
-                    <small>投稿者: <a href="{{ url_for('user_profile', username=post.author.username) }}" class="{{ post.author.get_username_class() }}">{{ post.author.username }}</a></small> | 
-                    <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
-                </div>
-                
-                {% if current_user.is_authenticated %}
-                <form class="bookmark-form" data-post-id="{{ post.id }}">
-                    <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
-                        <span id="bookmark-icon-{{ post.id }}">
-                            {% if post.is_bookmarked %}
-                                <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
-                            {% else %}
-                                <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
-                            {% endif %}
-                        </span>
-                    </button>
-                </form>
+        </h1>
+
+        {% if post.image_filename %}
+        <div class="post-image-container" style="margin-bottom: 15px;">
+            <img src="{{ url_for('static', filename='post_images/' + post.image_filename) }}" alt="投稿画像" style="max-width: 100%; height: auto; border-radius: 5px;">
+        </div>
+        {% endif %}
+        
+        <div class="post-content" style="max-height: none; overflow-y: visible;">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1em;">
+            <div>
+                <small>投稿者: <a href="{{ url_for('user_profile', username=post.author.username) }}" class="{{ post.author.get_username_class() }}">{{ post.author.username }}</a></small> | 
+                <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                {% if post.updated_at %}
+                    <small style="color: gray;"> / 最終更新日時: {{ post.updated_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
                 {% endif %}
             </div>
+            
+            {% if current_user.is_authenticated and (current_user == post.author or current_user.is_admin) %}
+                <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" style="display:inline; margin-left: auto;">
+                    <input type="submit" value="削除" onclick="return confirm('本当に削除しますか？');" class="delete-button">
+                </form>
+            {% endif %}
         </div>
-        {% endfor %}
-    {% else %}
-        <p>ブックマークされた投稿はありません。</p>
-    {% endif %}
+        <hr>
+
+        <div class="comment-form">
+            <h3>コメントする</h3>
+            <form method="POST">
+                {{ form.csrf_token }}
+                {{ form.content.label }}<br>
+                {{ form.content(cols=40, rows=5) }}
+                {{ form.submit }}
+            </form>
+        </div>
+
+        <div class="comments">
+            <h3>コメント ({{ post.comments|length }})</h3>
+            {% for comment in post.comments %}
+            <div class="comment-item">
+                <div class="comment-header">
+                    <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="user-icon-link">
+                        {% if comment.commenter.icon_url %}
+                            <img src="{{ comment.commenter.icon_url }}" alt="{{ comment.commenter.username }}のアイコン" class="user-icon">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="デフォルトアイコン" class="user-icon">
+                        {% endif %}
+                    </a>
+                    <div class="comment-meta-and-actions">
+                        <div class="comment-meta">
+                            <small>コメント投稿者: <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="{{ comment.commenter.get_username_class() }}">{{ comment.commenter.username }}</a></small> | 
+                            <small>投稿日時: {{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                        </div>
+                        {% if current_user.is_authenticated and (current_user == comment.commenter or current_user == post.author or current_user.is_admin) %}
+                            <div class="comment-actions">
+                                <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="POST">
+                                    <button type="submit" class="delete-button" onclick="return confirm('本当に削除しますか？');">削除</button>
+                                </form>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="comment-content">{{ md.convert(comment.content) | safe }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
 {% endblock %}
