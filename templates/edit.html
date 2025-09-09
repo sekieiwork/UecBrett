@@ -1,41 +1,5 @@
 {% extends "layout.html" %}
 
-{% block title %}投稿の編集 - {{ post.title }}{% endblock %}
-
-{% block content %}
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h1>投稿編集</h1>
-        {% if templates %}
-        <div class="template-dropdown">
-            <button type="button" class="template-select-btn">テンプレートを選択</button>
-            <div class="template-dropdown-content hidden">
-                {% for t in templates %}
-                <a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-    </div>
-    <form method="POST" enctype="multipart/form-data">
-        {{ form.csrf_token }}
-        <div class="form-field">
-            {{ form.title.label }}<br>
-            {{ form.title(size=32) }}
-        </div>
-        <div class="form-field">
-            {{ form.content.label }}<br>
-            {{ form.content(cols=40, rows=5, class="auto-resize-textarea") }}
-        </div>
-        <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin-top: 1em;">
-            {{ form.submit(value='更新') }}
-            <label for="image" style="cursor: pointer;">
-                <img src="{{ url_for('static', filename='icons/image_upload.png') }}" alt="画像アップロード" style="width: 24px; height: 24px; vertical-align: middle;">
-            </label>
-            {{ form.image(style="display: none;") }}
-        </div>
-    </form>
-{% endblock %}{% extends "layout.html" %}
-
 {% block title %}投稿編集 - {{ post.title }}{% endblock %}
 
 {% block content %}

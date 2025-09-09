@@ -46,7 +46,7 @@ def linkify_urls(text):
 
 def save_picture(form_picture):
     # Cloudinaryに画像をアップロード
-    upload_result = cloudinary.uploader.upload(form_pictnihoure, folder="post_images", width=500, height=500, crop="limit")
+    upload_result = cloudinary.uploader.upload(form_picture, folder="post_images", width=500, height=500, crop="limit")
     # アップロードされた画像の安全なURLを返す
     return upload_result.get('secure_url')
 
