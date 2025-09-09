@@ -1,16 +1,8 @@
-<<<<<<<< HEAD:migrations/versions/639c63ce761b_add_image_filename_to_post_model.py
-"""Add image_filename to Post model
-
-Revision ID: 639c63ce761b
-Revises: 
-Create Date: 2025-09-10 03:45:50.527755
-========
 """Initial migration
 
-Revision ID: a99efc6da54b
+Revision ID: f70e0af2e6ab
 Revises: 
-Create Date: 2025-09-10 02:06:42.935182
->>>>>>>> 9d1182a5107c4025322e3808843e0b3319508a53:migrations/versions/a99efc6da54b_initial_migration.py
+Create Date: 2025-09-10 04:47:01.607113
 
 """
 from alembic import op
@@ -18,11 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-<<<<<<<< HEAD:migrations/versions/639c63ce761b_add_image_filename_to_post_model.py
-revision = '639c63ce761b'
-========
-revision = 'a99efc6da54b'
->>>>>>>> 9d1182a5107c4025322e3808843e0b3319508a53:migrations/versions/a99efc6da54b_initial_migration.py
+revision = 'f70e0af2e6ab'
 down_revision = None
 branch_labels = None
 depends_on = None
