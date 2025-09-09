@@ -17,6 +17,7 @@ import markdown
 import re
 import json
 from PIL import Image # <-- この行を追加
+from flask_migrate import upgrade
 
 
 def linkify_urls(text):
@@ -542,6 +543,20 @@ def show_notifications():
     
     return render_template('notifications.html', notifications=notifications, search_form=search_form)
 
+
+@app.route('/upgrade/<secret_key>')
+def upgrade_database(secret_key):
+    # 環境変数に設定した秘密のキーとURLのキーが一致するか確認
+    if secret_key == os.environ.get('UPGRADE_SECRET_KEY'):
+        try:
+            # flask db upgrade と同じコマンドを実行
+            upgrade()
+            return "データベースの更新が成功しました！"
+        except Exception as e:
+            return f"エラーが発生しました: {e}"
+    else:
+        # キーが一致しない場合はアクセスを拒否
+        abort(403)
 
 if __name__ == '__main__':
     app.run(debug=True)
