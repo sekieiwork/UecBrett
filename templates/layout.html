@@ -88,14 +88,17 @@
 
     /* 投稿・コメントの本文表示エリア */
     .post-content, .comment-content {
-        border: 1px solid #dee2e6;
-        border-radius: 0.25rem;
-        padding: 1em;
-        margin-top: 15px;
-        white-space: pre-wrap;
-        max-height: 150px; /* 一覧での高さ制限 */
-        overflow-y: auto;
-    }
+    max-height: 100px;
+    overflow-y: auto;
+    padding: 1em;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    margin-top: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    white-space: pre-wrap;
+    line-height: 1.4; /* ← この行を追加 */
+}
 
     /* 投稿された画像のスタイル */
     .post-image {
