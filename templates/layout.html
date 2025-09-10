@@ -15,7 +15,7 @@
     /*----------------------------------*/
     body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        margin: 0; /* bodyのマージンをリセット */
+        margin: 0;
         line-height: 1.6;
         color: #333;
         background-color: #f8f9fa;
@@ -33,7 +33,7 @@
     /* コンテナの幅を制限 */
     .container {
         max-width: 800px;
-        margin: 2em auto; /* 上下のマージンを調整 */
+        margin: 2em auto;
         padding: 1em;
     }
 
@@ -42,12 +42,12 @@
         background-color: #fff;
         border: 1px solid #dee2e6;
         border-radius: 0.25rem;
-        padding: 1.5em; /* パディングを少し広げる */
-        margin-bottom: 1.5em; /* 下のマージンを広げる */
+        padding: 1.5em;
+        margin-bottom: 1.5em;
         max-width: 770px;
         margin-left: auto;
         margin-right: auto;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 影を追加して立体感を出す */
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
 
     /* タイトルとヘッダー */
@@ -64,40 +64,44 @@
         border-bottom: 1px solid #dee2e6;
     }
 
-    /* フォームの入力欄 */
- input[type="text"], input[type="password"], textarea {
-    width: 100%;
-    padding: 0.5em;
-    box-sizing: border-box;
-    border: 1px solid #ced4da;
-    border-radius: 0.25rem;
-    line-height: normal; /* ← この行を追加 */
-}
-    
-    .textarea-content {
-        min-height: 100px;
-        max-height: 300px;
-        resize: none;
+    /* ▼▼▼ ここから修正 ▼▼▼ */
+
+    /* 1. 全てのテキストエリアの共通設定 */
+    textarea {
+        width: 100%;
+        padding: 0.5em;
+        box-sizing: border-box;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        line-height: 1.4; /* 行間を少し詰める */
+        resize: none;     /* 全ての手動リサイズを一旦禁止 */
+    }
+
+    /* 2. 本文入力・編集用の自動リサイズ設定 */
+    .auto-resize-textarea {
+        overflow: hidden; /* スクロールバーを常に非表示にする */
+    }
+
+    /* 3. コメント入力用の設定 (手動リサイズはなし) */
+    .comment-textarea {
+        min-height: 80px; /* 最低限の高さを確保 */
     }
     
-.auto-resize-textarea {
-    overflow: hidden; /* スクロールバーを非表示 */
-    resize: none;     /* 手動リサイズを無効化 */
-}
-
-    /* 投稿・コメントの本文表示エリア */
+    /* --- 表示される投稿・コメント本文の行間設定 --- */
     .post-content, .comment-content {
-    max-height: 100px;
-    overflow-y: auto;
-    padding: 1em;
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    margin-top: 10px;
-    width: 100%;
-    box-sizing: border-box;
-    white-space: pre-wrap;
-    line-height: 1.0; /* ← この行を追加 */
-}
+        max-height: 100px;
+        overflow-y: auto;
+        padding: 1em;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        margin-top: 10px;
+        width: 100%;
+        box-sizing: border-box;
+        white-space: pre-wrap;
+        line-height: 1.4; /* 表示行間を詰める */
+    }
+
+    /* ▲▲▲ ここまで修正 ▲▲▲ */
 
     /* 投稿された画像のスタイル */
     .post-image {
@@ -145,404 +149,295 @@
     .delete-button:hover {
         background-color: #c82333;
     }
-.delete-button.yellow {
-    background-color: #ffc107;
-    color: black;
-}
-.delete-button.yellow:hover {
-    background-color: #e0a800;
-}
-
-/* ページネーション */
-.pagination a {
-    padding: 0.5em 0.75em;
-    border: 1px solid #dee2e6;
-    margin: 0 0.25em;
-    border-radius: 0.25rem;
-}
-.pagination a[style="font-weight: bold;"] {
-    background-color: #007bff;
-    color: #fff;
-    border-color: #007bff;
-}
-
-/*----------------------------------*/
-/* ヘッダーのスタイル */
-/*----------------------------------*/
-.header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    background-color: #fff;
-    z-index: 1000;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 0.5em 0;
-}
-
-.header-content {
-    max-width: 800px;
-    margin: auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: nowrap;
-}
-
-.header-left, .header-right {
-    display: flex;
-    align-items: center;
-    flex-wrap: nowrap;
-}
-
-.header-left h1 {
-    margin: 0;
-    margin-right: 1em;
-}
-
-.header-left h1 a {
-    text-decoration: none;
-    color: inherit;
-    white-space: nowrap;
-}
-
-/* ヘッダーの中央部分（検索フォーム）の調整 */
-.header-center {
-    flex-grow: 1;
-    display: flex;
-    justify-content: center; /* フォームを中央に配置 */
-    align-items: center;
-}
-
-.search-form-header {
-    margin: 0;
-    display: flex;
-    align-items: center;
-}
-
-.search-form-header input[type="text"] {
-    width: 200px; /* 検索フォームの幅を広げる */
-    margin-right: 0.5em;
-    vertical-align: middle;
-}
-
-.search-form-header input[type="submit"] {
-    vertical-align: middle;
-}
-
-/* ヘッダーのボタンとアイコンの垂直位置を調整 */
-.header-right {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    white-space: nowrap;
-    margin-left: 1em;
-}
-
-.notification-icon {
-    margin-right: 1em;
-}
-/* 通知アイコンを少し下げる修正 */
-.notification-icon img {
-    vertical-align: middle;
-    position: relative;
-    top: 2px;
-}
-
-.admin-username {
-    color: #dc3545 !important;
-    font-weight: bold;
-}
-
-/* 管理者ダッシュボードの一覧をスクロール可能にするスタイル */
-.admin-list-container {
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    padding: 1em;
-    margin-bottom: 1em;
-}
-
-/* 新しいドロップダウンメニューのスタイル */
-.dropdown-container {
-    position: relative;
-    display: inline-block;
-    white-space: nowrap;
-}
-
-.dropdown-content {
-    display: none;
-    position: absolute;
-    right: 0;
-    top: 100%;
-    background-color: #f9f9f9;
-    min-width: 160px;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-    z-index: 1;
-    border-radius: 0.25rem;
-    padding: 0.5em 0;
-}
-
-.dropdown-content a {
-    color: black;
-    padding: 12px 16px;
-    text-decoration: none;
-    display: block;
-}
-
-.dropdown-content a:hover {
-    background-color: #f1f1f1;
-}
-
-/* プロフィールアイコンとドロップダウンのスタイル */
-.user-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    vertical-align: middle;
-}
-
-/* 投稿・コメントの書式設定 */
-.post-content, .comment-content {
-    max-height: 100px;
-    overflow-y: auto;
-    padding: 1em;
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    margin-top: 10px;
-    width: 100%;
-    box-sizing: border-box;
-    white-space: pre-wrap; /* ← この行を追加 */
-}
-
-/* コメントアイテムとヘッダーのスタイル */
-.comment-item {
-    background-color: #fff;
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    padding: 1em;
-    margin-bottom: 1em;
-}
-
-.comment-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 1em;
-}
-
-.comment-meta-and-actions {
-    display: flex;
-    flex-grow: 1;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-}
-
-.user-icon-link {
-    flex-shrink: 0;
-    margin-right: 1em;
-    vertical-align: middle;
-}
-
-.comment-body {
-    flex-grow: 1;
-}
-
-.comment-meta {
-    font-size: 0.8em;
-    color: #6c757d;
-}
-
-.comment-meta small {
-    white-space: nowrap;
-}
-
-.comment-meta form {
-    margin: 0;
-}
-
-.comment-actions {
-    margin-left: auto;
-}
-
-/* layout.html の <style> タグ内に追加 */
-
-.text-red {
-    color: #dc3545; /* 赤色 */
-}
-.text-large {
-    font-size: 1.2em; /* 少し大きい文字 */
-}
-.text-blue {
-    color: #007bff; /* 青色 */
-}
-
-/* 新しい投稿ボタンのスタイル */
-#toggle-post-form-btn {
-    padding: 0.5em 1em;
-    border: none;
-    border-radius: 0.25rem;
-    cursor: pointer;
-    background-color: #007bff;
-    color: #fff;
-    font-size: 1em;
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-}
-
-#toggle-post-form-btn:hover {
-    background-color: #0056b3;
-}
-
-.hidden {
-    display: none;
-}
-
-/* styleタグの末尾などに追加 */
-
-/* テンプレートドロップダウンのスタイル */
-.template-dropdown {
-    position: relative;
-    display: inline-block;
-}
-
-.template-select-btn {
-    background-color: #6c757d;
-    color: white;
-    padding: 8px 12px;
-    font-size: 0.9em;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.template-select-btn:hover {
-    background-color: #5a6268;
-}
-
-.template-dropdown-content {
-    position: absolute;
-    right: 0;
-    background-color: #f9f9f9;
-    min-width: 160px;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-    z-index: 1;
-    border-radius: 4px;
-    overflow: hidden; /* 角丸を効かせるため */
-}
-
-.template-dropdown-content a {
-    color: black;
-    padding: 12px 16px;
-    text-decoration: none;
-    display: block;
-}
-
-.template-dropdown-content a:hover {
-    background-color: #f1f1f1;
-}
-
-/* layout.html の <style> タグ内に追加 */
-
-/* 通常のテキストエリアのスタイル */
-.mobile-comment-box {
-    resize: vertical;
-    min-height: 120px;
-    line-height: 1.4;
-}
-
-/* 画面幅が768px以下のスマホ表示の場合のみ適用 */
-@media (max-width: 768px) {
-    /* Webkit系ブラウザ（Chrome, Safari）のスクロールバー */
-    .mobile-comment-box::-webkit-scrollbar {
-        width: 12px; /* スクロールバーの幅を太くする */
+    .delete-button.yellow {
+        background-color: #ffc107;
+        color: black;
     }
-    .mobile-comment-box::-webkit-scrollbar-track {
-        background: #f1f1f1; /* スクロールバーの背景色 */
-    }
-    .mobile-comment-box::-webkit-scrollbar-thumb {
-        background: #ccc; /* スクロールバーのつまみの色 */
-        border-radius: 6px;
-    }
-    .mobile-comment-box::-webkit-scrollbar-thumb:hover {
-        background: #a8a8a8;
-    }
-}
-
-
-/*----------------------------------*/
-/* スマホ版レイアウトの調整（768px以下） */
-/*----------------------------------*/
-@media (max-width: 768px) {
-    body {
-        padding-top: 60px;
+    .delete-button.yellow:hover {
+        background-color: #e0a800;
     }
 
-    .comments, .comment-item, .post-detail, .post {
-        max-width: 95%; /* 画面幅の95%に制限 */
-        margin-left: auto;
-        margin-right: auto;
+    /* ページネーション */
+    .pagination a {
+        padding: 0.5em 0.75em;
+        border: 1px solid #dee2e6;
+        margin: 0 0.25em;
+        border-radius: 0.25rem;
+    }
+    .pagination a[style="font-weight: bold;"] {
+        background-color: #007bff;
+        color: #fff;
+        border-color: #007bff;
+    }
+
+    /*----------------------------------*/
+    /* ヘッダーのスタイル */
+    /*----------------------------------*/
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background-color: #fff;
+        z-index: 1000;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 0.5em 0;
     }
 
     .header-content {
-        padding: 0 5px; /* 左右のパディングを狭くする */
-        flex-wrap: nowrap; /* 要素を折り返さないようにする */
-        justify-content: space-between; /* 要素を左右に配置 */
+        max-width: 800px;
+        margin: auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: nowrap;
     }
 
-    .header-left {
-        order: 0;
+    .header-left, .header-right {
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
     }
 
-    /* UEC掲示板ロゴの調整 */
     .header-left h1 {
-        font-size: 1.2em; /* フォントサイズを小さくする */
-        margin-right: 5px;
+        margin: 0;
+        margin-right: 1em;
     }
 
-    .header-right {
-        order: 2;
-        margin-left: 5px; /* 左側に少し余白を設ける */
-        flex-shrink: 0;
+    .header-left h1 a {
+        text-decoration: none;
+        color: inherit;
+        white-space: nowrap;
     }
+
     .header-center {
-        order: 1;
-        width: 100%;
-        margin-top: 0.5em;
-        margin-left: 0;
+        flex-grow: 1;
+        display: flex;
         justify-content: center;
+        align-items: center;
     }
+
     .search-form-header {
-        width: 60%;
-        justify-content: center;
+        margin: 0;
+        display: flex;
+        align-items: center;
     }
+
     .search-form-header input[type="text"] {
-        width: 120px; /* フォームの幅を調整 */
+        width: 200px;
+        margin-right: 0.5em;
+        vertical-align: middle;
     }
 
     .search-form-header input[type="submit"] {
-        padding: 0.4em 0.8em; /* ボタンのパディングを調整 */
+        vertical-align: middle;
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        white-space: nowrap;
+        margin-left: 1em;
     }
 
     .notification-icon {
-        margin-right: 3px;
+        margin-right: 1em;
     }
-    .user-icon {
-        width: 40px; /* アイコンサイズを小さくする */
-        height: 40px;
+    .notification-icon img {
+        vertical-align: middle;
+        position: relative;
+        top: 2px;
     }
-    .dropdown-content {
-        right: 10px;
-        top: 50px;
-        min-width: 150px;
-    }
-    .comment-content {
-        max-height: 80px;
-    }
-}
 
+    .admin-username {
+        color: #dc3545 !important;
+        font-weight: bold;
+    }
+
+    .admin-list-container {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 1em;
+        margin-bottom: 1em;
+    }
+
+    .dropdown-container {
+        position: relative;
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    .dropdown-content {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        background-color: #f9f9f9;
+        min-width: 160px;
+        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+        z-index: 1;
+        border-radius: 0.25rem;
+        padding: 0.5em 0;
+    }
+
+    .dropdown-content a {
+        color: black;
+        padding: 12px 16px;
+        text-decoration: none;
+        display: block;
+    }
+
+    .dropdown-content a:hover {
+        background-color: #f1f1f1;
+    }
+
+    .user-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        vertical-align: middle;
+    }
+
+    .comment-item {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 1em;
+        margin-bottom: 1em;
+    }
+
+    .comment-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1em;
+    }
+
+    .comment-meta-and-actions {
+        display: flex;
+        flex-grow: 1;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+    }
+
+    .user-icon-link {
+        flex-shrink: 0;
+        margin-right: 1em;
+        vertical-align: middle;
+    }
+
+    .comment-body {
+        flex-grow: 1;
+    }
+
+    .comment-meta {
+        font-size: 0.8em;
+        color: #6c757d;
+    }
+
+    .comment-meta small {
+        white-space: nowrap;
+    }
+
+    .comment-meta form {
+        margin: 0;
+    }
+
+    .comment-actions {
+        margin-left: auto;
+    }
+
+    .text-red {
+        color: #dc3545;
+    }
+    .text-large {
+        font-size: 1.2em;
+    }
+    .text-blue {
+        color: #007bff;
+    }
+
+    #toggle-post-form-btn {
+        padding: 0.5em 1em;
+        border: none;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        background-color: #007bff;
+        color: #fff;
+        font-size: 1em;
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+    }
+
+    #toggle-post-form-btn:hover {
+        background-color: #0056b3;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .template-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .template-select-btn {
+        background-color: #6c757d;
+        color: white;
+        padding: 8px 12px;
+        font-size: 0.9em;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .template-select-btn:hover {
+        background-color: #5a6268;
+    }
+
+    .template-dropdown-content {
+        position: absolute;
+        right: 0;
+        background-color: #f9f9f9;
+        min-width: 160px;
+        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+        z-index: 1;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .template-dropdown-content a {
+        color: black;
+        padding: 12px 16px;
+        text-decoration: none;
+        display: block;
+    }
+
+    .template-dropdown-content a:hover {
+        background-color: #f1f1f1;
+    }
+
+    @media (max-width: 768px) {
+        body { padding-top: 60px; }
+        .comments, .comment-item, .post-detail, .post { max-width: 95%; margin-left: auto; margin-right: auto; }
+        .header-content { padding: 0 5px; flex-wrap: nowrap; justify-content: space-between; }
+        .header-left { order: 0; }
+        .header-left h1 { font-size: 1.2em; margin-right: 5px; }
+        .header-right { order: 2; margin-left: 5px; flex-shrink: 0; }
+        .header-center { order: 1; width: 100%; margin-top: 0.5em; margin-left: 0; justify-content: center; }
+        .search-form-header { width: 60%; justify-content: center; }
+        .search-form-header input[type="text"] { width: 120px; }
+        .search-form-header input[type="submit"] { padding: 0.4em 0.8em; }
+        .notification-icon { margin-right: 3px; }
+        .user-icon { width: 40px; height: 40px; }
+        .dropdown-content { right: 10px; top: 50px; min-width: 150px; }
+        .comment-content { max-height: 80px; }
+    }
     </style>
 </head>
 <body>
@@ -637,37 +532,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-// --- テキストエリアの自動リサイズ処理 ---
-document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
-    let twin = document.createElement('div');
-    const style = window.getComputedStyle(textarea);
-    [
-        'border', 'boxSizing', 'fontFamily', 'fontSize', 'fontWeight',
-        'letterSpacing', 'lineHeight', 'padding', 'textDecoration',
-        'textIndent', 'textTransform', 'whiteSpace', 'wordSpacing', 'width'
-    ].forEach(prop => {
-        twin.style[prop] = style[prop];
-    });
-    twin.style.visibility = 'hidden';
-    twin.style.position = 'absolute';
-    twin.style.top = '0';
-    twin.style.left = '0';
-    twin.style.height = 'auto';
-    twin.style.wordWrap = 'break-word';
-    document.body.appendChild(twin);
-
-    function autoResize() {
-        let text = textarea.value.replace(/\n/g, '<br/>');
-        if (textarea.value.slice(-1) === '\n') {
-            text += '&nbsp;';
-        }
-        twin.innerHTML = text;
-        textarea.style.height = twin.scrollHeight + 'px';
-    }
-    textarea.addEventListener('input', autoResize);
-    setTimeout(autoResize, 100); 
-});
-
     // --- テンプレート機能の処理 ---
     const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
     allTemplateDropdowns.forEach(dropdown => {
@@ -690,7 +554,11 @@ document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
                     const titleInput = document.querySelector('input[name="title"]');
                     const contentTextarea = document.querySelector('textarea[name="content"]');
                     if (titleInput) titleInput.value = template.title;
-                    if (contentTextarea) contentTextarea.value = template.body;
+                    if (contentTextarea) {
+                        contentTextarea.value = template.body;
+                        // 自動リサイズをトリガー
+                        contentTextarea.dispatchEvent(new Event('input'));
+                    }
                 }
                 const parentDropdownContent = item.closest('.template-dropdown-content');
                 if (parentDropdownContent) {
@@ -700,6 +568,37 @@ document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
         });
     }
     
+    // --- 本文入力用のテキストエリア自動リサイズ処理 ---
+    document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
+        let twin = document.createElement('div');
+        const style = window.getComputedStyle(textarea);
+        [
+            'border', 'boxSizing', 'fontFamily', 'fontSize', 'fontWeight',
+            'letterSpacing', 'lineHeight', 'padding', 'textDecoration',
+            'textIndent', 'textTransform', 'whiteSpace', 'wordSpacing', 'width'
+        ].forEach(prop => {
+            twin.style[prop] = style[prop];
+        });
+        twin.style.visibility = 'hidden';
+        twin.style.position = 'absolute';
+        twin.style.top = '0';
+        twin.style.left = '0';
+        twin.style.height = 'auto';
+        twin.style.wordWrap = 'break-word';
+        document.body.appendChild(twin);
+
+        function autoResize() {
+            let text = textarea.value.replace(/\n/g, '<br/>');
+            if (textarea.value.slice(-1) === '\n') {
+                text += '&nbsp;';
+            }
+            twin.innerHTML = text;
+            textarea.style.height = twin.scrollHeight + 'px';
+        }
+        textarea.addEventListener('input', autoResize);
+        setTimeout(autoResize, 100); 
+    });
+
 
     // --- ブックマークボタンの処理 ---
     document.querySelectorAll('.bookmark-toggle-btn').forEach(button => {
