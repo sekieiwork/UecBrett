@@ -634,34 +634,33 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-// --- 【修正済み】専用編集画面（モーダル）の処理 ---
-const editorOverlay = document.getElementById('editor-overlay');
-if (editorOverlay) {
-    const modalTextarea = document.getElementById('modal-textarea');
-    const modalDoneBtn = document.getElementById('modal-done-btn');
-    let activeTextarea = null;
+    // --- 【修正済み】専用編集画面（モーダル）の処理 ---
+    const editorOverlay = document.getElementById('editor-overlay');
+    if (editorOverlay) {
+        const modalTextarea = document.getElementById('modal-textarea');
+        const modalDoneBtn = document.getElementById('modal-done-btn');
+        let activeTextarea = null;
 
-    document.querySelectorAll('textarea[name="content"]').forEach(textarea => {
-        // イベントを'focus'から'click'に変更
-        textarea.addEventListener('click', (e) => {
-            e.preventDefault();
-            activeTextarea = e.target;
-            modalTextarea.value = activeTextarea.value;
-            editorOverlay.classList.remove('hidden');
-            modalTextarea.focus();
+        document.querySelectorAll('textarea[name="content"]').forEach(textarea => {
+            textarea.addEventListener('focus', (e) => {
+                e.preventDefault();
+                activeTextarea = e.target;
+                modalTextarea.value = activeTextarea.value;
+                editorOverlay.classList.remove('hidden');
+                modalTextarea.focus();
+            });
         });
-    });
 
-    if (modalDoneBtn) {
-        modalDoneBtn.addEventListener('click', () => {
-            if (activeTextarea) {
-                activeTextarea.value = activeTextarea.value; // モーダルの内容を元のテキストエリアに反映
-            }
-            editorOverlay.classList.add('hidden');
-            activeTextarea = null;
-        });
+        if (modalDoneBtn) {
+            modalDoneBtn.addEventListener('click', () => {
+                if (activeTextarea) {
+                    activeTextarea.value = modalTextarea.value;
+                }
+                editorOverlay.classList.add('hidden');
+                activeTextarea = null;
+            });
+        }
     }
-}
 
     // --- ブックマークボタンの処理 ---
     document.querySelectorAll('.bookmark-toggle-btn').forEach(button => {
