@@ -68,14 +68,15 @@
 
     /* 1. 全てのテキストエリアの共通設定 */
     textarea {
-        width: 100%;
-        padding: 0.5em;
-        box-sizing: border-box;
-        border: 1px solid #ced4da;
-        border-radius: 0.25rem;
-        line-height: 1.4;
-	resize: none;  
-    }
+    width: 100%;
+    padding: 0.5em;
+    box-sizing: border-box;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    line-height: 1.4;
+    resize: none;
+    overscroll-behavior-y: contain; /* ← この行を追加 */
+}
 
     /* 2. 本文入力・編集用の自動リサイズ設定 */
     .auto-resize-textarea {
