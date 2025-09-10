@@ -513,102 +513,50 @@
 /* layout.html の <style> タグ内に追加 */
 
 #editor-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-#editor-modal {
-    background-color: white;
-    width: 90%;
-    height: 70%;
-    max-width: 600px;
-    padding: 1em;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-}
-#modal-textarea {
-    width: 100%;
-    height: 100%;
-    flex-grow: 1;
-    border: 1px solid #ccc;
-    resize: none;
-    margin-bottom: 1em;
-    padding: 0.5em;
-    box-sizing: border-box;
-}
-#modal-done-btn {
-    padding: 0.8em 1em;
-    border: none;
-    border-radius: 4px;
-    background-color: #007bff;
-    color: white;
-    cursor: pointer;
-}
-
-</style>
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    #editor-modal {
+        background-color: white;
+        width: 90%;
+        height: 70%;
+        max-width: 600px;
+        padding: 1em;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+    }
+    #modal-textarea {
+        width: 100%;
+        height: 100%;
+        flex-grow: 1;
+        border: 1px solid #ccc;
+        resize: none;
+        margin-bottom: 1em;
+        padding: 0.5em;
+        box-sizing: border-box;
+    }
+    #modal-done-btn {
+        padding: 0.8em 1em;
+        border: none;
+        border-radius: 4px;
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+    }
+    </style>
 </head>
 <body>
     <div class="header">
-        <div class="header-content">
-            <div class="header-left">
-                <div style="white-space: nowrap;">
-                    <h1><a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">UEC 掲示板</a></h1>
-                </div>
-            </div>
-            <div class="header-center">
-                {% if request.endpoint != 'login' and request.endpoint != 'register' %}
-                    <form method="POST" action="{{ url_for('search') }}" class="search-form-header">
-                        {{ search_form.csrf_token }}
-                        {{ search_form.search_query.label(style="display: none;") }}
-                        {{ search_form.search_query(size=20) }}
-                        {{ search_form.submit }}
-                    </form>
-                {% endif %}
-            </div>
-            <div class="header-right">
-                {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('show_notifications') }}" style="margin-right: 1em;">
-                        {% if current_user.has_unread_notifications() %}
-                            <img src="{{ url_for('static', filename='icons/notification_unread.png') }}" alt="未読通知" style="width: 20px; height: 20px;">
-                        {% else %}
-                            <img src="{{ url_for('static', filename='icons/notification.png') }}" alt="通知" style="width: 20px; height: 20px;">
-                        {% endif %}
-                    </a>
-                    <div class="dropdown-container">
-                        <a href="#">
-                            {% if current_user.icon_url %}
-                                <img src="{{ current_user.icon_url }}" alt="{{ current_user.username }}のアイコン" class="user-icon">
-                            {% else %}
-                                <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="デフォルトアイコン" class="user-icon">
-                            {% endif %}
-                        </a>
-                        <div class="dropdown-content">
-                            <a href="{{ url_for('user_profile', username=current_user.username) }}">プロフィール</a>
-                            <a href="{{ url_for('edit_profile', username=current_user.username) }}">プロフィールの編集</a>
-                            <a href="{{ url_for('show_bookmarks') }}">ブックマーク一覧</a>
-                            {% if current_user.is_admin %}
-                                <a href="{{ url_for('admin_dashboard') }}">管理者ダッシュボード</a>
-                            {% endif %}
-                            <a href="{{ url_for('logout') }}">ログアウト</a>
-                        </div>
-                    </div>
-                {% else %}
-                    <div>
-                        <a href="{{ url_for('login') }}">ログイン</a> |
-                        <a href="{{ url_for('register') }}">ユーザー登録</a>
-                    </div>
-                {% endif %}
-            </div>
         </div>
-    </div>
     
     <main>
         <div class="container">
@@ -616,24 +564,23 @@
         </div>
     </main>
 
-<div id="editor-overlay" class="hidden">
-    <div id="editor-modal">
-        <textarea id="modal-textarea"></textarea>
-        <button id="modal-done-btn">完了</button>
+    <div id="editor-overlay" class="hidden">
+        <div id="editor-modal">
+            <textarea id="modal-textarea"></textarea>
+            <button id="modal-done-btn">完了</button>
+        </div>
     </div>
-</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-    // --- ヘッダーのユーザーメニューのドロップダウン処理 ---
+    // --- ヘッダーのドロップダウン処理 ---
     const headerDropdownContainer = document.querySelector('.dropdown-container');
     if (headerDropdownContainer) {
         const headerDropdownContent = headerDropdownContainer.querySelector('.dropdown-content');
         if (headerDropdownContent) {
-            // アイコン部分をクリックした時だけメニューを開閉
             headerDropdownContainer.querySelector('a').addEventListener('click', function(event) {
-                event.preventDefault(); // リンクの遷移を防ぐ
+                event.preventDefault();
                 event.stopPropagation();
                 const isHidden = headerDropdownContent.style.display === 'none' || headerDropdownContent.style.display === '';
                 headerDropdownContent.style.display = isHidden ? 'block' : 'none';
@@ -641,7 +588,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- 「新しい投稿をする」ボタンの表示/非表示処理 ---
+    // --- 「新しい投稿をする」ボタンの処理 ---
     const toggleButton = document.getElementById('toggle-post-form-btn');
     const postFormContainer = document.getElementById('post-form-container');
     if (toggleButton && postFormContainer) {
@@ -657,53 +604,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- テンプレート機能の処理 ---
     const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
-    for (const dropdown of allTemplateDropdowns) {
+    allTemplateDropdowns.forEach(dropdown => {
         const selectBtn = dropdown.querySelector('.template-select-btn');
         const dropdownContent = dropdown.querySelector('.template-dropdown-content');
-
-        if (selectBtn && dropdownContent) {
-            // ボタンをクリックしたら、ドロップダウンを開閉する
+        if(selectBtn && dropdownContent) {
             selectBtn.addEventListener('click', function(event) {
-                event.stopPropagation(); // 他のクリックイベントに影響させない
-                // クリックされたメニューの状態をトグル（表示/非表示を切り替え）
+                event.stopPropagation();
                 dropdownContent.classList.toggle('hidden');
             });
         }
-    }
-
-    // --- テンプレートの各項目をクリックした時の処理 ---
+    });
     if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
-        const allTemplateItems = document.querySelectorAll('.template-item');
-        allTemplateItems.forEach(item => {
+        document.querySelectorAll('.template-item').forEach(item => {
             item.addEventListener('click', function(event) {
-                // 1. デフォルトのリンク動作を停止
                 event.preventDefault();
-                console.log("テンプレート項目がクリックされました:", item.textContent);
-
-                // 2. data-index属性からテンプレートの情報を取得
                 const templateIndex = parseInt(item.dataset.index, 10);
                 const template = TEMPLATES_DATA[templateIndex];
-                console.log("選択されたテンプレートのデータ:", template);
-
                 if (template) {
-                    // 3. ページ内のタイトルと本文の入力欄を探す
                     const titleInput = document.querySelector('input[name="title"]');
                     const contentTextarea = document.querySelector('textarea[name="content"]');
-
-                    // 4. 入力欄が見つかったら、値を上書き（元の中身は消えます）
-                    if (titleInput && contentTextarea) {
-                        console.log("入力欄に値を設定します。");
-                        titleInput.value = template.title;
-                        contentTextarea.value = template.body;
-                        console.log("自動入力を完了しました。");
-                    } else {
-                        console.error("エラー: タイトルまたは本文の入力欄が見つかりません。");
-                    }
-                } else {
-                    console.error("エラー: テンプレートのデータが見つかりません。");
+                    if (titleInput) titleInput.value = template.title;
+                    if (contentTextarea) contentTextarea.value = template.body;
                 }
-
-                // 5. 最後にドロップダウンメニューを閉じる
                 const parentDropdownContent = item.closest('.template-dropdown-content');
                 if (parentDropdownContent) {
                     parentDropdownContent.classList.add('hidden');
@@ -711,36 +633,34 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+    
+    // --- 【修正済み】専用編集画面（モーダル）の処理 ---
+    const editorOverlay = document.getElementById('editor-overlay');
+    if (editorOverlay) {
+        const modalTextarea = document.getElementById('modal-textarea');
+        const modalDoneBtn = document.getElementById('modal-done-btn');
+        let activeTextarea = null;
 
-   // --- 専用編集画面（モーダル）の処理 ---
-const editorOverlay = document.getElementById('editor-overlay');
-const modalTextarea = document.getElementById('modal-textarea');
-const modalDoneBtn = document.getElementById('modal-done-btn');
-let activeTextarea = null; // どのテキストエリアを編集中か記憶する変数
+        document.querySelectorAll('textarea[name="content"]').forEach(textarea => {
+            textarea.addEventListener('focus', (e) => {
+                e.preventDefault();
+                activeTextarea = e.target;
+                modalTextarea.value = activeTextarea.value;
+                editorOverlay.classList.remove('hidden');
+                modalTextarea.focus();
+            });
+        });
 
-// ページ内のすべてのコメント入力欄などを対象にする
-document.querySelectorAll('textarea[name="content"]').forEach(textarea => {
-    // テキストエリアがタップされた時の処理
-    textarea.addEventListener('focus', (e) => {
-        e.preventDefault(); // デフォルトのキーボード表示を一旦停止
-
-        activeTextarea = e.target; // 編集中テキストエリアを記憶
-        modalTextarea.value = activeTextarea.value; // 内容をモーダルにコピー
-        editorOverlay.classList.remove('hidden'); // 編集画面を表示
-        modalTextarea.focus(); // 編集画面のテキストエリアにフォーカス
-    });
-});
-
-// 「完了」ボタンが押された時の処理
-if (modalDoneBtn) {
-    modalDoneBtn.addEventListener('click', () => {
-        if (activeTextarea) {
-            activeTextarea.value = modalTextarea.value; // モーダルの内容を元のテキストエリアに反映
+        if (modalDoneBtn) {
+            modalDoneBtn.addEventListener('click', () => {
+                if (activeTextarea) {
+                    activeTextarea.value = modalTextarea.value;
+                }
+                editorOverlay.classList.add('hidden');
+                activeTextarea = null;
+            });
         }
-        editorOverlay.classList.add('hidden'); // 編集画面を隠す
-        activeTextarea = null; // 編集中テキストエリアの記憶をリセット
-    });
-}
+    }
 
     // --- ブックマークボタンの処理 ---
     document.querySelectorAll('.bookmark-toggle-btn').forEach(button => {
@@ -749,7 +669,6 @@ if (modalDoneBtn) {
             const form = this.closest('.bookmark-form');
             const postId = form.dataset.postId;
             const url = `{{ url_for('bookmark_post', post_id=0) }}`.slice(0, -1) + postId;
-
             fetch(url, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
@@ -769,16 +688,12 @@ if (modalDoneBtn) {
         });
     });
 
-    // --- 画面のどこかをクリックした時に開いているドロップダウンをすべて閉じる処理 ---
+    // --- ドロップダウンを閉じるグローバルなクリック処理 ---
     document.addEventListener('click', function(event) {
-        // ヘッダーのドロップダウンを閉じる
         if (headerDropdownContainer && !headerDropdownContainer.contains(event.target)) {
             const content = headerDropdownContainer.querySelector('.dropdown-content');
             if (content) content.style.display = 'none';
         }
-
-        // テンプレートのドロップダウンを閉じる
-        // クリックされたのが .template-dropdown の内側でなければ実行
         if (!event.target.closest('.template-dropdown')) {
             document.querySelectorAll('.template-dropdown-content').forEach(content => {
                 content.classList.add('hidden');
