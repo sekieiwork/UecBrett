@@ -634,7 +634,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // --- 【修正済み】専用編集画面（モーダル）の処理 ---
+    // --- 【一時的に無効化】専用編集画面（モーダル）の処理 ---
+    /*
     const editorOverlay = document.getElementById('editor-overlay');
     if (editorOverlay) {
         const modalTextarea = document.getElementById('modal-textarea');
@@ -642,7 +643,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let activeTextarea = null;
 
         document.querySelectorAll('textarea[name="content"]').forEach(textarea => {
-            textarea.addEventListener('focus', (e) => {
+            textarea.addEventListener('click', (e) => {
                 e.preventDefault();
                 activeTextarea = e.target;
                 modalTextarea.value = activeTextarea.value;
@@ -654,13 +655,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (modalDoneBtn) {
             modalDoneBtn.addEventListener('click', () => {
                 if (activeTextarea) {
-                    activeTextarea.value = modalTextarea.value;
+                    activeTextarea.value = activeTextarea.value;
                 }
                 editorOverlay.classList.add('hidden');
                 activeTextarea = null;
             });
         }
     }
+    */
 
     // --- ブックマークボタンの処理 ---
     document.querySelectorAll('.bookmark-toggle-btn').forEach(button => {
