@@ -80,8 +80,10 @@
     }
     
     .auto-resize-textarea {
-    overflow: hidden; /* 計算誤差による一瞬のスクロールバーを隠すため */
-	}
+    overflow-y: auto;
+    resize: none;       /* ここを 'none' に変更 */
+    min-height: 120px;
+}
 
     /* 投稿・コメントの本文表示エリア */
     .post-content, .comment-content {
