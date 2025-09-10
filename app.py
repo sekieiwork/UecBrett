@@ -299,11 +299,13 @@ def delete_post(post_id):
 @login_required
 def delete_comment(comment_id):
     comment = Comment.query.get_or_404(comment_id)
-    post_id = comment.post_id
+    post_id = comment.post_id # 投稿IDを先に取得しておく
     if comment.commenter == current_user or comment.post.author == current_user or current_user.is_admin:
         db.session.delete(comment)
         db.session.commit()
-        return redirect(url_for('post_detail', post_id=post_id))
+        # リダイレクトの代わりに、成功のJSONを返す
+        remaining_comments = Comment.query.filter_by(post_id=post_id).count()
+        return jsonify({'status': 'success', 'remaining_comments': remaining_comments})
     else:
         abort(403)
 

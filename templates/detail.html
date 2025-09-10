@@ -67,9 +67,9 @@
         </div>
 
         <div class="comments">
-            <h3>コメント ({{ post.comments|length }})</h3>
+            <h3 id="comment-count-header">コメント ({{ post.comments|length }})</h3>
             {% for comment in post.comments %}
-            <div class="comment-item">
+            <div class="comment-item" id="comment-{{ comment.id }}">
                 <div class="comment-header">
                     <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="user-icon-link">
                         {% if comment.commenter.icon_url %}
@@ -86,7 +86,7 @@
                         {% if current_user.is_authenticated and (current_user == comment.commenter or current_user == post.author or current_user.is_admin) %}
                             <div class="comment-actions">
                                 <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="POST">
-                                    <button type="submit" class="delete-button" onclick="return confirm('本当に削除しますか？');">削除</button>
+                                    <button type="button" class="delete-button delete-comment-btn" data-comment-id="{{ comment.id }}">削除</button>
                                 </form>
                             </div>
                         {% endif %}

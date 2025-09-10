@@ -100,8 +100,8 @@
         white-space: pre-wrap;
     }
 
-     .post-content{line-height: normal; /* 表示行間を詰める */}
-     .comment-content{line-height: 0.8; /* 表示行間を詰める */}
+     .post-content{line-height: normal; }
+     .comment-content{line-height: 0.7; }
 
     /* ▲▲▲ ここまで修正 ▲▲▲ */
 
@@ -627,6 +627,45 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => console.error('Error:', error));
         });
     });
+
+// --- コメント削除処理 ---
+document.querySelectorAll('.delete-comment-btn').forEach(button => {
+    button.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const commentId = this.dataset.commentId;
+        const url = `/comment/${commentId}/delete`; // url_forの代わりに直接URLを構築
+
+        if (confirm('本当にこのコメントを削除しますか？')) {
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // 成功したら、画面からコメントを消す
+                    const commentElement = document.getElementById(`comment-${commentId}`);
+                    if (commentElement) {
+                        commentElement.style.opacity = '0';
+                        setTimeout(() => commentElement.remove(), 300); // フェードアウトしながら消す
+                    }
+                    // コメント数を更新
+                    const commentCountHeader = document.getElementById('comment-count-header');
+                    if (commentCountHeader) {
+                        commentCountHeader.innerText = `コメント (${data.remaining_comments})`;
+                    }
+                } else {
+                    alert('コメントの削除に失敗しました。');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    });
+});
 
     // --- ドロップダウンを閉じるグローバルなクリック処理 ---
     document.addEventListener('click', function(event) {
