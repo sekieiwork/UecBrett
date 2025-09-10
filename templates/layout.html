@@ -86,9 +86,15 @@
     .comment-textarea {
         min-height: 80px; /* 最低限の高さを確保 */
     }
+
+    /* 4. 新規投稿フォーム用の追加スタイル */
+    .textarea-content {
+        min-height: 100px;
+        /* max-heightを削除して高さ制限をなくす */
+    }
     
-    /* --- 表示される投稿・コメント本文の行間設定 --- */
-    .post-content, .comment-content {
+       /* 5. 表示される投稿・コメント本文の行間設定 */
+    .post-content {
         max-height: 100px;
         overflow-y: auto;
         padding: 1em;
@@ -98,10 +104,21 @@
         width: 100%;
         box-sizing: border-box;
         white-space: pre-wrap;
+        line-height: normal; /* お客様の設定を反映 */
     }
 
-     .post-content{line-height: normal; }
-     .comment-content{line-height: 0.7; }
+     .comment-content {
+        max-height: 100px;
+        overflow-y: auto;
+        padding: 1em;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        margin-top: 10px;
+        width: 100%;
+        box-sizing: border-box;
+        white-space: pre-wrap;
+        line-height: 0.7; /* お客様の設定を反映 */
+     }
 
     /* ▲▲▲ ここまで修正 ▲▲▲ */
 
@@ -598,8 +615,8 @@ if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
         });
     });
 }
-    
-    // --- 本文入力用のテキストエリア自動リサイズ処理 ---
+
+// --- 本文入力用のテキストエリア自動リサイズ処理 ---
     document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
         let twin = document.createElement('div');
         const style = window.getComputedStyle(textarea);
@@ -629,7 +646,6 @@ if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
         textarea.addEventListener('input', autoResize);
         setTimeout(autoResize, 100); 
     });
-
 
     // --- ブックマークボタンの処理 ---
     document.querySelectorAll('.bookmark-toggle-btn').forEach(button => {
@@ -708,18 +724,30 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
     });
 });
 
-// --- 画像アップロード時のファイル名表示処理 ---
-const imageInput = document.getElementById('image');
-if (imageInput) {
-    const filenameDisplay = document.getElementById('image-filename-display');
-    imageInput.addEventListener('change', function() {
-        if (this.files && this.files.length > 0) {
-            filenameDisplay.textContent = this.files[0].name;
-        } else {
-            filenameDisplay.textContent = '';
+    // --- 画像アップロード時のファイル名表示処理 ---
+    const imageInput = document.getElementById('image');
+    if (imageInput) {
+        const filenameDisplay = document.getElementById('image-filename-display');
+        if (filenameDisplay) { // edit.htmlには無い場合があるのでチェック
+            imageInput.addEventListener('change', function() {
+                if (this.files && this.files.length > 0) {
+                    filenameDisplay.textContent = this.files[0].name;
+                } else {
+                    filenameDisplay.textContent = '';
+                }
+            });
         }
-    });
-}
+
+        // edit.html用のファイル名表示処理を追加
+        const editFilenameDisplay = document.getElementById('edit-image-filename-display');
+        if (editFilenameDisplay) {
+             imageInput.addEventListener('change', function() {
+                if (this.files && this.files.length > 0) {
+                    editFilenameDisplay.textContent = `選択中: ${this.files[0].name}`;
+                }
+            });
+        }
+    }
 
     // --- ドロップダウンを閉じるグローバルなクリック処理 ---
     document.addEventListener('click', function(event) {

@@ -26,13 +26,28 @@
             {{ form.content.label }}<br>
             {{ form.content(cols=40, rows=5, class="auto-resize-textarea") }}
         </div>
+        
+        <div class="form-field">
+            {{ form.image.label }}<br>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label for="image" style="cursor: pointer;">
+                    <img src="{{ url_for('static', filename='icons/image_upload.png') }}" alt="画像アップロード" style="width: 24px; height: 24px; vertical-align: middle;">
+                </label>
+                {{ form.image(style="display: none;") }}
+                <span id="edit-image-filename-display" style="font-size: 0.8em; color: #6c757d;">
+                    {% if post.image_url %}
+                        現在設定中の画像: {{ post.image_url.split('/')[-1] }}
+                    {% endif %}
+                </span>
+            </div>
+            {% if post.image_url %}
+                <div style="margin-top: 10px;">
+                    <img src="{{ post.image_url }}" alt="現在の画像" class="post-image" style="max-width: 200px;">
+                </div>
+            {% endif %}
+        </div>
         <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin-top: 1em;">
             {{ form.submit(value='更新') }}
-            <label for="image" style="cursor: pointer;">
-        	<img src="{{ url_for('static', filename='icons/image_upload.png') }}" alt="画像アップロード" style="width: 24px; height: 24px; vertical-align: middle;">
-    	　　</label>
-    	    <span id="image-filename-display" style="font-size: 0.8em; color: #6c757d;"></span>
-            {{ form.image(style="display: none;") }}
         </div>
     </form>
 {% endblock %}
