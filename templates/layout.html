@@ -532,17 +532,13 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
- // --- 1. 専門家（ヘルパー関数）の定義 ---
+// --- 1. 専門家（ヘルパー関数）の定義 ---
     const resizeTextarea = (textarea) => {
         if (!textarea) return;
         if (!textarea.twin) {
             let twin = document.createElement('div');
             const style = window.getComputedStyle(textarea);
-            [
-                'border', 'boxSizing', 'fontFamily', 'fontSize', 'fontWeight',
-                'letterSpacing', 'lineHeight', 'padding', 'textDecoration',
-                'textIndent', 'textTransform', 'whiteSpace', 'wordSpacing', 'width'
-            ].forEach(prop => { twin.style[prop] = style[prop]; });
+            ['border','boxSizing','fontFamily','fontSize','fontWeight','letterSpacing','lineHeight','padding','textDecoration','textIndent','textTransform','whiteSpace','wordSpacing','width'].forEach(prop => { twin.style[prop] = style[prop]; });
             twin.style.visibility = 'hidden';
             twin.style.position = 'absolute';
             twin.style.top = '0';
@@ -561,16 +557,16 @@ document.addEventListener('DOMContentLoaded', function() {
         textarea.style.height = (textarea.twin.scrollHeight + borderTopWidth + borderBottomWidth) + 'px';
     };
 
+
     // --- 2. 各機能のイベント設定 ---
 
-    // ヘッダーのドロップダウン処理
+ // ヘッダーのドロップダウン処理
     const headerDropdownContainer = document.querySelector('.dropdown-container');
     if (headerDropdownContainer) {
         const headerDropdownContent = headerDropdownContainer.querySelector('.dropdown-content');
         if (headerDropdownContent) {
             headerDropdownContainer.querySelector('a').addEventListener('click', function(event) {
-                event.preventDefault();
-                event.stopPropagation();
+                event.preventDefault(); event.stopPropagation();
                 const isHidden = headerDropdownContent.style.display === 'none' || headerDropdownContent.style.display === '';
                 headerDropdownContent.style.display = isHidden ? 'block' : 'none';
             });
@@ -591,18 +587,29 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // テンプレート機能の処理
-    const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
-    allTemplateDropdowns.forEach(dropdown => {
-        const selectBtn = dropdown.querySelector('.template-select-btn');
-        const dropdownContent = dropdown.querySelector('.template-dropdown-content');
-        if(selectBtn && dropdownContent) {
-            selectBtn.addEventListener('click', function(event) {
-                event.stopPropagation();
-                dropdownContent.classList.toggle('hidden');
-            });
+ // --- 本文入力用のテキストエリア自動リサイズ処理 ---
+    document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
+        
+        function autoResize() {
+            textarea.style.height = 'auto';
+            const maxHeight = parseInt(window.getComputedStyle(textarea).maxHeight, 10);
+            const scrollHeight = textarea.scrollHeight;
+
+            if (maxHeight > 0 && scrollHeight > maxHeight) {
+                textarea.style.height = maxHeight + 'px';
+                textarea.style.overflowY = 'auto';
+            } else {
+                textarea.style.height = scrollHeight + 'px';
+                textarea.style.overflowY = 'hidden';
+            }
         }
+
+        textarea.addEventListener('input', autoResize);
+        setTimeout(autoResize, 100); 
     });
+
+ // --- テンプレート機能の処理 ---
+    // ▼▼▼ 修正点: contentTextareaのセレクタをより具体的に ▼▼▼
     if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
         document.querySelectorAll('.template-item').forEach(item => {
             item.addEventListener('click', function(event) {
@@ -610,12 +617,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 const templateIndex = parseInt(item.dataset.index, 10);
                 const template = TEMPLATES_DATA[templateIndex];
                 if (!template) return;
-                const titleInput = document.querySelector('input[name="title"]');
-                const contentTextarea = document.querySelector('textarea[name="content"]');
+
+                const form = this.closest('form, .post-form'); // テンプレートボタンが属するフォームを探す
+                if (!form) return;
+
+                const titleInput = form.querySelector('input[name="title"]');
+                const contentTextarea = form.querySelector('textarea[name="content"]');
+
                 if (template.name === 'UECreview') {
                     const countStr = prompt('何科目書きますか？', '1');
                     if (countStr) {
-                        const count = parseInt(countStr, 10);
+                        const halfWidthStr = countStr.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+                        const count = parseInt(halfWidthStr, 10);
                         if (!isNaN(count) && count > 0) {
                             let newBody = '';
                             for (let i = 0; i < count; i++) {
@@ -625,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (titleInput) titleInput.value = template.title;
                             if (contentTextarea) {
                                 contentTextarea.value = newBody;
-                                resizeTextarea(contentTextarea);
+                                contentTextarea.dispatchEvent(new Event('input'));
                             }
                         } else { alert('有効な数字を入力してください。'); }
                     }
@@ -633,7 +646,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (titleInput) titleInput.value = template.title;
                     if (contentTextarea) {
                         contentTextarea.value = template.body;
-                        resizeTextarea(contentTextarea);
+                        contentTextarea.dispatchEvent(new Event('input'));
                     }
                 }
                 const parentDropdownContent = item.closest('.template-dropdown-content');
@@ -641,7 +654,48 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    
+
+    // --- 【最終修正版】スマホとPCで動作を分ける ---
+    const isMobile = window.innerWidth <= 768;
+    const editorOverlay = document.getElementById('editor-overlay');
+
+    if (isMobile && editorOverlay) {
+        // --- スマホの場合：モーダル処理 ---
+        const modalTextarea = document.getElementById('modal-textarea');
+        const modalDoneBtn = document.getElementById('modal-done-btn');
+        let activeTextarea = null;
+
+        document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
+            textarea.addEventListener('click', (e) => {
+                e.preventDefault();
+                activeTextarea = e.target;
+                modalTextarea.value = activeTextarea.value;
+                editorOverlay.classList.remove('hidden');
+                modalTextarea.focus();
+            });
+        });
+
+        if (modalDoneBtn) {
+            modalDoneBtn.addEventListener('click', () => {
+                if (activeTextarea) {
+                    activeTextarea.value = modalTextarea.value;
+                    // 元のテキストエリアの高さも念のため更新
+                    resizeTextarea(activeTextarea);
+                }
+                editorOverlay.classList.add('hidden');
+                activeTextarea = null;
+            });
+        }
+
+    } else {
+        // --- PCの場合：自動リサイズ処理 ---
+        document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
+            textarea.addEventListener('input', () => resizeTextarea(textarea));
+            setTimeout(() => resizeTextarea(textarea), 100); 
+        });
+    }
+
+
     // 手動入力時の自動リサイズ処理
     document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
         textarea.addEventListener('input', () => resizeTextarea(textarea));
