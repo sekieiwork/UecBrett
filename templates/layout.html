@@ -546,7 +546,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
-    // --- テンプレートの各項目をクリックした時の処理 ---
+
+// --- テンプレートの各項目をクリックした時の処理 ---
 if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
     document.querySelectorAll('.template-item').forEach(item => {
         item.addEventListener('click', function(event) {
@@ -559,41 +560,36 @@ if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
             const titleInput = document.querySelector('input[name="title"]');
             const contentTextarea = document.querySelector('textarea[name="content"]');
 
-            // --- ▼▼▼ ここからが新しいロジック ▼▼▼ ---
-
-            // もし選択されたテンプレートが 'UECreview' だったら
             if (template.name === 'UECreview') {
                 const countStr = prompt('何科目書きますか？', '1');
-                if (countStr) { // ユーザーがキャンセルしなかった場合
+                if (countStr) {
                     const count = parseInt(countStr, 10);
                     if (!isNaN(count) && count > 0) {
                         let newBody = '';
                         for (let i = 0; i < count; i++) {
                             newBody += template.body;
                             if (i < count - 1) {
-                                newBody += '\n\n'; // テンプレートの間に空行を2つ入れる
+                                newBody += '\n\n';
                             }
                         }
                         if (titleInput) titleInput.value = template.title;
                         if (contentTextarea) {
                             contentTextarea.value = newBody;
-                            // 自動リサイズをトリガー
-                            contentTextarea.dispatchEvent(new Event('input'));
+                            // ▼▼▼ ここが修正点です ▼▼▼
+                            contentTextarea.dispatchEvent(new Event('input')); // 高さ調整を強制的に実行
                         }
                     } else {
                         alert('有効な数字を入力してください。');
                     }
                 }
             } else {
-                // 'UECreview' 以外のテンプレートは、これまで通りそのまま貼り付け
                 if (titleInput) titleInput.value = template.title;
                 if (contentTextarea) {
                     contentTextarea.value = template.body;
-                    contentTextarea.dispatchEvent(new Event('input'));
+                    // ▼▼▼ こちらも同様に修正します ▼▼▼
+                    contentTextarea.dispatchEvent(new Event('input')); // 高さ調整を強制的に実行
                 }
             }
-
-            // --- ▲▲▲ ここまでが新しいロジック ▲▲▲ ---
 
             const parentDropdownContent = item.closest('.template-dropdown-content');
             if (parentDropdownContent) {
