@@ -29,8 +29,9 @@
         <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin-top: 1em;">
             {{ form.submit(value='更新') }}
             <label for="image" style="cursor: pointer;">
-                <img src="{{ url_for('static', filename='icons/image_upload.png') }}" alt="画像アップロード" style="width: 24px; height: 24px; vertical-align: middle;">
-            </label>
+        	<img src="{{ url_for('static', filename='icons/image_upload.png') }}" alt="画像アップロード" style="width: 24px; height: 24px; vertical-align: middle;">
+    	　　</label>
+    	    <span id="image-filename-display" style="font-size: 0.8em; color: #6c757d;"></span>
             {{ form.image(style="display: none;") }}
         </div>
     </form>

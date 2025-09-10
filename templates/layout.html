@@ -546,29 +546,62 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
-    if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
-        document.querySelectorAll('.template-item').forEach(item => {
-            item.addEventListener('click', function(event) {
-                event.preventDefault();
-                const templateIndex = parseInt(item.dataset.index, 10);
-                const template = TEMPLATES_DATA[templateIndex];
-                if (template) {
-                    const titleInput = document.querySelector('input[name="title"]');
-                    const contentTextarea = document.querySelector('textarea[name="content"]');
-                    if (titleInput) titleInput.value = template.title;
-                    if (contentTextarea) {
-                        contentTextarea.value = template.body;
-                        // 自動リサイズをトリガー
-                        contentTextarea.dispatchEvent(new Event('input'));
+    // --- テンプレートの各項目をクリックした時の処理 ---
+if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
+    document.querySelectorAll('.template-item').forEach(item => {
+        item.addEventListener('click', function(event) {
+            event.preventDefault();
+            const templateIndex = parseInt(item.dataset.index, 10);
+            const template = TEMPLATES_DATA[templateIndex];
+
+            if (!template) return;
+
+            const titleInput = document.querySelector('input[name="title"]');
+            const contentTextarea = document.querySelector('textarea[name="content"]');
+
+            // --- ▼▼▼ ここからが新しいロジック ▼▼▼ ---
+
+            // もし選択されたテンプレートが 'UECreview' だったら
+            if (template.name === 'UECreview') {
+                const countStr = prompt('何科目書きますか？', '1');
+                if (countStr) { // ユーザーがキャンセルしなかった場合
+                    const count = parseInt(countStr, 10);
+                    if (!isNaN(count) && count > 0) {
+                        let newBody = '';
+                        for (let i = 0; i < count; i++) {
+                            newBody += template.body;
+                            if (i < count - 1) {
+                                newBody += '\n\n'; // テンプレートの間に空行を2つ入れる
+                            }
+                        }
+                        if (titleInput) titleInput.value = template.title;
+                        if (contentTextarea) {
+                            contentTextarea.value = newBody;
+                            // 自動リサイズをトリガー
+                            contentTextarea.dispatchEvent(new Event('input'));
+                        }
+                    } else {
+                        alert('有効な数字を入力してください。');
                     }
                 }
-                const parentDropdownContent = item.closest('.template-dropdown-content');
-                if (parentDropdownContent) {
-                    parentDropdownContent.classList.add('hidden');
+            } else {
+                // 'UECreview' 以外のテンプレートは、これまで通りそのまま貼り付け
+                if (titleInput) titleInput.value = template.title;
+                if (contentTextarea) {
+                    contentTextarea.value = template.body;
+                    contentTextarea.dispatchEvent(new Event('input'));
                 }
-            });
+            }
+
+            // --- ▲▲▲ ここまでが新しいロジック ▲▲▲ ---
+
+            const parentDropdownContent = item.closest('.template-dropdown-content');
+            if (parentDropdownContent) {
+                parentDropdownContent.classList.add('hidden');
+            }
         });
-    }
+    });
+}
     
     // --- 本文入力用のテキストエリア自動リサイズ処理 ---
     document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
@@ -678,6 +711,19 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         }
     });
 });
+
+// --- 画像アップロード時のファイル名表示処理 ---
+const imageInput = document.getElementById('image');
+if (imageInput) {
+    const filenameDisplay = document.getElementById('image-filename-display');
+    imageInput.addEventListener('change', function() {
+        if (this.files && this.files.length > 0) {
+            filenameDisplay.textContent = this.files[0].name;
+        } else {
+            filenameDisplay.textContent = '';
+        }
+    });
+}
 
     // --- ドロップダウンを閉じるグローバルなクリック処理 ---
     document.addEventListener('click', function(event) {
