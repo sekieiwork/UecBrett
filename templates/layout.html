@@ -510,26 +510,6 @@
     }
 }
 
-/* layout.html の <style> タグ内に追加 */
-
-#editor-overlay {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background-color: rgba(0, 0, 0, 0.7); z-index: 2000;
-        display: flex; align-items: center; justify-content: center;
-    }
-    #editor-modal {
-        background-color: white; width: 90%; height: 70%; max-width: 600px;
-        padding: 1em; border-radius: 8px; display: flex; flex-direction: column;
-    }
-    #modal-textarea {
-        width: 100%; height: 100%; flex-grow: 1; border: 1px solid #ccc;
-        resize: none; margin-bottom: 1em; padding: 0.5em; box-sizing: border-box; font-size: 1em;
-    }
-    #modal-done-btn {
-        padding: 0.8em 1em; border: none; border-radius: 4px;
-        background-color: #007bff; color: white; cursor: pointer;
-    }
-    /* --- ここまでモーダルのCSS --- */
     </style>
 </head>
 <body>
@@ -592,13 +572,6 @@
             {% block content %}{% endblock %}
         </div>
     </main>
-
-    <div id="editor-overlay-disabled" class="hidden">
-        <div id="editor-modal">
-            <textarea id="modal-textarea"></textarea>
-            <button id="modal-done-btn">完了</button>
-        </div>
-    </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -663,34 +636,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // --- 【最終修正版】専用編集画面（モーダル）の処理 ---
-    const editorOverlay = document.getElementById('editor-overlay');
-    if (editorOverlay) {
-        const modalTextarea = document.getElementById('modal-textarea');
-        const modalDoneBtn = document.getElementById('modal-done-btn');
-        let activeTextarea = null;
-
-        document.querySelectorAll('textarea[name="content"]').forEach(textarea => {
-            // ▼▼▼ ここが修正点です ▼▼▼
-            textarea.addEventListener('click', (e) => {
-                e.preventDefault();
-                activeTextarea = e.target;
-                modalTextarea.value = activeTextarea.value;
-                editorOverlay.classList.remove('hidden');
-                modalTextarea.focus();
-            });
-        });
-
-        if (modalDoneBtn) {
-            modalDoneBtn.addEventListener('click', () => {
-                if (activeTextarea) {
-                    activeTextarea.value = modalTextarea.value;
-                }
-                editorOverlay.classList.add('hidden');
-                activeTextarea = null;
-            });
-        }
-    }
 
     // --- ブックマークボタンの処理 ---
     document.querySelectorAll('.bookmark-toggle-btn').forEach(button => {
