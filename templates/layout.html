@@ -647,20 +647,32 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // 成功したら、画面からコメントを消す
-                    const commentElement = document.getElementById(`comment-${commentId}`);
-                    if (commentElement) {
-                        commentElement.style.opacity = '0';
-                        setTimeout(() => commentElement.remove(), 300); // フェードアウトしながら消す
-                    }
-                    // コメント数を更新
-                    const commentCountHeader = document.getElementById('comment-count-header');
-                    if (commentCountHeader) {
-                        commentCountHeader.innerText = `コメント (${data.remaining_comments})`;
-                    }
-                } else {
-                    alert('コメントの削除に失敗しました。');
-                }
+    	// 画面からコメント要素を消す
+    	const commentElement = document.getElementById(`comment-${commentId}`);
+    	if (commentElement) {
+        	commentElement.style.opacity = '0';
+        	setTimeout(() => commentElement.remove(), 300);
+    	}
+
+    	// ▼▼▼ ここから修正 ▼▼▼
+
+    	// コメント一覧の見出しの数を更新
+    	const commentCountHeader = document.getElementById('comment-count-header');
+    	if (commentCountHeader) {
+        	commentCountHeader.innerText = `コメント (${data.remaining_comments})`;
+    	}
+
+    	// タイトル横のコメント数を更新
+    	const titleCommentCount = document.getElementById('title-comment-count');
+    	if (titleCommentCount) {
+       	 titleCommentCount.innerText = `コメント数(${data.remaining_comments})`;
+    	}
+
+    	// ▲▲▲ ここまで修正 ▲▲▲
+
+	} else {
+   	 alert('コメントの削除に失敗しました。');
+	}
             })
             .catch(error => console.error('Error:', error));
         }

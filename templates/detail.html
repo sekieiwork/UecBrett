@@ -8,10 +8,10 @@
             <a href="{{ url_for('edit_post', post_id=post.id) }}" style="position: absolute; top: 1.5em; right: 1.5em; font-size: 0.9em;">編集</a>
         {% endif %}
         
-        <h1>
-            {{ post.title }}
-            <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
-        </h1>
+       <h1>
+    	{{ post.title }}
+    	<span id="title-comment-count" style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
+	</h1>
 
         {% if post.image_url %}
         <div class="post-image-container" style="margin-bottom: 15px;">
