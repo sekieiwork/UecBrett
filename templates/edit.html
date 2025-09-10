@@ -27,9 +27,9 @@
             {{ form.content(cols=40, rows=5, class="auto-resize-textarea") }}
         </div>
         
-        <div class="form-field">
-            {{ form.image.label }}<br>
-            <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="form-field" style="margin-top: 1em;">
+            <label for="image">画像を変更</label><br>
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
                 <label for="image" style="cursor: pointer;">
                     <img src="{{ url_for('static', filename='icons/image_upload.png') }}" alt="画像アップロード" style="width: 24px; height: 24px; vertical-align: middle;">
                 </label>
@@ -37,16 +37,20 @@
                 <span id="edit-image-filename-display" style="font-size: 0.8em; color: #6c757d;">
                     {% if post.image_url %}
                         現在設定中の画像: {{ post.image_url.split('/')[-1] }}
+                    {% else %}
+                        画像がありません
                     {% endif %}
                 </span>
             </div>
             {% if post.image_url %}
                 <div style="margin-top: 10px;">
+                    <p style="font-size: 0.8em; margin-bottom: 5px;">現在の画像:</p>
                     <img src="{{ post.image_url }}" alt="現在の画像" class="post-image" style="max-width: 200px;">
                 </div>
             {% endif %}
         </div>
-        <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin-top: 1em;">
+        
+        <div style="margin-top: 1.5em;">
             {{ form.submit(value='更新') }}
         </div>
     </form>

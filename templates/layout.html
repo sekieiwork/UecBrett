@@ -523,41 +523,13 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-    // --- ヘッダーのドロップダウン処理 ---
-    const headerDropdownContainer = document.querySelector('.dropdown-container');
-    if (headerDropdownContainer) {
-        const headerDropdownContent = headerDropdownContainer.querySelector('.dropdown-content');
-        if (headerDropdownContent) {
-            headerDropdownContainer.querySelector('a').addEventListener('click', function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                const isHidden = headerDropdownContent.style.display === 'none' || headerDropdownContent.style.display === '';
-                headerDropdownContent.style.display = isHidden ? 'block' : 'none';
-            });
-        }
-    }
+    // --- 1. 専門家（ヘルパー関数）の定義 ---
 
-    // --- 「新しい投稿をする」ボタンの処理 ---
-    const toggleButton = document.getElementById('toggle-post-form-btn');
-    const postFormContainer = document.getElementById('post-form-container');
-    if (toggleButton && postFormContainer) {
-        toggleButton.addEventListener('click', function() {
-            postFormContainer.classList.toggle('hidden');
-            if (postFormContainer.classList.contains('hidden')) {
-                toggleButton.innerHTML = '新しい投稿をする <i class="fas fa-plus"></i>';
-            } else {
-                toggleButton.innerHTML = 'フォームを閉じる <i class="fas fa-minus"></i>';
-            }
-        });
-    }
-
-    // --- ▼▼▼ ここからが新しいリサイズとテンプレートのコード ▼▼▼ ---
-
-    // 1. テキストエリアをリサイズするための専門家（関数）を定義
+    // テキストエリアをリサイズするための専門家
     const resizeTextarea = (textarea) => {
         if (!textarea) return;
 
-        // 各テキストエリアに「双子」要素がなければ作成し、関連付ける
+        // 各テキストエリアに一度だけ「双子」要素を作成し、関連付ける
         if (!textarea.twin) {
             let twin = document.createElement('div');
             const style = window.getComputedStyle(textarea);
@@ -578,16 +550,47 @@ document.addEventListener('DOMContentLoaded', function() {
             textarea.twin = twin;
         }
         
-        // 双子要素を使って高さを計算し、テキストエリアに適用
         let text = textarea.value.replace(/\n/g, '<br/>');
         if (textarea.value.slice(-1) === '\n') {
             text += '&nbsp;';
         }
         textarea.twin.innerHTML = text;
-        textarea.style.height = textarea.twin.scrollHeight + 'px';
+
+        // 計算された高さに、枠線の太さ(2px)を加えて誤差をなくす
+        textarea.style.height = (textarea.twin.scrollHeight + 2) + 'px';
     };
 
-    // 2. テンプレート機能の処理
+    // --- 2. 各機能のイベント設定 ---
+
+    // ヘッダーのドロップダウン処理
+    const headerDropdownContainer = document.querySelector('.dropdown-container');
+    if (headerDropdownContainer) {
+        const headerDropdownContent = headerDropdownContainer.querySelector('.dropdown-content');
+        if (headerDropdownContent) {
+            headerDropdownContainer.querySelector('a').addEventListener('click', function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                const isHidden = headerDropdownContent.style.display === 'none' || headerDropdownContent.style.display === '';
+                headerDropdownContent.style.display = isHidden ? 'block' : 'none';
+            });
+        }
+    }
+
+    // 「新しい投稿をする」ボタンの処理
+    const toggleButton = document.getElementById('toggle-post-form-btn');
+    const postFormContainer = document.getElementById('post-form-container');
+    if (toggleButton && postFormContainer) {
+        toggleButton.addEventListener('click', function() {
+            postFormContainer.classList.toggle('hidden');
+            if (postFormContainer.classList.contains('hidden')) {
+                toggleButton.innerHTML = '新しい投稿をする <i class="fas fa-plus"></i>';
+            } else {
+                toggleButton.innerHTML = 'フォームを閉じる <i class="fas fa-minus"></i>';
+            }
+        });
+    }
+
+    // テンプレート機能の処理
     const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
     allTemplateDropdowns.forEach(dropdown => {
         const selectBtn = dropdown.querySelector('.template-select-btn');
@@ -640,16 +643,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // 3. 手動入力時の自動リサイズ処理
+    // 手動入力時の自動リサイズ処理
     document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
         textarea.addEventListener('input', () => resizeTextarea(textarea));
         setTimeout(() => resizeTextarea(textarea), 100); 
     });
 
-    // --- ▲▲▲ ここまでが新しいリサイズとテンプレートのコード ▲▲▲ ---
-
-
-    // --- 画像アップロード時のファイル名表示処理 ---
+    // 画像アップロード時のファイル名表示処理
     const imageInput = document.getElementById('image');
     if (imageInput) {
         const filenameDisplay = document.getElementById('image-filename-display');
@@ -658,21 +658,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const file = this.files[0];
             const filename = file ? file.name : '';
             if (filenameDisplay) { filenameDisplay.textContent = filename; }
-            if (editFilenameDisplay) { editFilenameDisplay.textContent = file ? `選択中: ${filename}` : ''; }
+            if (editFilenameDisplay) { editFilenameDisplay.textContent = file ? `選択中: ${filename}` : `現在設定中の画像: {{ post.image_url.split('/')[-1] if post and post.image_url else '' }}`; }
         });
     }
 
-    // --- ブックマークボタンの処理 ---
+    // ブックマークボタンの処理
     document.querySelectorAll('.bookmark-toggle-btn').forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             const form = this.closest('.bookmark-form');
             const postId = form.dataset.postId;
             const url = `{{ url_for('bookmark_post', post_id=0) }}`.slice(0, -1) + postId;
-            fetch(url, {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
-            })
+            fetch(url, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' } })
             .then(response => response.json())
             .then(data => {
                 const iconSpan = document.getElementById(`bookmark-icon-${postId}`);
@@ -688,18 +685,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // --- コメント削除処理 ---
+    // コメント削除処理
     document.querySelectorAll('.delete-comment-btn').forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             const commentId = this.dataset.commentId;
             const url = `/comment/${commentId}/delete`;
-
             if (confirm('本当にこのコメントを削除しますか？')) {
-                fetch(url, {
-                    method: 'POST',
-                    headers: {'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json'}
-                })
+                fetch(url, { method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json'} })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
@@ -709,13 +702,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             setTimeout(() => commentElement.remove(), 300);
                         }
                         const commentCountHeader = document.getElementById('comment-count-header');
-                        if (commentCountHeader) {
-                            commentCountHeader.innerText = `コメント (${data.remaining_comments})`;
-                        }
+                        if (commentCountHeader) { commentCountHeader.innerText = `コメント (${data.remaining_comments})`; }
                         const titleCommentCount = document.getElementById('title-comment-count');
-                        if (titleCommentCount) {
-                            titleCommentCount.innerText = `コメント数(${data.remaining_comments})`;
-                        }
+                        if (titleCommentCount) { titleCommentCount.innerText = `コメント数(${data.remaining_comments})`; }
                     } else { alert('コメントの削除に失敗しました。'); }
                 })
                 .catch(error => console.error('Error:', error));
@@ -723,7 +712,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // --- ドロップダウンを閉じるグローバルなクリック処理 ---
+    // ドロップダウンを閉じるグローバルなクリック処理
     document.addEventListener('click', function(event) {
         if (headerDropdownContainer && !headerDropdownContainer.contains(event.target)) {
             const content = headerDropdownContainer.querySelector('.dropdown-content');
