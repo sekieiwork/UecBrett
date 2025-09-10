@@ -73,19 +73,28 @@
         box-sizing: border-box;
         border: 1px solid #ced4da;
         border-radius: 0.25rem;
-        line-height: 1.4; /* 行間を少し詰める */
-        resize: none;     /* 全ての手動リサイズを一旦禁止 */
+        line-height: 1.4;
     }
 
     /* 2. 本文入力・編集用の自動リサイズ設定 */
     .auto-resize-textarea {
-        overflow: hidden; /* スクロールバーを常に非表示にする */
+        resize: none;
+        overflow: hidden;
+        max-height: 400px; /* 最大の高さを400pxに設定 */
     }
 
     /* 3. コメント入力用の設定 (手動リサイズはなし) */
     .comment-textarea {
         min-height: 80px; /* 最低限の高さを確保 */
+	resize: none;
     }
+
+    /* auto-resize-textareaが最大高さに達した場合、スクロールバーを表示 */
+
+    .auto-resize-textarea:focus {
+        overflow-y: auto;
+    }
+
 
     /* 4. 新規投稿フォーム用の追加スタイル */
     .textarea-content {
@@ -607,7 +616,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
-    if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
+     if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
         document.querySelectorAll('.template-item').forEach(item => {
             item.addEventListener('click', function(event) {
                 event.preventDefault();
@@ -631,7 +640,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (titleInput) titleInput.value = template.title;
                             if (contentTextarea) {
                                 contentTextarea.value = newBody;
-                                resizeTextarea(contentTextarea);
+                                // inputイベントを発火させて、autoResizeをトリガー
+                                contentTextarea.dispatchEvent(new Event('input'));
                             }
                         } else { alert('有効な数字を入力してください。'); }
                     }
@@ -639,7 +649,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (titleInput) titleInput.value = template.title;
                     if (contentTextarea) {
                         contentTextarea.value = template.body;
-                        resizeTextarea(contentTextarea);
+                        // inputイベントを発火させて、autoResizeをトリガー
+                        contentTextarea.dispatchEvent(new Event('input'));
                     }
                 }
                 const parentDropdownContent = item.closest('.template-dropdown-content');
@@ -648,10 +659,34 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // 手動入力時の自動リサイズ処理
+// 本文入力用のテキストエリア自動リサイズ処理
     document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
-        textarea.addEventListener('input', () => resizeTextarea(textarea));
-        setTimeout(() => resizeTextarea(textarea), 100); 
+        
+        function autoResize() {
+            // 先に高さを一旦リセット
+            textarea.style.height = 'auto';
+            
+            // スクロール可能な最大の高さ(CSSで設定)を取得
+            const maxHeight = parseInt(window.getComputedStyle(textarea).maxHeight, 10);
+            
+            // 本文全体の高さ
+            const scrollHeight = textarea.scrollHeight;
+
+            // 本文全体の高さが最大高さを超えているかチェック
+            if (maxHeight > 0 && scrollHeight > maxHeight) {
+                // 超えている場合は、高さを最大値に固定（スクロールバーが表示される）
+                textarea.style.height = maxHeight + 'px';
+                textarea.style.overflowY = 'auto';
+            } else {
+                // 超えていない場合は、本文全体の高さに合わせる
+                textarea.style.height = scrollHeight + 'px';
+                textarea.style.overflowY = 'hidden';
+            }
+        }
+
+        textarea.addEventListener('input', autoResize);
+        // ページ読み込み時（編集画面など）にも高さを調整
+        setTimeout(autoResize, 100); 
     });
 
     // 画像アップロード時のファイル名表示処理
