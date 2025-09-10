@@ -551,7 +551,43 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- テンプレート機能の処理 ---
+    // --- ▼▼▼ ここからが新しいリサイズとテンプレートのコード ▼▼▼ ---
+
+    // 1. テキストエリアをリサイズするための専門家（関数）を定義
+    const resizeTextarea = (textarea) => {
+        if (!textarea) return;
+
+        // 各テキストエリアに「双子」要素がなければ作成し、関連付ける
+        if (!textarea.twin) {
+            let twin = document.createElement('div');
+            const style = window.getComputedStyle(textarea);
+            [
+                'border', 'boxSizing', 'fontFamily', 'fontSize', 'fontWeight',
+                'letterSpacing', 'lineHeight', 'padding', 'textDecoration',
+                'textIndent', 'textTransform', 'whiteSpace', 'wordSpacing', 'width'
+            ].forEach(prop => {
+                twin.style[prop] = style[prop];
+            });
+            twin.style.visibility = 'hidden';
+            twin.style.position = 'absolute';
+            twin.style.top = '0';
+            twin.style.left = '0';
+            twin.style.height = 'auto';
+            twin.style.wordWrap = 'break-word';
+            document.body.appendChild(twin);
+            textarea.twin = twin;
+        }
+        
+        // 双子要素を使って高さを計算し、テキストエリアに適用
+        let text = textarea.value.replace(/\n/g, '<br/>');
+        if (textarea.value.slice(-1) === '\n') {
+            text += '&nbsp;';
+        }
+        textarea.twin.innerHTML = text;
+        textarea.style.height = textarea.twin.scrollHeight + 'px';
+    };
+
+    // 2. テンプレート機能の処理
     const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
     allTemplateDropdowns.forEach(dropdown => {
         const selectBtn = dropdown.querySelector('.template-select-btn');
@@ -563,92 +599,68 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
+    if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
+        document.querySelectorAll('.template-item').forEach(item => {
+            item.addEventListener('click', function(event) {
+                event.preventDefault();
+                const templateIndex = parseInt(item.dataset.index, 10);
+                const template = TEMPLATES_DATA[templateIndex];
+                if (!template) return;
 
-// --- テンプレートの各項目をクリックした時の処理 ---
-if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
-    document.querySelectorAll('.template-item').forEach(item => {
-        item.addEventListener('click', function(event) {
-            event.preventDefault();
-            const templateIndex = parseInt(item.dataset.index, 10);
-            const template = TEMPLATES_DATA[templateIndex];
+                const titleInput = document.querySelector('input[name="title"]');
+                const contentTextarea = document.querySelector('textarea[name="content"]');
 
-            if (!template) return;
-
-            const titleInput = document.querySelector('input[name="title"]');
-            const contentTextarea = document.querySelector('textarea[name="content"]');
-
-            if (template.name === 'UECreview') {
-                const countStr = prompt('何科目書きますか？', '1');
-                if (countStr) {
-                    const count = parseInt(countStr, 10);
-                    if (!isNaN(count) && count > 0) {
-                        let newBody = '';
-                        for (let i = 0; i < count; i++) {
-                            newBody += template.body;
-                            if (i < count - 1) {
-                                newBody += '\n\n';
+                if (template.name === 'UECreview') {
+                    const countStr = prompt('何科目書きますか？', '1');
+                    if (countStr) {
+                        const count = parseInt(countStr, 10);
+                        if (!isNaN(count) && count > 0) {
+                            let newBody = '';
+                            for (let i = 0; i < count; i++) {
+                                newBody += template.body;
+                                if (i < count - 1) { newBody += '\n\n'; }
                             }
-                        }
-                        if (titleInput) titleInput.value = template.title;
-                        if (contentTextarea) {
-                            contentTextarea.value = newBody;
-                            // ▼▼▼ ここを修正 ▼▼▼
-                            setTimeout(() => {
-                                contentTextarea.dispatchEvent(new Event('input'));
-                            }, 0); // 処理をわずかに遅延させる
-                        }
-                    } else {
-                        alert('有効な数字を入力してください。');
+                            if (titleInput) titleInput.value = template.title;
+                            if (contentTextarea) {
+                                contentTextarea.value = newBody;
+                                resizeTextarea(contentTextarea); // 専門家を直接呼び出す
+                            }
+                        } else { alert('有効な数字を入力してください。'); }
+                    }
+                } else {
+                    if (titleInput) titleInput.value = template.title;
+                    if (contentTextarea) {
+                        contentTextarea.value = template.body;
+                        resizeTextarea(contentTextarea); // 専門家を直接呼び出す
                     }
                 }
-            } else {
-                if (titleInput) titleInput.value = template.title;
-                if (contentTextarea) {
-                    contentTextarea.value = template.body;
-                    // ▼▼▼ こちらも同様に修正 ▼▼▼
-                    setTimeout(() => {
-                        contentTextarea.dispatchEvent(new Event('input'));
-                    }, 0); // 処理をわずかに遅延させる
-                }
-            }
-
-            const parentDropdownContent = item.closest('.template-dropdown-content');
-            if (parentDropdownContent) {
-                parentDropdownContent.classList.add('hidden');
-            }
+                const parentDropdownContent = item.closest('.template-dropdown-content');
+                if (parentDropdownContent) { parentDropdownContent.classList.add('hidden'); }
+            });
         });
-    });
-}
-// --- 本文入力用のテキストエリア自動リサイズ処理 ---
+    }
+    
+    // 3. 手動入力時の自動リサイズ処理
     document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
-        let twin = document.createElement('div');
-        const style = window.getComputedStyle(textarea);
-        [
-            'border', 'boxSizing', 'fontFamily', 'fontSize', 'fontWeight',
-            'letterSpacing', 'lineHeight', 'padding', 'textDecoration',
-            'textIndent', 'textTransform', 'whiteSpace', 'wordSpacing', 'width'
-        ].forEach(prop => {
-            twin.style[prop] = style[prop];
-        });
-        twin.style.visibility = 'hidden';
-        twin.style.position = 'absolute';
-        twin.style.top = '0';
-        twin.style.left = '0';
-        twin.style.height = 'auto';
-        twin.style.wordWrap = 'break-word';
-        document.body.appendChild(twin);
-
-        function autoResize() {
-            let text = textarea.value.replace(/\n/g, '<br/>');
-            if (textarea.value.slice(-1) === '\n') {
-                text += '&nbsp;';
-            }
-            twin.innerHTML = text;
-            textarea.style.height = twin.scrollHeight + 'px';
-        }
-        textarea.addEventListener('input', autoResize);
-        setTimeout(autoResize, 100); 
+        textarea.addEventListener('input', () => resizeTextarea(textarea));
+        setTimeout(() => resizeTextarea(textarea), 100); 
     });
+
+    // --- ▲▲▲ ここまでが新しいリサイズとテンプレートのコード ▲▲▲ ---
+
+
+    // --- 画像アップロード時のファイル名表示処理 ---
+    const imageInput = document.getElementById('image');
+    if (imageInput) {
+        const filenameDisplay = document.getElementById('image-filename-display');
+        const editFilenameDisplay = document.getElementById('edit-image-filename-display');
+        imageInput.addEventListener('change', function() {
+            const file = this.files[0];
+            const filename = file ? file.name : '';
+            if (filenameDisplay) { filenameDisplay.textContent = filename; }
+            if (editFilenameDisplay) { editFilenameDisplay.textContent = file ? `選択中: ${filename}` : ''; }
+        });
+    }
 
     // --- ブックマークボタンの処理 ---
     document.querySelectorAll('.bookmark-toggle-btn').forEach(button => {
@@ -676,81 +688,40 @@ if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
         });
     });
 
-// --- コメント削除処理 ---
-document.querySelectorAll('.delete-comment-btn').forEach(button => {
-    button.addEventListener('click', function(e) {
-        e.preventDefault();
+    // --- コメント削除処理 ---
+    document.querySelectorAll('.delete-comment-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const commentId = this.dataset.commentId;
+            const url = `/comment/${commentId}/delete`;
 
-        const commentId = this.dataset.commentId;
-        const url = `/comment/${commentId}/delete`; // url_forの代わりに直接URLを構築
-
-        if (confirm('本当にこのコメントを削除しますか？')) {
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-    	// 画面からコメント要素を消す
-    	const commentElement = document.getElementById(`comment-${commentId}`);
-    	if (commentElement) {
-        	commentElement.style.opacity = '0';
-        	setTimeout(() => commentElement.remove(), 300);
-    	}
-
-    	// ▼▼▼ ここから修正 ▼▼▼
-
-    	// コメント一覧の見出しの数を更新
-    	const commentCountHeader = document.getElementById('comment-count-header');
-    	if (commentCountHeader) {
-        	commentCountHeader.innerText = `コメント (${data.remaining_comments})`;
-    	}
-
-    	// タイトル横のコメント数を更新
-    	const titleCommentCount = document.getElementById('title-comment-count');
-    	if (titleCommentCount) {
-       	 titleCommentCount.innerText = `コメント数(${data.remaining_comments})`;
-    	}
-
-    	// ▲▲▲ ここまで修正 ▲▲▲
-
-	} else {
-   	 alert('コメントの削除に失敗しました。');
-	}
-            })
-            .catch(error => console.error('Error:', error));
-        }
+            if (confirm('本当にこのコメントを削除しますか？')) {
+                fetch(url, {
+                    method: 'POST',
+                    headers: {'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json'}
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const commentElement = document.getElementById(`comment-${commentId}`);
+                        if (commentElement) {
+                            commentElement.style.opacity = '0';
+                            setTimeout(() => commentElement.remove(), 300);
+                        }
+                        const commentCountHeader = document.getElementById('comment-count-header');
+                        if (commentCountHeader) {
+                            commentCountHeader.innerText = `コメント (${data.remaining_comments})`;
+                        }
+                        const titleCommentCount = document.getElementById('title-comment-count');
+                        if (titleCommentCount) {
+                            titleCommentCount.innerText = `コメント数(${data.remaining_comments})`;
+                        }
+                    } else { alert('コメントの削除に失敗しました。'); }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        });
     });
-});
-
-    // --- 画像アップロード時のファイル名表示処理 ---
-    const imageInput = document.getElementById('image');
-    if (imageInput) {
-        const filenameDisplay = document.getElementById('image-filename-display');
-        if (filenameDisplay) { // edit.htmlには無い場合があるのでチェック
-            imageInput.addEventListener('change', function() {
-                if (this.files && this.files.length > 0) {
-                    filenameDisplay.textContent = this.files[0].name;
-                } else {
-                    filenameDisplay.textContent = '';
-                }
-            });
-        }
-
-        // edit.html用のファイル名表示処理を追加
-        const editFilenameDisplay = document.getElementById('edit-image-filename-display');
-        if (editFilenameDisplay) {
-             imageInput.addEventListener('change', function() {
-                if (this.files && this.files.length > 0) {
-                    editFilenameDisplay.textContent = `選択中: ${this.files[0].name}`;
-                }
-            });
-        }
-    }
 
     // --- ドロップダウンを閉じるグローバルなクリック処理 ---
     document.addEventListener('click', function(event) {
