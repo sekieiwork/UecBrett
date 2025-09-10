@@ -65,13 +65,14 @@
     }
 
     /* フォームの入力欄 */
-    input[type="text"], input[type="password"], textarea {
-        width: 100%;
-        padding: 0.5em;
-        box-sizing: border-box;
-        border: 1px solid #ced4da;
-        border-radius: 0.25rem;
-    }
+ input[type="text"], input[type="password"], textarea {
+    width: 100%;
+    padding: 0.5em;
+    box-sizing: border-box;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    line-height: normal; /* ← この行を追加 */
+}
     
     .textarea-content {
         min-height: 100px;
