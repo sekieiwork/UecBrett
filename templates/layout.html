@@ -75,7 +75,6 @@
     border-radius: 0.25rem;
     line-height: 1.4;
     resize: none;
-    overscroll-behavior-y: contain; /* ← この行を追加 */
 }
 
     /* 2. 本文入力・編集用の自動リサイズ設定 */
@@ -533,7 +532,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-    // --- 1. 専門家（ヘルパー関数）の定義 ---
+ // --- 1. 専門家（ヘルパー関数）の定義 ---
     const resizeTextarea = (textarea) => {
         if (!textarea) return;
         if (!textarea.twin) {
@@ -648,6 +647,24 @@ document.addEventListener('DOMContentLoaded', function() {
         textarea.addEventListener('input', () => resizeTextarea(textarea));
         setTimeout(() => resizeTextarea(textarea), 100); 
     });
+
+ // ▼▼▼ ここからが今回の修正点です ▼▼▼
+    // --- スマホでのテキストエリアのスクロール制御 ---
+    document.querySelectorAll('textarea').forEach(textarea => {
+        textarea.addEventListener('touchstart', function() {
+            // テキストエリアがスクロール可能かどうかをチェック
+            const isScrollable = this.scrollHeight > this.clientHeight;
+            // スクロール可能な場合のみ、ページ全体のスクロールを無効化する
+            if (isScrollable) {
+                document.body.style.overflow = 'hidden';
+            }
+        });
+        textarea.addEventListener('touchend', function() {
+            // タッチが終わったら、ページ全体のスクロールを元に戻す
+            document.body.style.overflow = '';
+        });
+    });
+    // ▲▲▲ ここまで ▲▲▲
 
     // 画像アップロード時のファイル名表示処理
     const imageInput = document.getElementById('image');
