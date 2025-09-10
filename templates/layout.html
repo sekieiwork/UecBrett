@@ -592,8 +592,10 @@ if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
                         if (titleInput) titleInput.value = template.title;
                         if (contentTextarea) {
                             contentTextarea.value = newBody;
-                            // ▼▼▼ ここが修正点です ▼▼▼
-                            contentTextarea.dispatchEvent(new Event('input')); // 高さ調整を強制的に実行
+                            // ▼▼▼ ここを修正 ▼▼▼
+                            setTimeout(() => {
+                                contentTextarea.dispatchEvent(new Event('input'));
+                            }, 0); // 処理をわずかに遅延させる
                         }
                     } else {
                         alert('有効な数字を入力してください。');
@@ -603,8 +605,10 @@ if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
                 if (titleInput) titleInput.value = template.title;
                 if (contentTextarea) {
                     contentTextarea.value = template.body;
-                    // ▼▼▼ こちらも同様に修正します ▼▼▼
-                    contentTextarea.dispatchEvent(new Event('input')); // 高さ調整を強制的に実行
+                    // ▼▼▼ こちらも同様に修正 ▼▼▼
+                    setTimeout(() => {
+                        contentTextarea.dispatchEvent(new Event('input'));
+                    }, 0); // 処理をわずかに遅延させる
                 }
             }
 
@@ -615,7 +619,6 @@ if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
         });
     });
 }
-
 // --- 本文入力用のテキストエリア自動リサイズ処理 ---
     document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
         let twin = document.createElement('div');
