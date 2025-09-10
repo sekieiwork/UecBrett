@@ -80,10 +80,9 @@
         resize: none;
     }
     
-    .auto-resize-textarea {
-    overflow-y: auto;
-    resize: none;       /* ここを 'none' に変更 */
-    min-height: 120px;
+.auto-resize-textarea {
+    overflow: hidden; /* スクロールバーを非表示 */
+    resize: none;     /* 手動リサイズを無効化 */
 }
 
     /* 投稿・コメントの本文表示エリア */
@@ -445,6 +444,34 @@
     background-color: #f1f1f1;
 }
 
+/* layout.html の <style> タグ内に追加 */
+
+/* 通常のテキストエリアのスタイル */
+.mobile-comment-box {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.4;
+}
+
+/* 画面幅が768px以下のスマホ表示の場合のみ適用 */
+@media (max-width: 768px) {
+    /* Webkit系ブラウザ（Chrome, Safari）のスクロールバー */
+    .mobile-comment-box::-webkit-scrollbar {
+        width: 12px; /* スクロールバーの幅を太くする */
+    }
+    .mobile-comment-box::-webkit-scrollbar-track {
+        background: #f1f1f1; /* スクロールバーの背景色 */
+    }
+    .mobile-comment-box::-webkit-scrollbar-thumb {
+        background: #ccc; /* スクロールバーのつまみの色 */
+        border-radius: 6px;
+    }
+    .mobile-comment-box::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+}
+
+
 /*----------------------------------*/
 /* スマホ版レイアウトの調整（768px以下） */
 /*----------------------------------*/
@@ -609,6 +636,37 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+// --- テキストエリアの自動リサイズ処理 ---
+document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
+    let twin = document.createElement('div');
+    const style = window.getComputedStyle(textarea);
+    [
+        'border', 'boxSizing', 'fontFamily', 'fontSize', 'fontWeight',
+        'letterSpacing', 'lineHeight', 'padding', 'textDecoration',
+        'textIndent', 'textTransform', 'whiteSpace', 'wordSpacing', 'width'
+    ].forEach(prop => {
+        twin.style[prop] = style[prop];
+    });
+    twin.style.visibility = 'hidden';
+    twin.style.position = 'absolute';
+    twin.style.top = '0';
+    twin.style.left = '0';
+    twin.style.height = 'auto';
+    twin.style.wordWrap = 'break-word';
+    document.body.appendChild(twin);
+
+    function autoResize() {
+        let text = textarea.value.replace(/\n/g, '<br/>');
+        if (textarea.value.slice(-1) === '\n') {
+            text += '&nbsp;';
+        }
+        twin.innerHTML = text;
+        textarea.style.height = twin.scrollHeight + 'px';
+    }
+    textarea.addEventListener('input', autoResize);
+    setTimeout(autoResize, 100); 
+});
 
     // --- テンプレート機能の処理 ---
     const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
