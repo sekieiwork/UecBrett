@@ -556,8 +556,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         textarea.twin.innerHTML = text;
 
-        // 計算された高さに、枠線の太さ(2px)を加えて誤差をなくす
-        textarea.style.height = (textarea.twin.scrollHeight + 2) + 'px';
+        // ▼▼▼ ここが今回の修正点です ▼▼▼
+        // 枠線の太さをCSSから直接取得して、より正確な高さを計算する
+        const style = window.getComputedStyle(textarea);
+        const borderTopWidth = parseInt(style.borderTopWidth, 10);
+        const borderBottomWidth = parseInt(style.borderBottomWidth, 10);
+        textarea.style.height = (textarea.twin.scrollHeight + borderTopWidth + borderBottomWidth) + 'px';
+        // ▲▲▲ ここまで ▲▲▲
     };
 
     // --- 2. 各機能のイベント設定 ---
@@ -626,7 +631,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (titleInput) titleInput.value = template.title;
                             if (contentTextarea) {
                                 contentTextarea.value = newBody;
-                                resizeTextarea(contentTextarea); // 専門家を直接呼び出す
+                                resizeTextarea(contentTextarea);
                             }
                         } else { alert('有効な数字を入力してください。'); }
                     }
@@ -634,7 +639,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (titleInput) titleInput.value = template.title;
                     if (contentTextarea) {
                         contentTextarea.value = template.body;
-                        resizeTextarea(contentTextarea); // 専門家を直接呼び出す
+                        resizeTextarea(contentTextarea);
                     }
                 }
                 const parentDropdownContent = item.closest('.template-dropdown-content');
@@ -658,7 +663,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const file = this.files[0];
             const filename = file ? file.name : '';
             if (filenameDisplay) { filenameDisplay.textContent = filename; }
-            if (editFilenameDisplay) { editFilenameDisplay.textContent = file ? `選択中: ${filename}` : `現在設定中の画像: {{ post.image_url.split('/')[-1] if post and post.image_url else '' }}`; }
+            if (editFilenameDisplay) { 
+                const currentImageText = `現在設定中の画像: {{ post.image_url.split('/')[-1] if post and post.image_url else '' }}`;
+                editFilenameDisplay.textContent = file ? `選択中: ${filename}` : currentImageText;
+             }
         });
     }
 
