@@ -584,7 +584,7 @@ document.addEventListener('DOMContentLoaded', function() {
             text += '&nbsp;';
         }
         textarea.twin.innerHTML = text;
-        textarea.style.height = textarea.twin.scrollHeight + 'px';
+        textarea.style.height = (textarea.twin.scrollHeight + textarea.offsetHeight - textarea.clientHeight) + 'px';
     };
 
     // 2. テンプレート機能の処理
@@ -596,7 +596,7 @@ document.addEventListener('DOMContentLoaded', function() {
             selectBtn.addEventListener('click', function(event) {
                 event.stopPropagation();
                 dropdownContent.classList.toggle('hidden');
-            });
+            });0:48 2025/09/11
         }
     });
     if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
