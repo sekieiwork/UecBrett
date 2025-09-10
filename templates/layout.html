@@ -74,6 +74,7 @@
         border: 1px solid #ced4da;
         border-radius: 0.25rem;
         line-height: 1.4;
+	resize: none;  
     }
 
     /* 2. 本文入力・編集用の自動リサイズ設定 */
@@ -532,12 +533,8 @@
 document.addEventListener('DOMContentLoaded', function() {
 
     // --- 1. 専門家（ヘルパー関数）の定義 ---
-
-    // テキストエリアをリサイズするための専門家
     const resizeTextarea = (textarea) => {
         if (!textarea) return;
-
-        // 各テキストエリアに一度だけ「双子」要素を作成し、関連付ける
         if (!textarea.twin) {
             let twin = document.createElement('div');
             const style = window.getComputedStyle(textarea);
@@ -545,9 +542,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'border', 'boxSizing', 'fontFamily', 'fontSize', 'fontWeight',
                 'letterSpacing', 'lineHeight', 'padding', 'textDecoration',
                 'textIndent', 'textTransform', 'whiteSpace', 'wordSpacing', 'width'
-            ].forEach(prop => {
-                twin.style[prop] = style[prop];
-            });
+            ].forEach(prop => { twin.style[prop] = style[prop]; });
             twin.style.visibility = 'hidden';
             twin.style.position = 'absolute';
             twin.style.top = '0';
@@ -557,20 +552,13 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.appendChild(twin);
             textarea.twin = twin;
         }
-        
         let text = textarea.value.replace(/\n/g, '<br/>');
-        if (textarea.value.slice(-1) === '\n') {
-            text += '&nbsp;';
-        }
+        if (textarea.value.slice(-1) === '\n') { text += '&nbsp;'; }
         textarea.twin.innerHTML = text;
-
-        // ▼▼▼ ここが今回の修正点です ▼▼▼
-        // 枠線の太さをCSSから直接取得して、より正確な高さを計算する
         const style = window.getComputedStyle(textarea);
         const borderTopWidth = parseInt(style.borderTopWidth, 10);
         const borderBottomWidth = parseInt(style.borderBottomWidth, 10);
         textarea.style.height = (textarea.twin.scrollHeight + borderTopWidth + borderBottomWidth) + 'px';
-        // ▲▲▲ ここまで ▲▲▲
     };
 
     // --- 2. 各機能のイベント設定 ---
@@ -603,89 +591,61 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- テンプレート機能の処理 ---
-if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
-    document.querySelectorAll('.template-item').forEach(item => {
-        item.addEventListener('click', function(event) {
-            event.preventDefault();
-            const templateIndex = parseInt(item.dataset.index, 10);
-            const template = TEMPLATES_DATA[templateIndex];
-
-            if (!template) return;
-
-            const titleInput = document.querySelector('input[name="title"]');
-            const contentTextarea = document.querySelector('textarea[name="content"]');
-
-            if (template.name === 'UECreview') {
-                const countStr = prompt('何科目書きますか？', '1');
-                if (countStr) {
-                    // ▼▼▼ ここからが修正点 ▼▼▼
-                    // 入力された全角数字を半角に変換する
-                    const halfWidthStr = countStr.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-                    const count = parseInt(halfWidthStr, 10);
-                    // ▲▲▲ ここまで ▲▲▲
-
-                    if (!isNaN(count) && count > 0) {
-                        let newBody = '';
-                        for (let i = 0; i < count; i++) {
-                            newBody += template.body;
-                            if (i < count - 1) {
-                                newBody += '\n\n';
+    // テンプレート機能の処理
+    const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
+    allTemplateDropdowns.forEach(dropdown => {
+        const selectBtn = dropdown.querySelector('.template-select-btn');
+        const dropdownContent = dropdown.querySelector('.template-dropdown-content');
+        if(selectBtn && dropdownContent) {
+            selectBtn.addEventListener('click', function(event) {
+                event.stopPropagation();
+                dropdownContent.classList.toggle('hidden');
+            });
+        }
+    });
+    if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
+        document.querySelectorAll('.template-item').forEach(item => {
+            item.addEventListener('click', function(event) {
+                event.preventDefault();
+                const templateIndex = parseInt(item.dataset.index, 10);
+                const template = TEMPLATES_DATA[templateIndex];
+                if (!template) return;
+                const titleInput = document.querySelector('input[name="title"]');
+                const contentTextarea = document.querySelector('textarea[name="content"]');
+                if (template.name === 'UECreview') {
+                    const countStr = prompt('何科目書きますか？', '1');
+                    if (countStr) {
+                        const count = parseInt(countStr, 10);
+                        if (!isNaN(count) && count > 0) {
+                            let newBody = '';
+                            for (let i = 0; i < count; i++) {
+                                newBody += template.body;
+                                if (i < count - 1) { newBody += '\n\n'; }
                             }
-                        }
-                        if (titleInput) titleInput.value = template.title;
-                        if (contentTextarea) {
-                            contentTextarea.value = newBody;
-                            contentTextarea.dispatchEvent(new Event('input'));
-                        }
-                    } else {
-                        alert('有効な数字を入力してください。');
+                            if (titleInput) titleInput.value = template.title;
+                            if (contentTextarea) {
+                                contentTextarea.value = newBody;
+                                resizeTextarea(contentTextarea);
+                            }
+                        } else { alert('有効な数字を入力してください。'); }
+                    }
+                } else {
+                    if (titleInput) titleInput.value = template.title;
+                    if (contentTextarea) {
+                        contentTextarea.value = template.body;
+                        resizeTextarea(contentTextarea);
                     }
                 }
-            } else {
-                if (titleInput) titleInput.value = template.title;
-                if (contentTextarea) {
-                    contentTextarea.value = template.body;
-                    contentTextarea.dispatchEvent(new Event('input'));
-                }
-            }
-
-            const parentDropdownContent = item.closest('.template-dropdown-content');
-            if (parentDropdownContent) {
-                parentDropdownContent.classList.add('hidden');
-            }
+                const parentDropdownContent = item.closest('.template-dropdown-content');
+                if (parentDropdownContent) { parentDropdownContent.classList.add('hidden'); }
+            });
         });
-    });
-}
+    }
     
-// 本文入力用のテキストエリア自動リサイズ処理
+    // 手動入力時の自動リサイズ処理
     document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
-        
-        function autoResize() {
-            // 先に高さを一旦リセット
-            textarea.style.height = 'auto';
-            
-            // スクロール可能な最大の高さ(CSSで設定)を取得
-            const maxHeight = parseInt(window.getComputedStyle(textarea).maxHeight, 10);
-            
-            // 本文全体の高さ
-            const scrollHeight = textarea.scrollHeight;
-
-            // 本文全体の高さが最大高さを超えているかチェック
-            if (maxHeight > 0 && scrollHeight > maxHeight) {
-                // 超えている場合は、高さを最大値に固定（スクロールバーが表示される）
-                textarea.style.height = maxHeight + 'px';
-                textarea.style.overflowY = 'auto';
-            } else {
-                // 超えていない場合は、本文全体の高さに合わせる
-                textarea.style.height = scrollHeight + 'px';
-                textarea.style.overflowY = 'hidden';
-            }
-        }
-
-        textarea.addEventListener('input', autoResize);
-        // ページ読み込み時（編集画面など）にも高さを調整
-        setTimeout(autoResize, 100); 
+        textarea.addEventListener('input', () => resizeTextarea(textarea));
+        setTimeout(() => resizeTextarea(textarea), 100); 
     });
 
     // 画像アップロード時のファイル名表示処理
