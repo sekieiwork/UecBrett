@@ -80,10 +80,8 @@
     }
     
     .auto-resize-textarea {
-    overflow-y: auto;   /* 必要に応じてスクロールバーを表示 */
-    resize: vertical;   /* 縦方向の手動リサイズを許可 */
-    min-height: 120px;  /* 最低限の高さを確保（任意で調整） */
-　　}
+    overflow: hidden; /* 計算誤差による一瞬のスクロールバーを隠すため */
+	}
 
     /* 投稿・コメントの本文表示エリア */
     .post-content, .comment-content {
@@ -663,14 +661,50 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- テキストエリアの自動リサイズ処理 ---
+   // --- テキストエリアの自動リサイズ処理（高精度・スクロール固定版） ---
 document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
-    
-    // ユーザーが入力するたびに高さを調整
-    textarea.addEventListener('input', autoResize, false);
+    // スタイルをコピーするための隠れた「双子」要素を作成
+    let twin = document.createElement('div');
+    const style = window.getComputedStyle(textarea);
 
-    // ページ読み込み時にも高さを調整
-    autoResize();
+    // テキストエリアのスタイルを双子にコピー
+    [
+        'border', 'boxSizing', 'fontFamily', 'fontSize', 'fontWeight',
+        'letterSpacing', 'lineHeight', 'padding', 'textDecoration',
+        'textIndent', 'textTransform', 'whiteSpace', 'wordSpacing', 'width'
+    ].forEach(prop => {
+        twin.style[prop] = style[prop];
+    });
+
+    // ユーザーには見えないように設定
+    twin.style.visibility = 'hidden';
+    twin.style.position = 'absolute';
+    twin.style.top = '0';
+    twin.style.left = '0';
+    twin.style.height = 'auto';
+    twin.style.wordWrap = 'break-word'; // 折り返しを有効に
+
+    document.body.appendChild(twin);
+
+    function autoResize() {
+        // テキストエリアの内容を双子にコピー
+        // 改行を<br>に変換し、末尾の改行も認識させる
+        let text = textarea.value.replace(/\n/g, '<br/>');
+        if (textarea.value.slice(-1) === '\n') {
+            text += '&nbsp;';
+        }
+        twin.innerHTML = text;
+        
+        // 双子の高さに合わせてテキストエリアの高さを設定
+        textarea.style.height = twin.scrollHeight + 'px';
+    }
+
+    // イベントリスナーを設定
+    textarea.addEventListener('input', autoResize);
+    
+    // ページ読み込み時にも一度実行
+    // 少し遅延させることで、初期値が正しく反映されるのを待つ
+    setTimeout(autoResize, 100); 
 });
 
     // --- ブックマークボタンの処理 ---
