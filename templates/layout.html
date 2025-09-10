@@ -80,9 +80,10 @@
     }
     
     .auto-resize-textarea {
-        overflow-y: hidden;
-        resize: none;
-    }
+    overflow-y: auto;   /* 必要に応じてスクロールバーを表示 */
+    resize: vertical;   /* 縦方向の手動リサイズを許可 */
+    min-height: 120px;  /* 最低限の高さを確保（任意で調整） */
+　　}
 
     /* 投稿・コメントの本文表示エリア */
     .post-content, .comment-content {
@@ -664,13 +665,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- テキストエリアの自動リサイズ処理 ---
 document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
-    function autoResize() {
-        // 高さを一度ごく小さい値にリセット
-        textarea.style.height = '5px'; 
-        // 内容全体の高さに合わせて再設定
-        textarea.style.height = textarea.scrollHeight + 'px';
-    }
-
+    
     // ユーザーが入力するたびに高さを調整
     textarea.addEventListener('input', autoResize, false);
 
