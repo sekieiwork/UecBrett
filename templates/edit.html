@@ -50,7 +50,7 @@
             {% endif %}
         </div>
         
-        <div style="margin-top: 1.5em; display: flex; align-items: center; gap: 1em;">
+        <div style="margin-top: 1.5em; display: flex; align-items: center; justify-content: space-between;">
             {{ form.submit(value='更新') }}
             <a href="{{ url_for('post_detail', post_id=post.id) }}">戻る</a>
         </div>
