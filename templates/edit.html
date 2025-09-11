@@ -20,8 +20,8 @@
         {{ form.csrf_token }}
         <div class="form-field">
             {{ form.title.label }}<br>
-            {{ form.title(size=32) }}
-        </div>
+            {{ form.title() }}
+            </div>
         <div class="form-field">
             {{ form.content.label }}<br>
             {{ form.content(cols=40, rows=5, class="auto-resize-textarea") }}

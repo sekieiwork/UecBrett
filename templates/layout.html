@@ -65,14 +65,29 @@
 
     /* 1. 全てのテキストエリアの共通設定 */
     textarea {
-    width: 100%;
-    padding: 0.5em;
-    box-sizing: border-box;
-    border: 1px solid #ced4da;
-    border-radius: 0.25rem;
-    line-height: 1.4;
-    resize: none;
-}
+        width: 100%;
+        padding: 0.5em;
+        box-sizing: border-box;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        line-height: 1.4;
+        resize: none;
+    }
+
+    /* ▼▼▼ ① ここから修正 ▼▼▼ */
+    /* 意図: form内のテキスト入力欄のスタイルを定義します。
+       width: 100% と box-sizing: border-box; で、textareaと横幅が揃うようになります。*/
+    form input[type="text"] {
+        width: 100%;
+        padding: 0.5em;
+        box-sizing: border-box;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        font-size: 1em; /* ブラウザごとの差異を吸収 */
+        height: auto;
+    }
+    /* ▲▲▲ ① ここまで修正 ▲▲▲ */
+
 
     /* 2. 本文入力・編集用の自動リサイズ設定 */
     .auto-resize-textarea {
@@ -464,7 +479,6 @@
     #editor-overlay {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background-color: rgba(0, 0, 0, 0.7); z-index: 2000;
-        /* displayはJSで制御するため、ここでのflex指定は必須ではありません */
         align-items: center; justify-content: center;
     }
     #editor-modal {
@@ -551,11 +565,9 @@
             <button id="modal-done-btn">完了</button>
         </div>
     </div>
-    <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // --- デバッグ1: スクリプトが開始したことをコンソールに表示 ---
-    console.log("スクリプト開始: DOMContentLoadedイベント発火");
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
     // --- 1. ヘルパー関数と共通の要素を取得 ---
     const resizeTextarea = (textarea) => {
         if (!textarea) return;
@@ -584,16 +596,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const isMobile = window.innerWidth <= 768;
     let activeTextarea = null;
 
-    // --- デバッグ2: モバイル判定と要素の取得状況を表示 ---
-    console.log("モバイル判定:", isMobile ? "モバイルです" : "PCです");
-    if (!editorOverlay) {
-        console.error("エラー: ID 'editor-overlay' の要素が見つかりません！");
-        return; // モーダルがないので以降の処理を中止
-    }
-     if (!modalDoneBtn) {
-        console.error("エラー: ID 'modal-done-btn' の要素が見つかりません！");
-    }
-
     // --- 3. イベントリスナーの設定 ---
     
     // ヘッダーのドロップダウン処理
@@ -620,34 +622,35 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 意図: 「完了」ボタンの処理を、ページの種類に関わらず常に準備しておきます。
-    // classListではなく、styleを直接変更して表示を確実に切り替えます。
+    // 完了ボタンの処理
     if (modalDoneBtn) {
         modalDoneBtn.addEventListener('click', () => {
-            console.log("「完了」ボタンがクリックされました！");
             if (activeTextarea) {
                 activeTextarea.value = modalTextarea.value;
                 resizeTextarea(activeTextarea);
             }
-            editorOverlay.style.display = 'none'; // 強制的に非表示
+            // ▼▼▼ ② ここから修正 ▼▼▼
+            // 意図: 背景のスクロール禁止を解除します。
+            document.body.style.overflow = '';
+            // ▲▲▲ ② ここまで修正 ▲▲▲
+            editorOverlay.style.display = 'none';
             activeTextarea = null;
         });
     }
 
     if (isMobile) {
         // --- スマホの場合：モーダルを開く処理 ---
-        console.log(`対象のテキストエリアを ${allEditableTextareas.length}個 見つけました`);
-
         allEditableTextareas.forEach((textarea, index) => {
             textarea.addEventListener('focus', (e) => {
                 e.preventDefault();
-                // --- デバッグ3: どのテキストエリアがフォーカスされたか表示 ---
-                console.log(`${index + 1}番目のテキストエリアがフォーカスされました。モーダルを表示します。`);
-
                 activeTextarea = e.target;
                 modalTextarea.value = activeTextarea.value;
 
-                // 意図: styleを直接 'flex' に変更して表示します (CSSのalign-items等を活かすため)
+                // ▼▼▼ ② ここから修正 ▼▼▼
+                // 意図: モーダル表示時に背景をスクロールできないようにします。
+                document.body.style.overflow = 'hidden';
+                // ▲▲▲ ② ここまで修正 ▲▲▲
+                
                 editorOverlay.style.display = 'flex';
                 
                 setTimeout(() => modalTextarea.focus(), 100);
