@@ -63,8 +63,6 @@
     .post h3, .post-detail h1 { margin-top: 0; margin-bottom: 0.5em; font-size: 1.5em; }
     .post-form h2 { margin-top: 0; margin-bottom: 0.5em; padding-bottom: 0.5em; border-bottom: 1px solid #dee2e6; }
 
-    /* ▼▼▼ ここから修正 ▼▼▼ */
-
     /* 1. 全てのテキストエリアの共通設定 */
     textarea {
     width: 100%;
@@ -89,7 +87,6 @@
     }
 
     /* auto-resize-textareaが最大高さに達した場合、スクロールバーを表示 */
-
     .auto-resize-textarea:focus {
         overflow-y: auto;
     }
@@ -98,10 +95,9 @@
     /* 4. 新規投稿フォーム用の追加スタイル */
     .textarea-content {
         min-height: 100px;
-        /* max-heightを削除して高さ制限をなくす */
     }
     
-       /* 5. 表示される投稿・コメント本文の行間設定 */
+    /* 5. 表示される投稿・コメント本文の行間設定 */
     .post-content {
         max-height: 100px;
         overflow-y: auto;
@@ -112,7 +108,7 @@
         width: 100%;
         box-sizing: border-box;
         white-space: pre-wrap;
-        line-height: normal; /* お客様の設定を反映 */
+        line-height: normal;
     }
 
      .comment-content {
@@ -125,10 +121,8 @@
         width: 100%;
         box-sizing: border-box;
         white-space: pre-wrap;
-        line-height: 0.7; /* お客様の設定を反映 */
+        line-height: 0.7;
      }
-
-    /* ▲▲▲ ここまで修正 ▲▲▲ */
 
     /* 投稿された画像のスタイル */
     .post-image {
@@ -470,7 +464,8 @@
     #editor-overlay {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background-color: rgba(0, 0, 0, 0.7); z-index: 2000;
-        display: flex; align-items: center; justify-content: center;
+        /* displayはJSで制御するため、ここでのflex指定は必須ではありません */
+        align-items: center; justify-content: center;
     }
     #editor-modal {
         background-color: white; width: 90%; height: 70%; max-width: 600px;
@@ -549,16 +544,17 @@
             {% block content %}{% endblock %}
         </div>
     </main>
-    
-    <div id="editor-overlay" class="hidden">
-    <div id="editor-modal">
+
+    <div id="editor-overlay" class="hidden" style="display: none;">
+        <div id="editor-modal">
             <textarea id="modal-textarea"></textarea>
             <button id="modal-done-btn">完了</button>
         </div>
     </div>
-
-<script>
+    <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // --- デバッグ1: スクリプトが開始したことをコンソールに表示 ---
+    console.log("スクリプト開始: DOMContentLoadedイベント発火");
 
     // --- 1. ヘルパー関数と共通の要素を取得 ---
     const resizeTextarea = (textarea) => {
@@ -579,9 +575,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleButton = document.getElementById('toggle-post-form-btn');
     const postFormContainer = document.getElementById('post-form-container');
     const imageInput = document.getElementById('image');
+    
+    // --- 2. モーダルとテキストエリア関連の要素を取得 ---
+    const allEditableTextareas = document.querySelectorAll('.auto-resize-textarea');
+    const editorOverlay = document.getElementById('editor-overlay');
+    const modalTextarea = document.getElementById('modal-textarea');
+    const modalDoneBtn = document.getElementById('modal-done-btn');
+    const isMobile = window.innerWidth <= 768;
+    let activeTextarea = null;
 
-    // --- 2. 各機能のイベント設定 ---
+    // --- デバッグ2: モバイル判定と要素の取得状況を表示 ---
+    console.log("モバイル判定:", isMobile ? "モバイルです" : "PCです");
+    if (!editorOverlay) {
+        console.error("エラー: ID 'editor-overlay' の要素が見つかりません！");
+        return; // モーダルがないので以降の処理を中止
+    }
+     if (!modalDoneBtn) {
+        console.error("エラー: ID 'modal-done-btn' の要素が見つかりません！");
+    }
 
+    // --- 3. イベントリスナーの設定 ---
+    
     // ヘッダーのドロップダウン処理
     if (headerDropdownContainer) {
         const headerDropdownContent = headerDropdownContainer.querySelector('.dropdown-content');
@@ -606,44 +620,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ▼▼▼ ここからJavaScriptのロジックを修正 ▼▼▼
-
-    // --- 3. テキストエリアの入力処理 (PC/スマホ分岐) とモーダル関連の処理 ---
-    const allEditableTextareas = document.querySelectorAll('.auto-resize-textarea');
-    const editorOverlay = document.getElementById('editor-overlay');
-    const modalTextarea = document.getElementById('modal-textarea');
-    const modalDoneBtn = document.getElementById('modal-done-btn');
-    const isMobile = window.innerWidth <= 768;
-    let activeTextarea = null; // 現在編集中のテキストエリアを保持する変数
-
-    // 意図: 「完了」ボタンの処理を、ページにテキストエリアがあるかどうかに関わらず、常に準備しておきます。
-    // これにより、どのページでモーダルが表示されてもボタンが確実に機能するようになります。
+    // 意図: 「完了」ボタンの処理を、ページの種類に関わらず常に準備しておきます。
+    // classListではなく、styleを直接変更して表示を確実に切り替えます。
     if (modalDoneBtn) {
         modalDoneBtn.addEventListener('click', () => {
-            if (activeTextarea && editorOverlay) {
+            console.log("「完了」ボタンがクリックされました！");
+            if (activeTextarea) {
                 activeTextarea.value = modalTextarea.value;
-                resizeTextarea(activeTextarea); // サイズを更新
-                editorOverlay.classList.add('hidden'); // モーダルを隠す
-                activeTextarea = null; // リセット
+                resizeTextarea(activeTextarea);
             }
+            editorOverlay.style.display = 'none'; // 強制的に非表示
+            activeTextarea = null;
         });
     }
-    
+
     if (isMobile) {
-        // --- スマホの場合：モーダルによる編集 ---
-        // ページ内の全ての対象テキストエリアにイベントリスナーを設定
-        allEditableTextareas.forEach(textarea => {
+        // --- スマホの場合：モーダルを開く処理 ---
+        console.log(`対象のテキストエリアを ${allEditableTextareas.length}個 見つけました`);
+
+        allEditableTextareas.forEach((textarea, index) => {
             textarea.addEventListener('focus', (e) => {
                 e.preventDefault();
+                // --- デバッグ3: どのテキストエリアがフォーカスされたか表示 ---
+                console.log(`${index + 1}番目のテキストエリアがフォーカスされました。モーダルを表示します。`);
+
                 activeTextarea = e.target;
                 modalTextarea.value = activeTextarea.value;
-                if (editorOverlay) {
-                    editorOverlay.classList.remove('hidden');
-                }
+
+                // 意図: styleを直接 'flex' に変更して表示します (CSSのalign-items等を活かすため)
+                editorOverlay.style.display = 'flex';
+                
                 setTimeout(() => modalTextarea.focus(), 100);
             });
         });
-
     } else {
         // --- PCの場合：インラインでの自動リサイズ ---
         allEditableTextareas.forEach(textarea => {
@@ -653,7 +662,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- 4. テンプレート機能の処理 ---
-    // (このセクションは前回のままで問題ありません)
     const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
     allTemplateDropdowns.forEach(dropdown => {
         const selectBtn = dropdown.querySelector('.template-select-btn');
@@ -678,7 +686,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const titleInput = parentForm ? parentForm.querySelector('input[name="title"]') : null;
                 
                 let contentTextarea;
-                if (isMobile && editorOverlay && !editorOverlay.classList.contains('hidden')) {
+                if (isMobile && editorOverlay && editorOverlay.style.display === 'flex') {
                     contentTextarea = document.getElementById('modal-textarea');
                 } else {
                     contentTextarea = parentForm ? parentForm.querySelector('.auto-resize-textarea') : null;
@@ -716,11 +724,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ▲▲▲ JavaScriptの修正はここまで ▲▲▲
-
     // --- 5. その他の機能 ---
-    // (以下の部分は変更ありません)
-
     // 画像アップロード時のファイル名表示処理
     if (imageInput) {
         const filenameDisplay = document.getElementById('image-filename-display');
