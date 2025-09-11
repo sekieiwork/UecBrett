@@ -54,24 +54,25 @@
         </div>
         <hr>
 
-        {% if current_user.is_authenticated %}
-    	<div class="comment-form">
-
-        	<form method="POST">
-            	{{ form.csrf_token }}
-            	<div class="form-field">
-                {{ form.content.label }}<br>
-                {{ form.content(rows=5, class="comment-textarea auto-resize-textarea") }}
-                </div>
-           	 {{ form.submit }}
-        	</form>
-    	</div>
-	{% else %}
-    	<div class="comment-form">
-        	<p>コメントするには<a href="{{ url_for('login') }}">ログイン</a>が必要です。</p>
-    	</div>
-	{% endif %}
-
+        <div class="comment-container">
+            {% if current_user.is_authenticated %}
+            <div class="comment-form">
+                <h3>コメントする</h3>
+                <form method="POST">
+                    {{ comment_form.csrf_token }}
+                    <div class="form-field">
+                    {{ comment_form.content.label }}<br>
+                    {{ comment_form.content(rows=5, class="comment-textarea") }}
+                    </div>
+                 {{ comment_form.submit }}
+                </form>
+            </div>
+            {% else %}
+            <div class="comment-form">
+                <p>コメントするには<a href="{{ url_for('login') }}">ログイン</a>が必要です。</p>
+            </div>
+            {% endif %}
+        </div>
         <div class="comments">
             <h3 id="comment-count-header">コメント ({{ post.comments|length }})</h3>
             {% for comment in post.comments %}

@@ -177,11 +177,11 @@ def index(page):
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
     post = Post.query.get_or_404(post_id)
-    form = CommentForm()
+    comment_form = CommentForm()
     search_form = SearchForm()
 
-    if form.validate_on_submit() and current_user.is_authenticated:
-        comment = Comment(content=form.content.data, post=post, commenter=current_user)
+    if comment_form.validate_on_submit() and current_user.is_authenticated:
+        comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
         db.session.add(comment)
         
         if current_user != post.author:
@@ -189,7 +189,11 @@ def post_detail(post_id):
             db.session.add(notification)
         
         db.session.commit()
-        return redirect(url_for('post_detail', post_id=post.id))
+        # ▼▼▼ ③ ここから修正 ▼▼▼
+        # 意図: url_forに _anchor を追加し、リダイレクト先のURLに #comment-ID を付与します。
+        # これにより、ブラウザが自動でそのコメントの位置までスクロールします。
+        return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
+        # ▲▲▲ ③ ここまで修正 ▲▲▲
 
     japan_tz = timezone('Asia/Tokyo')
     post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
@@ -203,7 +207,7 @@ def post_detail(post_id):
     
     post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
     
-    return render_template('detail.html', post=post, form=form, linkify_urls=linkify_urls, md=md, search_form=search_form)
+    return render_template('detail.html', post=post, comment_form=comment_form, linkify_urls=linkify_urls, md=md, search_form=search_form)
 
 @app.route('/bookmark_post/<int:post_id>', methods=['POST'])
 @login_required
