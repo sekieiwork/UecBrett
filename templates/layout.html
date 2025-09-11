@@ -606,37 +606,62 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 本文入力用のテキストエリア自動リサイズ処理
-    document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
-        
-        function autoResize() {
-            // 先に高さを一旦リセット
-            textarea.style.height = 'auto';
-            
-            // スクロール可能な最大の高さ(CSSで設定)を取得
-            const maxHeight = parseInt(window.getComputedStyle(textarea).maxHeight, 10);
-            
-            // 本文全体の高さ
-            const scrollHeight = textarea.scrollHeight;
+    // ▼▼▼ ここからが今回の修正箇所です ▼▼▼
+    // 意図: 以前の複雑なロジックを全面的に書き換え、PCとスマホの処理を明確に分離します。
+    // これにより、意図しないモーダルの表示や操作不能になる問題を解決します。
 
-            // 本文全体の高さが最大高さを超えているかチェック
-            if (maxHeight > 0 && scrollHeight > maxHeight) {
-                // 超えている場合は、高さを最大値に固定（スクロールバーが表示される）
-                textarea.style.height = maxHeight + 'px';
-                textarea.style.overflowY = 'auto';
-            } else {
-                // 超えていない場合は、本文全体の高さに合わせる
-                textarea.style.height = scrollHeight + 'px';
-                textarea.style.overflowY = 'hidden';
-            }
+    // --- 3. テキストエリアの入力処理 (PC/スマホ分岐) ---
+    const allEditableTextareas = document.querySelectorAll('.auto-resize-textarea');
+    const editorOverlay = document.getElementById('editor-overlay');
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile && editorOverlay && allEditableTextareas.length > 0) {
+        // --- スマホの場合：モーダルによる編集 ---
+        const modalTextarea = document.getElementById('modal-textarea');
+        const modalDoneBtn = document.getElementById('modal-done-btn');
+        let activeTextarea = null; // 現在編集中のテキストエリアを保持する変数
+
+        // ページ内の全ての対象テキストエリアにイベントリスナーを設定
+        allEditableTextareas.forEach(textarea => {
+            // テキストエリアがフォーカスされたらモーダルを開く
+            // (クリックよりもユーザーの「入力したい」という意図に近いため 'focus' イベントを使用)
+            textarea.addEventListener('focus', (e) => {
+                e.preventDefault(); // デフォルトのフォーカス挙動を一旦キャンセル
+                activeTextarea = e.target; // 対象のテキストエリアを保存
+                modalTextarea.value = activeTextarea.value; // 内容をモーダルにコピー
+                editorOverlay.classList.remove('hidden'); // モーダルを表示
+                
+                // 少し遅延させてからフォーカスを当てないと、iOSなどでキーボードが正常に表示されない場合があるため
+                setTimeout(() => modalTextarea.focus(), 100);
+            });
+        });
+
+        // モーダルの「完了」ボタンがクリックされた時の処理
+        if (modalDoneBtn) {
+            modalDoneBtn.addEventListener('click', () => {
+                if (activeTextarea) {
+                    // モーダルの内容を元のテキストエリアに書き戻す
+                    activeTextarea.value = modalTextarea.value;
+                    // 元のテキストエリアのサイズを更新（PC版のリサイズ処理を再利用）
+                    resizeTextarea(activeTextarea);
+                }
+                editorOverlay.classList.add('hidden'); // モーダルを隠す
+                activeTextarea = null; // アクティブなテキストエリアをリセット
+            });
         }
 
-        textarea.addEventListener('input', autoResize);
-        // ページ読み込み時（編集画面など）にも高さを調整
-        setTimeout(autoResize, 100); 
-    });
+    } else if (allEditableTextareas.length > 0) {
+        // --- PCの場合：インラインでの自動リサイズ ---
+        allEditableTextareas.forEach(textarea => {
+            // 入力があるたびに高さを調整
+            textarea.addEventListener('input', () => resizeTextarea(textarea));
+            // ページ読み込み時にも高さを調整（編集画面などで初期値が入っている場合に対応）
+            setTimeout(() => resizeTextarea(textarea), 100);
+        });
+    }
 
-    // テンプレート機能の処理
+    // 意図: テンプレート機能はモーダルとの連携も考慮して修正します。
+    // --- 4. テンプレート機能の処理 ---
     const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
     allTemplateDropdowns.forEach(dropdown => {
         const selectBtn = dropdown.querySelector('.template-select-btn');
@@ -648,6 +673,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
+
     if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
         document.querySelectorAll('.template-item').forEach(item => {
             item.addEventListener('click', function(event) {
@@ -656,15 +682,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 const template = TEMPLATES_DATA[templateIndex];
                 if (!template) return;
 
-                const parentForm = this.closest('.post-form') || this.closest('.post-detail');
-                const titleInput = parentForm ? parentForm.querySelector('input[name="title"]') : document.querySelector('input[name="title"]');
-                const editorOverlay = document.getElementById('editor-overlay');
+                const parentForm = this.closest('.post-form') || this.closest('body'); // 編集画面なども考慮
+                const titleInput = parentForm ? parentForm.querySelector('input[name="title"]') : null;
+                
+                // 修正点: スマホでモーダルが表示されている場合、モーダル内のテキストエリアを対象にする
                 let contentTextarea;
-
-                if (editorOverlay && !editorOverlay.classList.contains('hidden')) {
+                if (isMobile && editorOverlay && !editorOverlay.classList.contains('hidden')) {
                     contentTextarea = document.getElementById('modal-textarea');
                 } else {
-                    contentTextarea = parentForm ? parentForm.querySelector('.auto-resize-textarea') : document.querySelector('.auto-resize-textarea');
+                    contentTextarea = parentForm ? parentForm.querySelector('.auto-resize-textarea') : null;
                 }
 
                 if (template.name === 'UECreview') {
@@ -678,7 +704,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (titleInput) titleInput.value = template.title;
                             if (contentTextarea) {
                                 contentTextarea.value = newBody;
-                                if (contentTextarea.classList.contains('auto-resize-textarea') && window.innerWidth > 768) {
+                                // モーダルでない場合（PCの場合）のみリサイズ処理を呼ぶ
+                                if (!isMobile) {
                                     resizeTextarea(contentTextarea);
                                 }
                             }
@@ -688,7 +715,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (titleInput) titleInput.value = template.title;
                     if (contentTextarea) {
                         contentTextarea.value = template.body;
-                        if (contentTextarea.classList.contains('auto-resize-textarea') && window.innerWidth > 768) {
+                        // モーダルでない場合（PCの場合）のみリサイズ処理を呼ぶ
+                        if (!isMobile) {
                             resizeTextarea(contentTextarea);
                         }
                     }
@@ -699,68 +727,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // ▲▲▲ ここまでが今回の修正箇所です ▲▲▲
 
-    // --- 3. メインロジック：スマホとPCで動作を分離 ---
-    const isMobile = window.innerWidth <= 768;
-    const editorOverlay = document.getElementById('editor-overlay');
-    const allTextareasToModal = document.querySelectorAll('.auto-resize-textarea');
-
-    if (isMobile && editorOverlay && allTextareasToModal.length > 0) {
-        // --- スマホの場合：モーダル処理 ---
-        const modalTextarea = document.getElementById('modal-textarea');
-        const modalDoneBtn = document.getElementById('modal-done-btn');
-        let activeTextarea = null;
-
-        allTextareasToModal.forEach(textarea => {
-            textarea.addEventListener('click', (e) => {
-                e.preventDefault();
-                activeTextarea = e.target;
-                modalTextarea.value = activeTextarea.value;
-                editorOverlay.classList.remove('hidden');
-                modalTextarea.focus();
-            });
-        });
-
-        if (modalDoneBtn) {
-            modalDoneBtn.addEventListener('click', () => {
-                if (activeTextarea) {
-                    activeTextarea.value = modalTextarea.value;
-                }
-                editorOverlay.classList.add('hidden');
-                activeTextarea = null;
-            });
-        }
-    } else if (allTextareasToModal.length > 0) {
-        // --- PCの場合：自動リサイズ処理 ---
-        allTextareasToModal.forEach(textarea => {
-            textarea.addEventListener('input', () => resizeTextarea(textarea));
-            setTimeout(() => resizeTextarea(textarea), 100); 
-        });
-    }
-
-    // 手動入力時の自動リサイズ処理
-    document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
-        textarea.addEventListener('input', () => resizeTextarea(textarea));
-        setTimeout(() => resizeTextarea(textarea), 100); 
-    });
-
- // ▼▼▼ ここからが今回の修正点です ▼▼▼
-    // --- スマホでのテキストエリアのスクロール制御 ---
-    document.querySelectorAll('textarea').forEach(textarea => {
-        textarea.addEventListener('touchstart', function() {
-            // テキストエリアがスクロール可能かどうかをチェック
-            const isScrollable = this.scrollHeight > this.clientHeight;
-            // スクロール可能な場合のみ、ページ全体のスクロールを無効化する
-            if (isScrollable) {
-                document.body.style.overflow = 'hidden';
-            }
-        });
-        textarea.addEventListener('touchend', function() {
-            // タッチが終わったら、ページ全体のスクロールを元に戻す
-            document.body.style.overflow = '';
-        });
-    });
-    // ▲▲▲ ここまで ▲▲▲
+    // --- 5. その他の機能 ---
 
     // 画像アップロード時のファイル名表示処理
     if (imageInput) {

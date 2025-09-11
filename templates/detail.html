@@ -61,8 +61,8 @@
             	{{ form.csrf_token }}
             	<div class="form-field">
                 {{ form.content.label }}<br>
-                {{ form.content(rows=5, class="comment-textarea") }}
-            	</div>
+                {{ form.content(rows=5, class="comment-textarea auto-resize-textarea") }}
+                </div>
            	 {{ form.submit }}
         	</form>
     	</div>
