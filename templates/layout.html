@@ -629,7 +629,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(autoResize, 100); 
     });
 
-    // テンプレート機能の処理 (モーダル対応版)
+    // テンプレート機能の処理
     const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
     allTemplateDropdowns.forEach(dropdown => {
         const selectBtn = dropdown.querySelector('.template-select-btn');
@@ -649,17 +649,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 const template = TEMPLATES_DATA[templateIndex];
                 if (!template) return;
 
-                const parentForm = this.closest('.post-form') || this.closest('.post-detail') || document;
-                const titleInput = parentForm.querySelector('input[name="title"]');
+                const parentForm = this.closest('.post-form') || this.closest('.post-detail');
+                const titleInput = parentForm ? parentForm.querySelector('input[name="title"]') : document.querySelector('input[name="title"]');
+                
                 const editorOverlay = document.getElementById('editor-overlay');
                 let contentTextarea;
 
                 if (editorOverlay && !editorOverlay.classList.contains('hidden')) {
-                    // モーダルが開いている場合は、モーダルのテキストエリアを対象にする
                     contentTextarea = document.getElementById('modal-textarea');
                 } else {
-                    // 通常はフォーム内のテキストエリアを対象にする
-                    contentTextarea = parentForm.querySelector('.auto-resize-textarea');
+                    contentTextarea = parentForm ? parentForm.querySelector('.auto-resize-textarea') : document.querySelector('.auto-resize-textarea');
                 }
 
                 if (template.name === 'UECreview') {
