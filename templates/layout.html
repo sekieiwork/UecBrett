@@ -549,9 +549,9 @@
             {% block content %}{% endblock %}
         </div>
     </main>
-
+    
     <div id="editor-overlay" class="hidden">
-        <div id="editor-modal">
+    <div id="editor-modal">
             <textarea id="modal-textarea"></textarea>
             <button id="modal-done-btn">完了</button>
         </div>
@@ -606,62 +606,54 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ▼▼▼ ここからが今回の修正箇所です ▼▼▼
-    // 意図: 以前の複雑なロジックを全面的に書き換え、PCとスマホの処理を明確に分離します。
-    // これにより、意図しないモーダルの表示や操作不能になる問題を解決します。
+    // ▼▼▼ ここからJavaScriptのロジックを修正 ▼▼▼
 
-    // --- 3. テキストエリアの入力処理 (PC/スマホ分岐) ---
+    // --- 3. テキストエリアの入力処理 (PC/スマホ分岐) とモーダル関連の処理 ---
     const allEditableTextareas = document.querySelectorAll('.auto-resize-textarea');
     const editorOverlay = document.getElementById('editor-overlay');
+    const modalTextarea = document.getElementById('modal-textarea');
+    const modalDoneBtn = document.getElementById('modal-done-btn');
     const isMobile = window.innerWidth <= 768;
+    let activeTextarea = null; // 現在編集中のテキストエリアを保持する変数
 
-    if (isMobile && editorOverlay && allEditableTextareas.length > 0) {
+    // 意図: 「完了」ボタンの処理を、ページにテキストエリアがあるかどうかに関わらず、常に準備しておきます。
+    // これにより、どのページでモーダルが表示されてもボタンが確実に機能するようになります。
+    if (modalDoneBtn) {
+        modalDoneBtn.addEventListener('click', () => {
+            if (activeTextarea && editorOverlay) {
+                activeTextarea.value = modalTextarea.value;
+                resizeTextarea(activeTextarea); // サイズを更新
+                editorOverlay.classList.add('hidden'); // モーダルを隠す
+                activeTextarea = null; // リセット
+            }
+        });
+    }
+    
+    if (isMobile) {
         // --- スマホの場合：モーダルによる編集 ---
-        const modalTextarea = document.getElementById('modal-textarea');
-        const modalDoneBtn = document.getElementById('modal-done-btn');
-        let activeTextarea = null; // 現在編集中のテキストエリアを保持する変数
-
         // ページ内の全ての対象テキストエリアにイベントリスナーを設定
         allEditableTextareas.forEach(textarea => {
-            // テキストエリアがフォーカスされたらモーダルを開く
-            // (クリックよりもユーザーの「入力したい」という意図に近いため 'focus' イベントを使用)
             textarea.addEventListener('focus', (e) => {
-                e.preventDefault(); // デフォルトのフォーカス挙動を一旦キャンセル
-                activeTextarea = e.target; // 対象のテキストエリアを保存
-                modalTextarea.value = activeTextarea.value; // 内容をモーダルにコピー
-                editorOverlay.classList.remove('hidden'); // モーダルを表示
-                
-                // 少し遅延させてからフォーカスを当てないと、iOSなどでキーボードが正常に表示されない場合があるため
+                e.preventDefault();
+                activeTextarea = e.target;
+                modalTextarea.value = activeTextarea.value;
+                if (editorOverlay) {
+                    editorOverlay.classList.remove('hidden');
+                }
                 setTimeout(() => modalTextarea.focus(), 100);
             });
         });
 
-        // モーダルの「完了」ボタンがクリックされた時の処理
-        if (modalDoneBtn) {
-            modalDoneBtn.addEventListener('click', () => {
-                if (activeTextarea) {
-                    // モーダルの内容を元のテキストエリアに書き戻す
-                    activeTextarea.value = modalTextarea.value;
-                    // 元のテキストエリアのサイズを更新（PC版のリサイズ処理を再利用）
-                    resizeTextarea(activeTextarea);
-                }
-                editorOverlay.classList.add('hidden'); // モーダルを隠す
-                activeTextarea = null; // アクティブなテキストエリアをリセット
-            });
-        }
-
-    } else if (allEditableTextareas.length > 0) {
+    } else {
         // --- PCの場合：インラインでの自動リサイズ ---
         allEditableTextareas.forEach(textarea => {
-            // 入力があるたびに高さを調整
             textarea.addEventListener('input', () => resizeTextarea(textarea));
-            // ページ読み込み時にも高さを調整（編集画面などで初期値が入っている場合に対応）
             setTimeout(() => resizeTextarea(textarea), 100);
         });
     }
 
-    // 意図: テンプレート機能はモーダルとの連携も考慮して修正します。
     // --- 4. テンプレート機能の処理 ---
+    // (このセクションは前回のままで問題ありません)
     const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
     allTemplateDropdowns.forEach(dropdown => {
         const selectBtn = dropdown.querySelector('.template-select-btn');
@@ -682,10 +674,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const template = TEMPLATES_DATA[templateIndex];
                 if (!template) return;
 
-                const parentForm = this.closest('.post-form') || this.closest('body'); // 編集画面なども考慮
+                const parentForm = this.closest('.post-form') || this.closest('body');
                 const titleInput = parentForm ? parentForm.querySelector('input[name="title"]') : null;
                 
-                // 修正点: スマホでモーダルが表示されている場合、モーダル内のテキストエリアを対象にする
                 let contentTextarea;
                 if (isMobile && editorOverlay && !editorOverlay.classList.contains('hidden')) {
                     contentTextarea = document.getElementById('modal-textarea');
@@ -704,7 +695,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (titleInput) titleInput.value = template.title;
                             if (contentTextarea) {
                                 contentTextarea.value = newBody;
-                                // モーダルでない場合（PCの場合）のみリサイズ処理を呼ぶ
                                 if (!isMobile) {
                                     resizeTextarea(contentTextarea);
                                 }
@@ -715,7 +705,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (titleInput) titleInput.value = template.title;
                     if (contentTextarea) {
                         contentTextarea.value = template.body;
-                        // モーダルでない場合（PCの場合）のみリサイズ処理を呼ぶ
                         if (!isMobile) {
                             resizeTextarea(contentTextarea);
                         }
@@ -727,9 +716,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ▲▲▲ ここまでが今回の修正箇所です ▲▲▲
+    // ▲▲▲ JavaScriptの修正はここまで ▲▲▲
 
     // --- 5. その他の機能 ---
+    // (以下の部分は変更ありません)
 
     // 画像アップロード時のファイル名表示処理
     if (imageInput) {
