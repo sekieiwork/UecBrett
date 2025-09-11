@@ -561,10 +561,9 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-    // --- 1. 専門家（ヘルパー関数）の定義 ---
+    // --- 1. ヘルパー関数と共通の要素を取得 ---
     const resizeTextarea = (textarea) => {
         if (!textarea) return;
-        // PC用の自動リサイズ機能
         textarea.style.height = 'auto';
         const maxHeight = parseInt(window.getComputedStyle(textarea).maxHeight, 10);
         const scrollHeight = textarea.scrollHeight;
@@ -577,11 +576,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    const headerDropdownContainer = document.querySelector('.dropdown-container');
+    const toggleButton = document.getElementById('toggle-post-form-btn');
+    const postFormContainer = document.getElementById('post-form-container');
+    const imageInput = document.getElementById('image');
 
     // --- 2. 各機能のイベント設定 ---
 
- // ヘッダーのドロップダウン処理
-    const headerDropdownContainer = document.querySelector('.dropdown-container');
+    // ヘッダーのドロップダウン処理
     if (headerDropdownContainer) {
         const headerDropdownContent = headerDropdownContainer.querySelector('.dropdown-content');
         if (headerDropdownContent) {
@@ -594,8 +596,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 「新しい投稿をする」ボタンの処理
-    const toggleButton = document.getElementById('toggle-post-form-btn');
-    const postFormContainer = document.getElementById('post-form-container');
     if (toggleButton && postFormContainer) {
         toggleButton.addEventListener('click', function() {
             postFormContainer.classList.toggle('hidden');
@@ -704,7 +704,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- 【最終修正版】スマホとPCで動作を分けるロジック ---
+    // --- 3. スマホとPCで動作を分けるメインロジック ---
     const isMobile = window.innerWidth <= 768;
     const editorOverlay = document.getElementById('editor-overlay');
     const allTextareasToModal = document.querySelectorAll('.auto-resize-textarea');
@@ -768,7 +768,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // ▲▲▲ ここまで ▲▲▲
 
     // 画像アップロード時のファイル名表示処理
-    const imageInput = document.getElementById('image');
     if (imageInput) {
         const filenameDisplay = document.getElementById('image-filename-display');
         const editFilenameDisplay = document.getElementById('edit-image-filename-display');
@@ -777,7 +776,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const filename = file ? file.name : '';
             if (filenameDisplay) { filenameDisplay.textContent = filename; }
             if (editFilenameDisplay) { 
-                const currentImageText = `現在設定中の画像: {{ post.image_url.split('/')[-1] if post and post.image_url else '' }}`;
+                const currentImageText = document.querySelector('#edit-image-filename-display').getAttribute('data-current-image') || '画像がありません';
                 editFilenameDisplay.textContent = file ? `選択中: ${filename}` : currentImageText;
              }
         });
