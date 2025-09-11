@@ -54,5 +54,27 @@
             {{ form.submit(value='更新') }}
             <a href="{{ url_for('post_detail', post_id=post.id) }}">戻る</a>
         </div>
-        </form>
-{% endblock %}
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Flask-WTFによって生成されるであろうIDを使って要素を取得します
+            // タイトル入力欄のIDは 'title', 本文入力欄のIDは 'content' になるのが一般的です
+            const titleInput = document.getElementById('title');
+            const contentTextarea = document.getElementById('content');
+
+            // 要素が両方とも存在する場合のみ、処理を実行します
+            if (titleInput && contentTextarea) {
+                titleInput.addEventListener('keydown', function(event) {
+                    // 押されたキーが 'Enter' だったら
+                    if (event.key === 'Enter') {
+                        // 1. フォームが送信されるのを防ぎます
+                        event.preventDefault();
+                        // 2. 本文のテキストエリアにフォーカスを移動させます
+                        contentTextarea.focus();
+                    }
+                });
+            }
+        });
+    </script>
+    {% endblock %}
