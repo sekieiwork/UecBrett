@@ -466,6 +466,27 @@
         .dropdown-content { right: 10px; top: 50px; min-width: 150px; }
         .comment-content { max-height: 80px; }
     }
+
+#editor-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.7); z-index: 2000;
+        display: flex; align-items: center; justify-content: center;
+    }
+    #editor-modal {
+        background-color: white; width: 90%; height: 70%; max-width: 600px;
+        padding: 1em; border-radius: 8px; display: flex; flex-direction: column;
+    }
+    #modal-textarea {
+        width: 100%; height: 100%; flex-grow: 1; border: 1px solid #ccc;
+        resize: none; margin-bottom: 1em; padding: 0.5em; box-sizing: border-box; font-size: 1em;
+        -webkit-appearance: none; /* iOSでの見た目のリセット */
+    }
+    #modal-done-btn {
+        padding: 0.8em 1em; border: none; border-radius: 4px;
+        background-color: #007bff; color: white; cursor: pointer;
+        -webkit-appearance: none; /* iOSでの見た目のリセット */
+    }
+
     </style>
 </head>
 <body>
@@ -532,18 +553,15 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-// --- 1. 専門家（ヘルパー関数）の定義 ---
+    // --- 1. 専門家（ヘルパー関数）の定義 ---
     const resizeTextarea = (textarea) => {
         if (!textarea) return;
         if (!textarea.twin) {
             let twin = document.createElement('div');
             const style = window.getComputedStyle(textarea);
             ['border','boxSizing','fontFamily','fontSize','fontWeight','letterSpacing','lineHeight','padding','textDecoration','textIndent','textTransform','whiteSpace','wordSpacing','width'].forEach(prop => { twin.style[prop] = style[prop]; });
-            twin.style.visibility = 'hidden';
-            twin.style.position = 'absolute';
-            twin.style.top = '0';
-            twin.style.left = '0';
-            twin.style.height = 'auto';
+            twin.style.visibility = 'hidden'; twin.style.position = 'absolute';
+            twin.style.top = '0'; twin.style.left = '0'; twin.style.height = 'auto';
             twin.style.wordWrap = 'break-word';
             document.body.appendChild(twin);
             textarea.twin = twin;
@@ -552,8 +570,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (textarea.value.slice(-1) === '\n') { text += '&nbsp;'; }
         textarea.twin.innerHTML = text;
         const style = window.getComputedStyle(textarea);
-        const borderTopWidth = parseInt(style.borderTopWidth, 10);
-        const borderBottomWidth = parseInt(style.borderBottomWidth, 10);
+        const borderTopWidth = parseInt(style.borderTopWidth, 10) || 0;
+        const borderBottomWidth = parseInt(style.borderBottomWidth, 10) || 0;
         textarea.style.height = (textarea.twin.scrollHeight + borderTopWidth + borderBottomWidth) + 'px';
     };
 
@@ -655,7 +673,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- 【最終修正版】スマホとPCで動作を分ける ---
+   // --- 【最終修正版】スマホとPCで動作を分ける ---
     const isMobile = window.innerWidth <= 768;
     const editorOverlay = document.getElementById('editor-overlay');
 
@@ -679,7 +697,7 @@ document.addEventListener('DOMContentLoaded', function() {
             modalDoneBtn.addEventListener('click', () => {
                 if (activeTextarea) {
                     activeTextarea.value = modalTextarea.value;
-                    // 元のテキストエリアの高さも念のため更新
+                    // PC表示に戻った時のために、元のテキストエリアの高さも更新
                     resizeTextarea(activeTextarea);
                 }
                 editorOverlay.classList.add('hidden');
@@ -691,10 +709,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // --- PCの場合：自動リサイズ処理 ---
         document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
             textarea.addEventListener('input', () => resizeTextarea(textarea));
+            // ページ読み込み時（編集画面など）に高さを調整
             setTimeout(() => resizeTextarea(textarea), 100); 
         });
     }
-
 
     // 手動入力時の自動リサイズ処理
     document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
