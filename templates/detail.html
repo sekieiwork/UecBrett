@@ -57,7 +57,7 @@
         <div class="comment-container">
             {% if current_user.is_authenticated %}
             <div class="comment-form">
-                <h3>コメントする</h3>
+           
                 <form method="POST">
                     {{ comment_form.csrf_token }}
                     <div class="form-field">
