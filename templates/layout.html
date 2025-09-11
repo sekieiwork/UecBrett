@@ -467,7 +467,7 @@
         .comment-content { max-height: 80px; }
     }
 
-#editor-overlay {
+    #editor-overlay {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background-color: rgba(0, 0, 0, 0.7); z-index: 2000;
         display: flex; align-items: center; justify-content: center;
@@ -555,6 +555,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- 1. 専門家（ヘルパー関数）の定義 ---
     const resizeTextarea = (textarea) => {
+        // PC用の自動リサイズ機能（スマホでは使わない）
         if (!textarea) return;
         if (!textarea.twin) {
             let twin = document.createElement('div');
@@ -605,29 +606,38 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
- // --- 本文入力用のテキストエリア自動リサイズ処理 ---
+    // 本文入力用のテキストエリア自動リサイズ処理
     document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
         
         function autoResize() {
+            // 先に高さを一旦リセット
             textarea.style.height = 'auto';
+            
+            // スクロール可能な最大の高さ(CSSで設定)を取得
             const maxHeight = parseInt(window.getComputedStyle(textarea).maxHeight, 10);
+            
+            // 本文全体の高さ
             const scrollHeight = textarea.scrollHeight;
 
+            // 本文全体の高さが最大高さを超えているかチェック
             if (maxHeight > 0 && scrollHeight > maxHeight) {
+                // 超えている場合は、高さを最大値に固定（スクロールバーが表示される）
                 textarea.style.height = maxHeight + 'px';
                 textarea.style.overflowY = 'auto';
             } else {
+                // 超えていない場合は、本文全体の高さに合わせる
                 textarea.style.height = scrollHeight + 'px';
                 textarea.style.overflowY = 'hidden';
             }
         }
 
         textarea.addEventListener('input', autoResize);
+        // ページ読み込み時（編集画面など）にも高さを調整
         setTimeout(autoResize, 100); 
     });
 
- // --- テンプレート機能の処理 ---
-    // ▼▼▼ 修正点: contentTextareaのセレクタをより具体的に ▼▼▼
+    // テンプレート機能の処理（リサイズ呼び出し部分を更新）
+　　const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
     if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
         document.querySelectorAll('.template-item').forEach(item => {
             item.addEventListener('click', function(event) {
@@ -636,17 +646,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const template = TEMPLATES_DATA[templateIndex];
                 if (!template) return;
 
-                const form = this.closest('form, .post-form'); // テンプレートボタンが属するフォームを探す
-                if (!form) return;
-
-                const titleInput = form.querySelector('input[name="title"]');
-                const contentTextarea = form.querySelector('textarea[name="content"]');
+                const titleInput = document.querySelector('input[name="title"]');
+                const contentTextarea = document.querySelector('textarea[name="content"]');
 
                 if (template.name === 'UECreview') {
                     const countStr = prompt('何科目書きますか？', '1');
                     if (countStr) {
-                        const halfWidthStr = countStr.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-                        const count = parseInt(halfWidthStr, 10);
+                        const count = parseInt(countStr, 10);
                         if (!isNaN(count) && count > 0) {
                             let newBody = '';
                             for (let i = 0; i < count; i++) {
@@ -656,6 +662,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (titleInput) titleInput.value = template.title;
                             if (contentTextarea) {
                                 contentTextarea.value = newBody;
+                                // inputイベントを発火させて、autoResizeをトリガー
                                 contentTextarea.dispatchEvent(new Event('input'));
                             }
                         } else { alert('有効な数字を入力してください。'); }
@@ -664,6 +671,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (titleInput) titleInput.value = template.title;
                     if (contentTextarea) {
                         contentTextarea.value = template.body;
+                        // inputイベントを発火させて、autoResizeをトリガー
                         contentTextarea.dispatchEvent(new Event('input'));
                     }
                 }
@@ -673,17 +681,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-   // --- 【最終修正版】スマホとPCで動作を分ける ---
+    // --- 【最終修正版】スマホとPCで動作を分けるロジック ---
     const isMobile = window.innerWidth <= 768;
     const editorOverlay = document.getElementById('editor-overlay');
+    const allTextareasToModal = document.querySelectorAll('.auto-resize-textarea');
 
-    if (isMobile && editorOverlay) {
+    if (isMobile && editorOverlay && allTextareasToModal.length > 0) {
         // --- スマホの場合：モーダル処理 ---
         const modalTextarea = document.getElementById('modal-textarea');
         const modalDoneBtn = document.getElementById('modal-done-btn');
         let activeTextarea = null;
 
-        document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
+        allTextareasToModal.forEach(textarea => {
             textarea.addEventListener('click', (e) => {
                 e.preventDefault();
                 activeTextarea = e.target;
@@ -697,19 +706,16 @@ document.addEventListener('DOMContentLoaded', function() {
             modalDoneBtn.addEventListener('click', () => {
                 if (activeTextarea) {
                     activeTextarea.value = modalTextarea.value;
-                    // PC表示に戻った時のために、元のテキストエリアの高さも更新
-                    resizeTextarea(activeTextarea);
                 }
                 editorOverlay.classList.add('hidden');
                 activeTextarea = null;
             });
         }
 
-    } else {
+    } else if (allTextareasToModal.length > 0) {
         // --- PCの場合：自動リサイズ処理 ---
-        document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
+        allTextareasToModal.forEach(textarea => {
             textarea.addEventListener('input', () => resizeTextarea(textarea));
-            // ページ読み込み時（編集画面など）に高さを調整
             setTimeout(() => resizeTextarea(textarea), 100); 
         });
     }
