@@ -21,7 +21,7 @@
         <div class="form-field">
             {{ form.title.label }}<br>
             {{ form.title() }}
-            </div>
+        </div>
         <div class="form-field">
             {{ form.content.label }}<br>
             {{ form.content(cols=40, rows=5, class="auto-resize-textarea") }}
@@ -50,8 +50,9 @@
             {% endif %}
         </div>
         
-        <div style="margin-top: 1.5em;">
+        <div style="margin-top: 1.5em; display: flex; align-items: center; gap: 1em;">
             {{ form.submit(value='更新') }}
+            <a href="{{ url_for('post_detail', post_id=post.id) }}">戻る</a>
         </div>
-    </form>
+        </form>
 {% endblock %}
