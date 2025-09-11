@@ -658,7 +658,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const parentForm = this.closest('.post-form') || this.closest('.post-detail');
                 const titleInput = parentForm ? parentForm.querySelector('input[name="title"]') : document.querySelector('input[name="title"]');
-                
                 const editorOverlay = document.getElementById('editor-overlay');
                 let contentTextarea;
 
@@ -675,14 +674,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         const count = parseInt(halfWidthStr, 10);
                         if (!isNaN(count) && count > 0) {
                             let newBody = '';
-                            for (let i = 0; i < count; i++) {
-                                newBody += template.body;
-                                if (i < count - 1) { newBody += '\n\n'; }
-                            }
+                            for (let i = 0; i < count; i++) { newBody += template.body; if (i < count - 1) { newBody += '\n\n'; } }
                             if (titleInput) titleInput.value = template.title;
                             if (contentTextarea) {
                                 contentTextarea.value = newBody;
-                                if (contentTextarea.classList.contains('auto-resize-textarea')) {
+                                if (contentTextarea.classList.contains('auto-resize-textarea') && window.innerWidth > 768) {
                                     resizeTextarea(contentTextarea);
                                 }
                             }
@@ -692,7 +688,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (titleInput) titleInput.value = template.title;
                     if (contentTextarea) {
                         contentTextarea.value = template.body;
-                        if (contentTextarea.classList.contains('auto-resize-textarea')) {
+                        if (contentTextarea.classList.contains('auto-resize-textarea') && window.innerWidth > 768) {
                             resizeTextarea(contentTextarea);
                         }
                     }
@@ -703,7 +699,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- 3. スマホとPCで動作を分けるメインロジック ---
+
+    // --- 3. メインロジック：スマホとPCで動作を分離 ---
     const isMobile = window.innerWidth <= 768;
     const editorOverlay = document.getElementById('editor-overlay');
     const allTextareasToModal = document.querySelectorAll('.auto-resize-textarea');
@@ -733,7 +730,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 activeTextarea = null;
             });
         }
-
     } else if (allTextareasToModal.length > 0) {
         // --- PCの場合：自動リサイズ処理 ---
         allTextareasToModal.forEach(textarea => {
@@ -844,6 +840,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
 </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </body>
