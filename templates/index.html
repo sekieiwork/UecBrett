@@ -43,7 +43,7 @@
        		 	<img src="{{ url_for('static', filename='icons/image_upload.png') }}" alt="画像アップロード" style="width: 24px; height: 24px; vertical-align: middle;">
     			</label>
     			<span id="image-filename-display" style="font-size: 0.8em; color: #6c757d;"></span>
-    			{{ form.image(style="display: none;") }}
+    			{{ form.image(style="display: none;", accept="image/jpeg, image/png, image/gif") }}
 		</div>
             </form>
         </div>

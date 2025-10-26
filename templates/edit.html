@@ -33,7 +33,7 @@
                 <label for="image" style="cursor: pointer;">
                     <img src="{{ url_for('static', filename='icons/image_upload.png') }}" alt="画像アップロード" style="width: 24px; height: 24px; vertical-align: middle;">
                 </label>
-                {{ form.image(style="display: none;") }}
+                {{ form.image(style="display: none;", accept="image/jpeg, image/png, image/gif") }}
                 <span id="edit-image-filename-display" style="font-size: 0.8em; color: #6c757d;">
                     {% if post.image_url %}
                         現在設定中の画像: {{ post.image_url.split('/')[-1] }}
