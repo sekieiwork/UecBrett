@@ -17,5 +17,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # アプリケーションのコードをコンテナにコピー
 COPY . .
 
-# アプリケーションを起動
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8000"]
+# 新しく作ったstart.shに実行権限を与える
+RUN chmod +x ./start.sh
+
+# Gunicornの代わりにstart.shを起動する
+CMD ["./start.sh"]
