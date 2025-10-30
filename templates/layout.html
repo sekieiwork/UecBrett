@@ -780,29 +780,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
      }
 
-    // UECreviewフォームから本文を組み立てる関数
-	function buildUecReviewContent(container) {
+// UECreviewフォームから本文を組み立てる関数
+    function buildUecReviewContent(container) {
         let combinedContent = '';
         const formSets = container.querySelectorAll('.uec-form-set');
         
         formSets.forEach((set, index) => {
-            // 各フォームから値を取得
             const subject = set.querySelector('.uec-subject').value;
-            const teacher = set.querySelector('.uec-teacher').value; // 追加した教員欄
+            const teacher = set.querySelector('.uec-teacher').value; // <-- ★これを追加
             const grade = set.querySelector('.uec-grade').value;
             const body = set.querySelector('.uec-review-body').value;
 
-            // app.py の body 形式 に組み立てる
-            // 入力が空の場合は元のテンプレートのプレースホルダーを使う
             let reviewString = `<span class="text-large">**${subject || 'ここに科目名を入力'}**</span> `;
-            reviewString += `成績:<span class="text-red text-large">**${grade}**</span> `; // 成績はドロップダウンなので必ず値が入る
+            reviewString += `成績:<span class="text-red text-large">**${grade}**</span> `;
+            // ▼▼▼ teacher 変数を使うように修正 ▼▼▼
             reviewString += `担当教員:${teacher || 'ここに担当教員名を入力'}\n`;
             reviewString += `${body || '本文を入力'}`;
             
             combinedContent += reviewString;
             
             if (index < formSets.length - 1) {
-                // 科目と科目の間にMarkdownの水平線を追加
                 combinedContent += '\n\n---\n\n'; 
             }
         });
@@ -984,6 +981,34 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             }
         });
     });
+
+// --- 7. 編集ページ用のUECreviewデータ読み込み ---
+    
+    // 編集フォーム（indexの投稿フォームではない）が存在する場合のみ実行
+    const editForm = document.querySelector('form[method="POST"][enctype="multipart/form-data"]');
+    const postFormContainer = document.getElementById('post-form-container'); // index.html にのみ存在する
+    
+    if (editForm && !postFormContainer) {
+        // サーバーから渡されたJSONデータがあるか確認
+        {% if uec_review_data_json is defined and uec_review_data_json %}
+            try {
+                // テンプレートに埋め込まれたJSONをパース
+                const reviewData = {{ uec_review_data_json | safe }};
+                
+                if (reviewData && reviewData.length > 0) {
+                    // フォーム生成に必要な要素を取得
+                    const titleInput = editForm.querySelector('input[name="title"]');
+                    const uecReviewContainer = editForm.querySelector('#uecreview-form-container');
+                    
+                    // UECreviewフォームをデータ付きで生成
+                    // createUecReviewForm(count, container, titleInput, templateTitle, existing_data)
+                    createUecReviewForm(reviewData.length, uecReviewContainer, titleInput, null, reviewData);
+                }
+            } catch (e) {
+                console.error("UECreview データのパースに失敗しました:", e);
+            }
+        {% endif %}
+    }
 
     // --- ドロップダウンを閉じるグローバルなクリック処理 ---
     document.addEventListener('click', function(event) {

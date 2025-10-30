@@ -44,6 +44,51 @@ def linkify_urls(text):
         text
     )
 
+def parse_review_for_editing(content):
+    """
+    保存されたHTML/Markdown形式のUECreview本文をパースし、
+    編集フォーム用の辞書のリストに変換する。
+    """
+    
+    # UECreview形式かの簡易判定
+    if not content.strip().startswith('<span class="text-large">**'):
+        return None # UECreview形式ではない
+
+    subjects = []
+    # 投稿を "---" (ハイフン3つ) で分割（科目ごとのレビューに分ける）
+    reviews = re.split(r'\n\s*---\s*\n', content.strip())
+    
+    # パース用の正規表現パターン
+    # (科目名), (成績), (担当教員), (本文) をキャプチャする
+    pattern = re.compile(
+        r'<span class="text-large">\*\*(.*?)\*\*</span>\s*'
+        r'成績:<span class="text-red text-large">\*\*(.*?)\*\*</span>\s*'
+        r'担当教員:(.*?)\n'
+        r'(.*?)(?=\Z)', # \Z は文字列の絶対的な末尾
+        re.DOTALL # DOTALLで '.' が改行にもマッチするようにする
+    )
+
+    placeholders = ['ここに科目名を入力', 'ここに担当教員名を入力', '本文を入力']
+
+    for review_text in reviews:
+        match = pattern.search(review_text.strip())
+        if match:
+            subject, grade, teacher, body = match.groups()
+            
+            # プレースホルダーだったら空文字列 '' に変換
+            subject = '' if subject == placeholders[0] else subject
+            teacher = '' if teacher == placeholders[1] else teacher
+            body = '' if body == placeholders[2] else body
+            
+            subjects.append({
+                'subject': subject.strip(),
+                'grade': grade.strip(),
+                'teacher': teacher.strip(),
+                'body': body.strip()
+            })
+
+    return subjects if subjects else None
+
 def save_picture(form_picture):
     # Cloudinaryに画像をアップロード
     upload_result = cloudinary.uploader.upload(form_picture, folder="post_images", width=500, height=500, crop="limit")
@@ -284,8 +329,16 @@ def edit_post(post_id):
         }
     ]
 
-    return render_template('edit.html', form=form, post=post, search_form=search_form, md=md, templates=templates, templates_for_js=json.dumps(templates), linkify_urls=linkify_urls)
+    uec_review_data = parse_review_for_editing(post.content)
+    uec_review_data_json = None
+    if uec_review_data:
+        # パース成功時、データをJSON文字列に変換
+        uec_review_data_json = json.dumps(uec_review_data)
+        # ※この時点では元の post.content (テキストエリアの値) は変更しない
+        # JavaScript側でこのJSONを読み取ってフォームを動的に生成する
+    # ▲▲▲ 追加ここまで ▲▲▲
 
+    return render_template('edit.html', form=form, post=post, search_form=search_form, md=md, templates=templates, templates_for_js=json.dumps(templates), linkify_urls=linkify_urls,uec_review_data_json=uec_review_data_json)
 @app.route('/post/<int:post_id>/delete', methods=['POST'])
 @login_required
 def delete_post(post_id):
