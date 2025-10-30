@@ -61,42 +61,6 @@ def save_icon(form_icon):
     # アップロードされた画像の安全なURLを返す
     return upload_result.get('secure_url')
 
-def parse_uec_review(content):
-    """UECreview形式の本文をパースして辞書のリストに変換する"""
-    
-    # 投稿がUECreview形式かどうかの簡易判定
-    # (先頭が[科目名]で始まっているか)
-    if not content.strip().startswith('[科目名]'):
-        return None # UECreview形式ではない
-
-    subjects = []
-    # 投稿を "---" (ハイフン3つ) で分割（科目ごとのレビューに分ける）
-    reviews = re.split(r'\n\s*---\s*\n', content.strip())
-    
-    # 正規表現パターンを定義
-    subject_pattern = re.compile(r'\[科目名\](.*?)\n', re.DOTALL)
-    grade_pattern = re.compile(r'\[成績\](.*?)\n', re.DOTALL)
-    body_pattern = re.compile(r'\[本文\]\n(.*?)(?=\n\[科目名\]|\Z)', re.DOTALL) # 本文は末尾まで
-
-    for review_text in reviews:
-        subject_match = subject_pattern.search(review_text)
-        grade_match = grade_pattern.search(review_text)
-        body_match = body_pattern.search(review_text)
-        
-        # 主要なタグが見つかった場合のみ追加
-        if subject_match or grade_match or body_match:
-            subjects.append({
-                'subject': subject_match.group(1).strip() if subject_match else '',
-                'grade': grade_match.group(1).strip() if grade_match else '',
-                'body': body_match.group(1).strip() if body_match else ''
-            })
-
-    if not subjects:
-        return None
-
-    return subjects
-
-
 def delete_from_cloudinary(image_url):
     if not image_url:
         return # URLがなければ何もしない
@@ -197,7 +161,7 @@ def index(page):
             post.updated_at_jst = None
         
         post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
-        post.uec_review_data = parse_uec_review(post.content)
+
     templates = []
     if current_user.is_authenticated:
         templates = [
@@ -240,12 +204,10 @@ def post_detail(post_id):
 
     for c in post.comments:
         c.created_at_jst = c.created_at.replace(tzinfo=utc).astimezone(japan_tz)
-
-    uec_review_data = parse_uec_review(post.content)
     
     post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
     
-    return render_template('detail.html', post=post, comment_form=comment_form, linkify_urls=linkify_urls, md=md, search_form=search_form,uec_review_data=uec_review_data)
+    return render_template('detail.html', post=post, comment_form=comment_form, linkify_urls=linkify_urls, md=md, search_form=search_form)
 
 @app.route('/bookmark_post/<int:post_id>', methods=['POST'])
 @login_required
@@ -282,7 +244,7 @@ def show_bookmarks():
         else:
             post.updated_at_jst = None
         post.is_bookmarked = True
-        post.uec_review_data = parse_uec_review(post.content)
+
     return render_template('bookmarks.html', posts=bookmarked_posts, search_form=search_form, md=md, linkify_urls=linkify_urls)
 
 @app.route('/post/<int:post_id>/edit', methods=['GET', 'POST'])
@@ -421,7 +383,6 @@ def search(page=1):
                 post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
             else:
                 post.is_bookmarked = False
-            post.uec_review_data = parse_uec_review(post.content)
     else:
         posts = db.paginate(db.select(Post).where(False), page=page, per_page=5, error_out=False)
 
@@ -485,7 +446,6 @@ def user_profile(username):
         else:
             post.updated_at_jst = None
         post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
-        post.uec_review_data = parse_uec_review(post.content)
     for comment in comments.items:
         comment.created_at_jst = comment.created_at.replace(tzinfo=utc).astimezone(japan_tz)
     

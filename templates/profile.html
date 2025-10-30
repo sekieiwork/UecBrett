@@ -50,27 +50,7 @@
             </a>
             {% endif %}
 
-            {% if post.uec_review_data %}
-            <div class="post-content uec-review-summary">
-                {% set first_review = post.uec_review_data[0] %}
-                <strong>{{ first_review.subject if first_review.subject else '(科目名未入力)' }}</strong>
-                
-                <span class="grade-badge grade-{{ first_review.grade }}" style="font-size: 0.8em; padding: 0.2em 0.5em; margin-left: 5px;">
-                    {{ first_review.grade if first_review.grade else '(未評価)' }}
-                </span>
-                
-                <p>
-                    {{ (first_review.body | truncate(80)) if first_review.body else '(本文なし)' }}
-                </p>
-                
-                {% if post.uec_review_data|length > 1 %}
-                    <small style="color: #6c757d;">...他 {{ post.uec_review_data|length - 1 }} 件のレビュー</small>
-                {% endif %}
-            </div>
-
-        {% else %}
             <div class="post-content">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
-        {% endif %}
             
             <div class="post-meta">
                 <div>

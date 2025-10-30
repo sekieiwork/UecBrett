@@ -540,60 +540,6 @@
     }
 /* ▲▲▲ UECreviewフォーム用CSS ▲▲▲ */
 
-/* ▼▼▼ UECreview表示用CSS ▼▼▼ */
-.uec-review-display .uec-review-item {
-    border: 1px solid #e0e0e0;
-    border-radius: 0.25rem;
-    margin-bottom: 1.5em;
-    background-color: #fdfdfd;
-    overflow: hidden; /*
-}
-.uec-review-display .review-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.8em 1.2em;
-    background-color: #f5f5f5;
-    border-bottom: 1px solid #e0e0e0;
-}
-.uec-review-display .subject-name {
-    font-size: 1.2em;
-    font-weight: bold;
-}
-.uec-review-display .grade-badge {
-    padding: 0.3em 0.8em;
-    border-radius: 1em;
-    font-weight: bold;
-    font-size: 0.9em;
-    color: white;
-    white-space: nowrap;
-    background-color: #6c757d; /* デフォルト (未評価など) */
-}
-/* 成績ごとの色分け */
-.grade-badge.grade-秀 { background-color: #007bff; }
-.grade-badge.grade-優 { background-color: #28a745; }
-.grade-badge.grade-良 { background-color: #17a2b8; }
-.grade-badge.grade-可 { background-color: #ffc107; color: black; }
-.grade-badge.grade-不可 { background-color: #dc3545; }
-
-.uec-review-display .review-body {
-    padding: 1.2em 1.5em;
-    white-space: pre-wrap; /* 改行を保持 */
-    line-height: 1.6;
-}
-
-/* 一覧ページ用のサマリースタイル */
-.uec-review-summary {
-    padding: 1em;
-}
-.uec-review-summary p {
-    margin-top: 5px;
-    opacity: 0.8;
-    line-height: 1.4;
-    font-size: 0.9em;
-}
-/* ▲▲▲ UECreview表示用CSS ▲▲▲ */
-
 
 
     </style>
@@ -803,6 +749,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     <input type="text" id="uec-subject-${i}" class="uec-subject" placeholder="例：〇〇論">
                 </div>
                 <div>
+                    <label for="uec-teacher-${i}">担当教員:</label>
+                    <input type="text" id="uec-teacher-${i}" class="uec-teacher" placeholder="例：〇〇 先生">
+                </div>
+                <div>
                     <label for="uec-grade-${i}">成績:</label>
                     <select id="uec-grade-${i}" class="uec-grade">
                         ${gradesOptions}
@@ -831,23 +781,29 @@ document.addEventListener('DOMContentLoaded', function() {
      }
 
     // UECreviewフォームから本文を組み立てる関数
-    function buildUecReviewContent(container) {
+	function buildUecReviewContent(container) {
         let combinedContent = '';
         const formSets = container.querySelectorAll('.uec-form-set');
         
         formSets.forEach((set, index) => {
+            // 各フォームから値を取得
             const subject = set.querySelector('.uec-subject').value;
+            const teacher = set.querySelector('.uec-teacher').value; // 追加した教員欄
             const grade = set.querySelector('.uec-grade').value;
             const body = set.querySelector('.uec-review-body').value;
+
+            // app.py の body 形式 に組み立てる
+            // 入力が空の場合は元のテンプレートのプレースホルダーを使う
+            let reviewString = `<span class="text-large">**${subject || 'ここに科目名を入力'}**</span> `;
+            reviewString += `成績:<span class="text-red text-large">**${grade}**</span> `; // 成績はドロップダウンなので必ず値が入る
+            reviewString += `担当教員:${teacher || 'ここに担当教員名を入力'}\n`;
+            reviewString += `${body || '本文を入力'}`;
             
-            // ユーザーに見せないタグ形式で本文を組み立てる
-            // (この形式はサーバーサイドでパースするか、Markdownとして表示することを想定)
-            combinedContent += `[科目名]${subject || ''}\n`;
-            combinedContent += `[成績]${grade}\n`;
-            combinedContent += `[本文]\n${body || ''}\n`;
+            combinedContent += reviewString;
             
             if (index < formSets.length - 1) {
-                combinedContent += '\n---\n\n'; // 科目間の区切り
+                // 科目と科目の間にMarkdownの水平線を追加
+                combinedContent += '\n\n---\n\n'; 
             }
         });
         
