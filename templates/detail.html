@@ -19,7 +19,30 @@
         </div>
         {% endif %}
         
-        <div class="post-content" style="max-height: none; overflow-y: visible;">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
+        {% if uec_review_data %}
+            <div class="uec-review-display">
+                {% for review in uec_review_data %}
+                <div class="uec-review-item">
+                    <div class="review-header">
+                        <span class="subject-name">
+                            {{ review.subject if review.subject else '(科目名未入力)' }}
+                        </span>
+                        <span class="grade-badge grade-{{ review.grade }}">
+                            {{ review.grade if review.grade else '(未評価)' }}
+                        </span>
+                    </div>
+                    <div class="review-body">
+                        {{ md.convert(linkify_urls(review.body)) | safe }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+        {% else %}
+            <div class="post-content" style="max-height: none; overflow-y: visible;">
+                {{ md.convert(linkify_urls(post.content)) | safe }}
+            </div>
+        {% endif %}
 
         <div class="post-meta">
             <div>
