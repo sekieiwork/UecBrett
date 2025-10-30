@@ -723,12 +723,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // UECreviewフォームを生成する関数
-    function createUecReviewForm(count, container, titleInput, templateTitle) {
+// UECreviewフォームを生成する関数
+    // ▼▼▼ 引数に existing_data を追加し、ロジック全体を修正 ▼▼▼
+    function createUecReviewForm(count, container, titleInput, templateTitle, existing_data = []) {
         if (!container) return;
         
-        // タイトルを設定
-        if (titleInput) titleInput.value = templateTitle;
+        // タイトルを設定（新規作成時、かつ既存データがない時のみ）
+        if (titleInput && templateTitle && existing_data.length === 0) {
+            titleInput.value = templateTitle;
+        }
         
         // コンテナをクリア
         container.innerHTML = '';
@@ -738,10 +741,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const formSet = document.createElement('div');
             formSet.className = 'uec-form-set';
             
-            // 成績の選択肢
             let gradesOptions = ['秀', '優', '良', '可', '不可', '（未評価）']
                 .map(g => `<option value="${g}">${g}</option>`).join('');
 
+            // 担当教員フィールドを含むHTML
             formSet.innerHTML = `
                 <h3>科目 ${i + 1}</h3>
                 <div>
@@ -763,8 +766,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     <textarea id="uec-review-body-${i}" class="uec-review-body" placeholder="例：テストの難易度、課題について等"></textarea>
                 </div>
             `;
-            container.appendChild(formSet);
+            
+            container.appendChild(formSet); // ★先にDOMに追加
+
+            // データをフォームに埋め込む処理
+            const currentData = existing_data[i];
+            if (currentData) {
+                // formSet（今追加した要素）の中を検索する
+                formSet.querySelector('.uec-subject').value = currentData.subject || '';
+                formSet.querySelector('.uec-teacher').value = currentData.teacher || '';
+                formSet.querySelector('.uec-grade').value = currentData.grade || '（未評価）';
+                formSet.querySelector('.uec-review-body').value = currentData.body || '';
+            }
         }
+        
+        // UECreviewコンテナを表示し、元の本文欄を非表示に
+        container.classList.remove('hidden');
+        const originalContentField = container.closest('form').querySelector('#content-field-original');
+        if (originalContentField) {
+            originalContentField.classList.add('hidden');
+            
+            const originalTextarea = originalContentField.querySelector('.auto-resize-textarea');
+            if (originalTextarea) {
+                originalTextarea.required = false; // required属性を解除
+            }
+        }
+    } // <-- createUecReviewForm 関数の閉じカッコ
+    // ▲▲▲ ここまでで置き換え ▲▲▲
         
         // UECreviewコンテナを表示し、元の本文欄を非表示に
         container.classList.remove('hidden');
@@ -986,7 +1014,6 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
     
     // 編集フォーム（indexの投稿フォームではない）が存在する場合のみ実行
     const editForm = document.querySelector('form[method="POST"][enctype="multipart/form-data"]');
-    const postFormContainer = document.getElementById('post-form-container'); // index.html にのみ存在する
     
     if (editForm && !postFormContainer) {
         // サーバーから渡されたJSONデータがあるか確認
