@@ -723,8 +723,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-// layout.html の <script> 内
-// ▼▼▼ この関数 を丸ごと置き換え ▼▼▼
 
     // UECreviewフォームを生成する関数
     function createUecReviewForm(count, container, titleInput, templateTitle, existing_data = []) {
@@ -794,21 +792,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     } // <-- createUecReviewForm 関数の閉じカッコ
-// ▲▲▲ 置き換えここまで ▲▲▲
-        
-        // UECreviewコンテナを表示し、元の本文欄を非表示に
-        container.classList.remove('hidden');
-        const originalContentField = container.closest('form').querySelector('#content-field-original');
-	if (originalContentField) {
-            originalContentField.classList.add('hidden');
-            
-            // ▼▼▼ この3行を '}' の内側に移動し、余計な ')' を削除 ▼▼▼
-            const originalTextarea = originalContentField.querySelector('.auto-resize-textarea');
-            if (originalTextarea) {
-                originalTextarea.required = false; // required属性を解除
-            }
-        }
-     }
+
 
 // UECreviewフォームから本文を組み立てる関数
     function buildUecReviewContent(container) {
@@ -1013,7 +997,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
     });
 
 
-    // --- 7. 編集ページ用のUECreviewデータ読み込み ---
+// --- 7. 編集ページ用のUECreviewデータ読み込み ---
     
     // 編集フォーム（indexの投稿フォームではない）が存在する場合のみ実行
     const editForm = document.querySelector('form[method="POST"][enctype="multipart/form-data"]');
@@ -1029,7 +1013,6 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 if (reviewData && reviewData.length > 0) {
                     // フォーム生成に必要な要素を取得
                     const titleInput = editForm.querySelector('input[name="title"]');
-                    // ★★★ IDを修正 ★★★
                     const uecReviewContainer = editForm.querySelector('#uecreview-form-container'); 
                     
                     // UECreviewフォームをデータ付きで生成 (5引数の関数を呼ぶ)
@@ -1040,7 +1023,6 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             }
         {% endif %}
     }
-
     // --- ドロップダウンを閉じるグローバルなクリック処理 ---
     document.addEventListener('click', function(event) {
         if (headerDropdownContainer && !headerDropdownContainer.contains(event.target)) {
