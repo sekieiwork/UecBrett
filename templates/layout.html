@@ -723,8 +723,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-// UECreviewフォームを生成する関数
-    // ▼▼▼ 引数に existing_data を追加し、ロジック全体を修正 ▼▼▼
+// layout.html の <script> 内
+// ▼▼▼ この関数 を丸ごと置き換え ▼▼▼
+
+    // UECreviewフォームを生成する関数
     function createUecReviewForm(count, container, titleInput, templateTitle, existing_data = []) {
         if (!container) return;
         
@@ -792,7 +794,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     } // <-- createUecReviewForm 関数の閉じカッコ
-    // ▲▲▲ ここまでで置き換え ▲▲▲
+// ▲▲▲ 置き換えここまで ▲▲▲
         
         // UECreviewコンテナを表示し、元の本文欄を非表示に
         container.classList.remove('hidden');
@@ -1010,12 +1012,14 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         });
     });
 
-// --- 7. 編集ページ用のUECreviewデータ読み込み ---
+
+    // --- 7. 編集ページ用のUECreviewデータ読み込み ---
     
     // 編集フォーム（indexの投稿フォームではない）が存在する場合のみ実行
     const editForm = document.querySelector('form[method="POST"][enctype="multipart/form-data"]');
+    // const postFormContainer = ... (二重宣言になるため削除)
     
-    if (editForm && !postFormContainer) {
+    if (editForm && !postFormContainer) { // (postFormContainerはスクリプト上部 で宣言済み)
         // サーバーから渡されたJSONデータがあるか確認
         {% if uec_review_data_json is defined and uec_review_data_json %}
             try {
@@ -1025,10 +1029,10 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 if (reviewData && reviewData.length > 0) {
                     // フォーム生成に必要な要素を取得
                     const titleInput = editForm.querySelector('input[name="title"]');
-                    const uecReviewContainer = editForm.querySelector('#uecreview-form-container');
+                    // ★★★ IDを修正 ★★★
+                    const uecReviewContainer = editForm.querySelector('#uecreview-form-container'); 
                     
-                    // UECreviewフォームをデータ付きで生成
-                    // createUecReviewForm(count, container, titleInput, templateTitle, existing_data)
+                    // UECreviewフォームをデータ付きで生成 (5引数の関数を呼ぶ)
                     createUecReviewForm(reviewData.length, uecReviewContainer, titleInput, null, reviewData);
                 }
             } catch (e) {
