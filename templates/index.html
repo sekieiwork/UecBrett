@@ -15,6 +15,9 @@
         <div class="post-form">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em;">
                 <h2>新しい投稿</h2>
+            </div>
+            <form method="POST" enctype="multipart/form-data">
+                {{ form.csrf_token }}
                 {% if templates %}
                 <div class="template-dropdown">
                     <button type="button" class="template-select-btn">テンプレートを選択</button>
@@ -25,9 +28,6 @@
                     </div>
                 </div>
                 {% endif %}
-            </div>
-            <form method="POST" enctype="multipart/form-data">
-                {{ form.csrf_token }}
                 <div class="form-field">
                     {{ form.title.label }}<br>
                     {{ form.title() }}

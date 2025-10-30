@@ -5,7 +5,11 @@
 {% block content %}
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <h1>投稿編集</h1>
-        {% if templates %}
+        
+    </div>
+    <form method="POST" enctype="multipart/form-data">
+        {{ form.csrf_token }}
+	{% if templates %}
         <div class="template-dropdown">
             <button type="button" class="template-select-btn">テンプレートを選択</button>
             <div class="template-dropdown-content hidden">
@@ -15,9 +19,6 @@
             </div>
         </div>
         {% endif %}
-    </div>
-    <form method="POST" enctype="multipart/form-data">
-        {{ form.csrf_token }}
         <div class="form-field">
             {{ form.title.label }}<br>
             {{ form.title() }}
