@@ -5,32 +5,32 @@
 {% block content %}
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <h1>投稿編集</h1>
-        
+        {% if templates %}
+	<div style="text-align: right; margin-bottom: 1em;">
+        	<div class="template-dropdown">
+            		<button type="button" class="template-select-btn">テンプレートを選択</button>
+            		<div class="template-dropdown-content hidden">
+                		{% for t in templates %}
+                		<a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
+                		{% endfor %}
+            		</div>
+        	</div>
+	</div>
+        {% endif %}
     </div>
     <form method="POST" enctype="multipart/form-data">
         {{ form.csrf_token }}
-	{% if templates %}
-        <div class="template-dropdown">
-            <button type="button" class="template-select-btn">テンプレートを選択</button>
-            <div class="template-dropdown-content hidden">
-                {% for t in templates %}
-                <a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
         <div class="form-field">
             {{ form.title.label }}<br>
             {{ form.title() }}
         </div>
-
-        <div class="form-field" id="content-field-original">
-        	{{ form.content.label }}<br>
-            	{{ form.content(cols=40, rows=5, class="auto-resize-textarea") }}
+        <div class="form-field" id="content-field-original"> 
+	    {{ form.content.label }}<br>
+            {{ form.content(cols=40, rows=5, class="auto-resize-textarea") }}
         </div>
 
         <div id="uecreview-form-container" class="hidden">
-        </div>
+            </div>
         
         <div class="form-field" style="margin-top: 1em;">
             <label for="image">画像を変更</label><br>
