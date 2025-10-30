@@ -767,6 +767,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const originalContentField = container.closest('form').querySelector('#content-field-original');
         if (originalContentField) {
             originalContentField.classList.add('hidden');
+	    const originalTextarea = originalContentField.querySelector('.auto-resize-textarea');
+            if (originalTextarea) {
+                originalTextarea.required = false; // required属性を解除
         }
     }
 
@@ -844,6 +847,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (uecReviewContainer) uecReviewContainer.innerHTML = '';
                     // 元の本文欄を表示
                     if (originalContentField) originalContentField.classList.remove('hidden');
+
+			const originalTextarea = originalContentField.querySelector('.auto-resize-textarea');
+                        if (originalTextarea) {
+                            originalTextarea.required = true; // required属性を元に戻す
+                        }
 
                     if (titleInput) titleInput.value = template.title;
                     if (contentTextarea) {
