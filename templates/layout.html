@@ -765,13 +765,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // UECreviewコンテナを表示し、元の本文欄を非表示に
         container.classList.remove('hidden');
         const originalContentField = container.closest('form').querySelector('#content-field-original');
-        if (originalContentField) {
+	if (originalContentField) {
             originalContentField.classList.add('hidden');
-	    const originalTextarea = originalContentField.querySelector('.auto-resize-textarea');
+            
+            // ▼▼▼ この3行を '}' の内側に移動し、余計な ')' を削除 ▼▼▼
+            const originalTextarea = originalContentField.querySelector('.auto-resize-textarea');
             if (originalTextarea) {
                 originalTextarea.required = false; // required属性を解除
+            }
         }
-    }
 
     // UECreviewフォームから本文を組み立てる関数
     function buildUecReviewContent(container) {
@@ -846,12 +848,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (uecReviewContainer) uecReviewContainer.classList.add('hidden');
                     if (uecReviewContainer) uecReviewContainer.innerHTML = '';
                     // 元の本文欄を表示
-                    if (originalContentField) originalContentField.classList.remove('hidden');
+			if (originalContentField) {
+                        originalContentField.classList.remove('hidden');
 
-			const originalTextarea = originalContentField.querySelector('.auto-resize-textarea');
+                        // ▼▼▼ この3行を '}' の内側に移動し、余計な ')' を削除 ▼▼▼
+                        const originalTextarea = originalContentField.querySelector('.auto-resize-textarea');
                         if (originalTextarea) {
                             originalTextarea.required = true; // required属性を元に戻す
                         }
+                    } /
 
                     if (titleInput) titleInput.value = template.title;
                     if (contentTextarea) {
