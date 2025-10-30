@@ -24,7 +24,12 @@
         </div>
         <div class="form-field">
             {{ form.content.label }}<br>
+           <div class="form-field" id="content-field-original"> {{ form.content.label }}<br>
             {{ form.content(cols=40, rows=5, class="auto-resize-textarea") }}
+           </div>
+
+           <div id="uecreview-form-container" class="hidden">
+           </div>
         </div>
         
         <div class="form-field" style="margin-top: 1em;">
