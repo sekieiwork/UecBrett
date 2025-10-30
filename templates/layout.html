@@ -774,6 +774,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 originalTextarea.required = false; // required属性を解除
             }
         }
+     }
 
     // UECreviewフォームから本文を組み立てる関数
     function buildUecReviewContent(container) {
@@ -986,7 +987,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             });
         }
     });
-}; // <-- ★★★ DOMContentLoaded はここで閉じる ★★★
+}); // <-- ★★★ DOMContentLoaded はここで閉じる ★★★
 
 
 
