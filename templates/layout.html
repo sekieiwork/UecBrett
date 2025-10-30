@@ -929,20 +929,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // --- ドロップダウンを閉じるグローバルなクリック処理 ---
-    document.addEventListener('click', function(event) {
-        if (headerDropdownContainer && !headerDropdownContainer.contains(event.target)) {
-            const content = headerDropdownContainer.querySelector('.dropdown-content');
-            if (content) content.style.display = 'none';
-        }
-        if (!event.target.closest('.template-dropdown')) {
-            document.querySelectorAll('.template-dropdown-content').forEach(content => {
-                content.classList.add('hidden');
-            });
-        }
-    });
-});
-
 // --- 6. フォーム送信時の処理 (ここから新規追加) ---
     // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
     
@@ -973,6 +959,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // --- ドロップダウンを閉じるグローバルなクリック処理 ---
+    document.addEventListener('click', function(event) {
+        if (headerDropdownContainer && !headerDropdownContainer.contains(event.target)) {
+            const content = headerDropdownContainer.querySelector('.dropdown-content');
+            if (content) content.style.display = 'none';
+        }
+        if (!event.target.closest('.template-dropdown')) {
+            document.querySelectorAll('.template-dropdown-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+        }
+    });
+}); // <-- ★★★ DOMContentLoaded はここで閉じる ★★★
+
+
 
 </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
