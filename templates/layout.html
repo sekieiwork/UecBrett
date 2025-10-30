@@ -916,10 +916,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // コメント削除処理
-    document.querySelectorAll('.delete-comment-btn').forEach(button => {
+document.querySelectorAll('.delete-comment-btn').forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             const commentId = this.dataset.commentId;
+            // ▼▼▼ 正しくはバッククォート (`) ▼▼▼
             const url = `/comment/${commentId}/delete`;
             if (confirm('本当にこのコメントを削除しますか？')) {
                 fetch(url, { method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json'} })
