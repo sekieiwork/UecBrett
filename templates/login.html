@@ -7,13 +7,13 @@
     <form method="POST">
         {{ form.csrf_token }}
         <div class="form-field">
-            {{ form.username.label }}<br>
-            {{ form.username(size=20) }}
-        </div>
-        <div class="form-field">
-            {{ form.password.label }}<br>
-            {{ form.password(size=20) }}
-        </div>
+    		{{ form.username.label }}<br>
+    		{{ form.username() }}
+	</div>
+	<div class="form-field">
+    		{{ form.password.label }}<br>
+    		{{ form.password() }}
+	</div>
         {{ form.submit }}
     </form>
     <p>アカウントをお持ちでないですか？ <a href="{{ url_for('register') }}">ユーザー登録</a></p>
