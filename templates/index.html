@@ -12,13 +12,22 @@
     </div>
 
     <div id="post-form-container" class="hidden">
-        <div class="post-form">
-            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5em;">
+        <div class="post-form"> <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5em;">
                 <h2>新しい投稿</h2>
             </div>
             <form method="POST" enctype="multipart/form-data">
                 {{ form.csrf_token }}
 
+                {% if templates %}
+                <div class="template-dropdown" style="position: absolute; top: 1.5em; right: 1.5em;">
+                    <button type="button" class="template-select-btn">テンプレートを選択</button>
+                    <div class="template-dropdown-content hidden">
+                        {% for t in templates %}
+                        <a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
                 <div class="form-field">
                         {{ form.title.label }}<br>
                         {{ form.title() }}
@@ -39,16 +48,7 @@
     			    {{ form.image(style="display: none;", accept="image/jpeg, image/png, image/gif") }}
 		        </div>
             </form>
-                {% if templates %}
-                <div class="template-dropdown">
-                    <button type="button" class="template-select-btn">テンプレートを選択</button>
-                    <div class="template-dropdown-content hidden">
-                        {% for t in templates %}
-                        <a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
+
             </div>
 
         </div>

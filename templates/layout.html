@@ -36,7 +36,7 @@
 
     /* ボックスの共通スタイル */
     .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info {
-        position: relative; /* ▼▼▼ この行を追加 ▼▼▼ */
+        position: relative; /* テンプレートボタンの配置に必要 */
         background-color: #fff;
         border: 1px solid #dee2e6;
         border-radius: 0.25rem;
@@ -47,6 +47,10 @@
         margin-right: auto;
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
+
+    /* ▼▼▼ 重複していたCSSルールを削除しました (L51-L66) ▼▼▼ */
+    /* ▲▲▲ ここまで ▲▲▲ */
+
 
     /* タイトルとヘッダー */
     .post h3, .post-detail h1 { margin-top: 0; margin-bottom: 0.5em; font-size: 1.5em; }
@@ -452,7 +456,13 @@
 
     @media (max-width: 768px) {
         body { padding-top: 60px; }
-        .comments, .comment-item, .post-detail, .post { max-width: 95%; margin-left: auto; margin-right: auto; }
+        /* ▼▼▼ スマホ表示の余白（95%）をすべてのボックスに適用 ▼▼▼ */
+        .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info {
+            max-width: 95%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        /* ▲▲▲ ここまで修正 ▲▲▲ */
         .header-content { padding: 0 5px; flex-wrap: nowrap; justify-content: space-between; }
         .header-left { order: 0; }
         .header-left h1 { font-size: 1.2em; margin-right: 5px; }
