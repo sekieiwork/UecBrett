@@ -481,27 +481,22 @@ form input[type="password"] {
 
 
 /* --- モーダル用のCSS --- */
-　　#editor-overlay {
-        display: flex; /* ▼▼▼ この行を追加 ▼▼▼ */
-    　　position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    　　background-color: rgba(0, 0, 0, 0.7); z-index: 2000;
-    　　align-items: center; justify-content: center;
-　　}
-　　#editor-modal {
-   	 background-color: white; width: 90%; height: 70%; max-width: 600px;
-   	 padding: 1em; border-radius: 8px; display: flex; flex-direction: column;
-    	box-sizing: border-box; /* ★padding計算のため、これは追加・維持します */
-　　}
-　　#modal-textarea {
-    	width: 100%; height: 100%; flex-grow: 1; border: 1px solid #ccc;
-    	resize: none; margin-bottom: 1em; padding: 0.5em; box-sizing: border-box; font-size: 1em;
-    	-webkit-appearance: none; /* iOSでの見た目のリセット */
-　　}
-    #modal-done-btn {
-        padding: 0.8em 1em; border: none; border-radius: 4px;
-        background-color: #007bff; color: white; cursor: pointer;
-        -webkit-appearance: none; /* iOSでの見た目のリセット */
-    }
+#editor-overlay {
+    display: flex; /* ← 前回の修正 */
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); z-index: 2000;
+    align-items: center; justify-content: center;
+}
+#editor-modal {
+    background-color: white; width: 90%; height: 70%; max-width: 600px;
+    padding: 1em; border-radius: 8px; display: flex; flex-direction: column;
+    box-sizing: border-box; 
+}
+#modal-textarea {
+    width: 100%; height: 100%; flex-grow: 1; border: 1px solid #ccc;
+    resize: none; /* ★ margin-bottom: 1em; を削除 */ padding: 0.5em; box-sizing: border-box; font-size: 1em;
+    -webkit-appearance: none; /* iOSでの見た目のリセット */
+}
 
 
 /* ▼▼▼ UECreviewフォーム用CSS ▼▼▼ */
@@ -609,16 +604,14 @@ form input[type="password"] {
         </div>
     </main>
 
-　　<div id="editor-overlay" class="hidden">
-    　　<div id="editor-modal">
-
-        　　<div id="modal-header" style="display: flex; justify-content: flex-end; padding-bottom: 1em;">
-            　　<button id="modal-done-btn">完了</button>
-        　　</div>
-        　　<textarea id="modal-textarea"></textarea>
-
+<div id="editor-overlay" class="hidden">
+    <div id="editor-modal">
+        <div id="modal-header" style="display: flex; justify-content: flex-end; padding-bottom: 1em;">
+            <button id="modal-done-btn">完了</button>
         </div>
-　　</div>
+        <textarea id="modal-textarea"></textarea>
+    </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
