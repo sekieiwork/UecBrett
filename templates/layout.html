@@ -480,23 +480,6 @@ form input[type="password"] {
     }
 
 
-/* --- モーダル用のCSS --- */
-#editor-overlay {
-    display: flex; /* ← 前回の修正 */
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.7); z-index: 2000;
-    align-items: center; justify-content: center;
-}
-#editor-modal {
-    background-color: white; width: 90%; height: 70%; max-width: 600px;
-    padding: 1em; border-radius: 8px; display: flex; flex-direction: column;
-    box-sizing: border-box; 
-}
-#modal-textarea {
-    width: 100%; height: 100%; flex-grow: 1; border: 1px solid #ccc;
-    resize: none; /* ★ margin-bottom: 1em; を削除 */ padding: 0.5em; box-sizing: border-box; font-size: 1em;
-    -webkit-appearance: none; /* iOSでの見た目のリセット */
-}
 
 
 /* ▼▼▼ UECreviewフォーム用CSS ▼▼▼ */
@@ -604,14 +587,7 @@ form input[type="password"] {
         </div>
     </main>
 
-<div id="editor-overlay" class="hidden">
-    <div id="editor-modal">
-        <div id="modal-header" style="display: flex; justify-content: flex-end; padding-bottom: 1em;">
-            <button id="modal-done-btn">完了</button>
-        </div>
-        <textarea id="modal-textarea"></textarea>
-    </div>
-</div>
+
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -634,17 +610,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleButton = document.getElementById('toggle-post-form-btn');
     const postFormContainer = document.getElementById('post-form-container');
     const imageInput = document.getElementById('image');
-    
-    // --- 2. モーダルとテキストエリア関連の要素を取得 ---
+
+    // --- 2. テキストエリア関連の要素を取得 ---
     const allEditableTextareas = document.querySelectorAll('.auto-resize-textarea');
-    const editorOverlay = document.getElementById('editor-overlay');
-    const modalTextarea = document.getElementById('modal-textarea');
-    const modalDoneBtn = document.getElementById('modal-done-btn');
-    const isMobile = window.innerWidth <= 768;
-    let activeTextarea = null;
 
     // --- 3. イベントリスナーの設定 ---
-    
+
     // ヘッダーのドロップダウン処理
     if (headerDropdownContainer) {
         const headerDropdownContent = headerDropdownContainer.querySelector('.dropdown-content');
@@ -669,47 +640,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 完了ボタンの処理
-    if (modalDoneBtn) {
-        modalDoneBtn.addEventListener('click', () => {
-            if (activeTextarea) {
-                activeTextarea.value = modalTextarea.value;
-                resizeTextarea(activeTextarea);
-            }
-            // ▼▼▼ ② ここから修正 ▼▼▼
-            // 意図: 背景のスクロール禁止を解除します。
-            document.body.style.overflow = '';
-            // ▲▲▲ ② ここまで修正 ▲▲▲
-            editorOverlay.classList.add('hidden');
-            activeTextarea = null;
-        });
-    }
-
-    if (isMobile) {
-        // --- スマホの場合：モーダルを開く処理 ---
-        allEditableTextareas.forEach((textarea, index) => {
-            textarea.addEventListener('focus', (e) => {
-                e.preventDefault();
-                activeTextarea = e.target;
-                modalTextarea.value = activeTextarea.value;
-
-                // ▼▼▼ ② ここから修正 ▼▼▼
-                // 意図: モーダル表示時に背景をスクロールできないようにします。
-                document.body.style.overflow = 'hidden';
-                // ▲▲▲ ② ここまで修正 ▲▲▲
-                
-                editorOverlay.classList.remove('hidden');
-                
-                setTimeout(() => modalTextarea.focus(), 100);
-            });
-        });
-    } else {
-        // --- PCの場合：インラインでの自動リサイズ ---
-        allEditableTextareas.forEach(textarea => {
-            textarea.addEventListener('input', () => resizeTextarea(textarea));
-            setTimeout(() => resizeTextarea(textarea), 100);
-        });
-    }
+    // --- テキストエリアの自動リサイズ処理 (全デバイス共通) ---
+    allEditableTextareas.forEach(textarea => {
+        textarea.addEventListener('input', () => resizeTextarea(textarea));
+        setTimeout(() => resizeTextarea(textarea), 100);
+    });
 
     // --- 4. テンプレート機能の処理 ---
     const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
@@ -728,20 +663,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // UECreviewフォームを生成する関数
     function createUecReviewForm(count, container, titleInput, templateTitle, existing_data = []) {
         if (!container) return;
-        
+
         // タイトルを設定（新規作成時、かつ既存データがない時のみ）
         if (titleInput && templateTitle && existing_data.length === 0) {
             titleInput.value = templateTitle;
         }
-        
+
         // コンテナをクリア
         container.innerHTML = '';
-        
+
         // フォームセットを生成
         for (let i = 0; i < count; i++) {
             const formSet = document.createElement('div');
             formSet.className = 'uec-form-set';
-            
+
             let gradesOptions = ['秀', '優', '良', '可', '不可', '（未評価）']
                 .map(g => `<option value="${g}">${g}</option>`).join('');
 
@@ -767,7 +702,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <textarea id="uec-review-body-${i}" class="uec-review-body" placeholder="例：テストの難易度、課題について等"></textarea>
                 </div>
             `;
-            
+
             container.appendChild(formSet); // ★先にDOMに追加
 
             // データをフォームに埋め込む処理
@@ -780,13 +715,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 formSet.querySelector('.uec-review-body').value = currentData.body || '';
             }
         }
-        
+
         // UECreviewコンテナを表示し、元の本文欄を非表示に
         container.classList.remove('hidden');
         const originalContentField = container.closest('form').querySelector('#content-field-original');
         if (originalContentField) {
             originalContentField.classList.add('hidden');
-            
+
             const originalTextarea = originalContentField.querySelector('.auto-resize-textarea');
             if (originalTextarea) {
                 originalTextarea.required = false; // required属性を解除
@@ -799,7 +734,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function buildUecReviewContent(container) {
         let combinedContent = '';
         const formSets = container.querySelectorAll('.uec-form-set');
-        
+
         formSets.forEach((set, index) => {
             const subject = set.querySelector('.uec-subject').value;
             const teacher = set.querySelector('.uec-teacher').value; // <-- ★これを追加
@@ -811,14 +746,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // ▼▼▼ teacher 変数を使うように修正 ▼▼▼
             reviewString += `担当教員:${teacher || 'ここに担当教員名を入力'}\n`;
             reviewString += `${body || '本文を入力'}`;
-            
+
             combinedContent += reviewString;
-            
+
             if (index < formSets.length - 1) {
                 combinedContent += '\n\n---\n\n'; 
             }
         });
-        
+
         return combinedContent;
     }
 
@@ -840,13 +775,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const uecReviewContainer = parentForm.querySelector('#uecreview-form-container'); // UECコンテナ
                 const originalContentField = parentForm.querySelector('#content-field-original'); // 元の本文のラッパー
 
-                // モバイル用のモーダル判定 (元のロジックを尊重)
-                let contentTextarea;
-                if (isMobile && editorOverlay && editorOverlay.style.display === 'flex') {
-                    contentTextarea = document.getElementById('modal-textarea');
-                } else {
-                    contentTextarea = originalContentTextarea;
-                }
+                let contentTextarea = originalContentTextarea;
 
                 if (template.name === 'UECreview') {
                     const countStr = prompt('何科目書きますか？ (最大20科目)', '1');
@@ -856,17 +785,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (!isNaN(count) && count > 0 && count <= 20) { // 上限を設定
                             // UECreviewフォームを生成
                             createUecReviewForm(count, uecReviewContainer, titleInput, template.title);
-                            // モバイルモーダルが開いていたら閉じる (UECreviewは専用フォームを使うため)
-                            if (isMobile && editorOverlay && editorOverlay.style.display === 'flex') {
-                                 document.body.style.overflow = '';
-                                 editorOverlay.style.display = 'none';
-                                 activeTextarea = null;
-                            }
                         } else { alert('有効な数字(1〜20)を入力してください。'); }
                     }
                 } else {
                     // --- 通常のテンプレートが選択された場合 ---
-                    
+
                     // UECreviewフォームを隠す
                     if (uecReviewContainer) uecReviewContainer.classList.add('hidden');
                     if (uecReviewContainer) uecReviewContainer.innerHTML = '';
@@ -874,7 +797,6 @@ document.addEventListener('DOMContentLoaded', function() {
 			if (originalContentField) {
                         originalContentField.classList.remove('hidden');
 
-                        // ▼▼▼ この3行を '}' の内側に移動し、余計な ')' を削除 ▼▼▼
                         const originalTextarea = originalContentField.querySelector('.auto-resize-textarea');
                         if (originalTextarea) {
                             originalTextarea.required = true; // required属性を元に戻す
@@ -882,17 +804,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     } 
 
                     if (titleInput) titleInput.value = template.title;
+
                     if (contentTextarea) {
                         contentTextarea.value = template.body;
-                        if (isMobile && editorOverlay && editorOverlay.style.display === 'flex') {
-                            // モーダルが開いていればそちらに反映
-                        } else if (originalContentTextarea) {
-                            // PCまたはモーダルが閉じていれば通常のテキストエリア
+                        if (originalContentTextarea) {
                             resizeTextarea(originalContentTextarea);
                         }
                     }
                 }
-                
+
                 // ドロップダウンを閉じる
                 const parentDropdownContent = item.closest('.template-dropdown-content');
                 if (parentDropdownContent) { parentDropdownContent.classList.add('hidden'); }
@@ -968,10 +888,10 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
 
 // --- 6. フォーム送信時の処理 (ここから新規追加) ---
     // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-    
+
     // ページ内のすべての投稿/編集フォームを取得
     const postForms = document.querySelectorAll('form[method="POST"][enctype="multipart/form-data"]');
-    
+
     postForms.forEach(form => {
         form.addEventListener('submit', function(event) {
             const uecReviewContainer = form.querySelector('#uecreview-form-container');
@@ -979,43 +899,37 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
 
             // UECreviewコンテナが表示されている（アクティブである）場合
             if (uecReviewContainer && !uecReviewContainer.classList.contains('hidden') && originalContentTextarea) {
-                
+
                 // 1. UECreviewフォームから本文を組み立てる
                 const combinedContent = buildUecReviewContent(uecReviewContainer);
-                
+
                 // 2. 元の本文テキストエリアに値を設定する
                 originalContentTextarea.value = combinedContent;
-                
+
                 // 3. このままデフォルトの送信動作を許可する
-            }
-            
-            // モバイルモーダルが開いている場合の対処 (既存ロジック)
-            if (isMobile && editorOverlay && editorOverlay.style.display === 'flex' && activeTextarea) {
-                activeTextarea.value = modalTextarea.value;
-                resizeTextarea(activeTextarea);
             }
         });
     });
 
 
 // --- 7. 編集ページ用のUECreviewデータ読み込み ---
-    
+
     // 編集フォーム（indexの投稿フォームではない）が存在する場合のみ実行
     const editForm = document.querySelector('form[method="POST"][enctype="multipart/form-data"]');
     // const postFormContainer = ... (二重宣言になるため削除)
-    
+
     if (editForm && !postFormContainer) { // (postFormContainerはスクリプト上部 で宣言済み)
         // サーバーから渡されたJSONデータがあるか確認
         {% if uec_review_data_json is defined and uec_review_data_json %}
             try {
                 // テンプレートに埋め込まれたJSONをパース
                 const reviewData = {{ uec_review_data_json | safe }};
-                
+
                 if (reviewData && reviewData.length > 0) {
                     // フォーム生成に必要な要素を取得
                     const titleInput = editForm.querySelector('input[name="title"]');
                     const uecReviewContainer = editForm.querySelector('#uecreview-form-container'); 
-                    
+
                     // UECreviewフォームをデータ付きで生成 (5引数の関数を呼ぶ)
                     createUecReviewForm(reviewData.length, uecReviewContainer, titleInput, null, reviewData);
                 }
@@ -1041,6 +955,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
 
 
 </script>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </body>
 </html>
