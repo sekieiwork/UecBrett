@@ -640,11 +640,33 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- テキストエリアの自動リサイズ処理 (全デバイス共通) ---
-    allEditableTextareas.forEach(textarea => {
-        textarea.addEventListener('input', () => resizeTextarea(textarea));
-        setTimeout(() => resizeTextarea(textarea), 100);
+// --- テキストエリアの自動リサイズ処理 (全デバイス共通) ---
+allEditableTextareas.forEach(textarea => {
+    // ページ読み込み時の初回リサイズ (スクロールなし)
+    setTimeout(() => resizeTextarea(textarea), 100);
+
+    // 入力時のリサイズ (スクロールあり)
+    textarea.addEventListener('input', () => {
+        // 1. リサイズ前の高さを取得
+        const oldHeight = textarea.offsetHeight;
+
+        // 2. テキストエリアをリサイズ (resizeTextarea関数を呼ぶ)
+        resizeTextarea(textarea); 
+
+        // 3. リサイズ後の高さを取得
+        const newHeight = textarea.offsetHeight;
+
+        // 4. 高さがどれだけ増えたか計算
+        const heightDifference = newHeight - oldHeight;
+
+        // 5. 高さが純粋に増えた場合のみ、その分だけウィンドウをスクロール
+        // (最大高さに達してスクロールバーが出た時は heightDifference = 0 になる)
+        if (heightDifference > 0) {
+            // 6. カーソルのY座標を追従させるため、即座にスクロール
+            window.scrollBy(0, heightDifference);
+        }
     });
+});
 
     // --- 4. テンプレート機能の処理 ---
     const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
