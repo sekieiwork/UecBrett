@@ -659,12 +659,12 @@ allEditableTextareas.forEach(textarea => {
         // 4. 高さがどれだけ増えたか計算
         const heightDifference = newHeight - oldHeight;
 
-        // 5. 高さが純粋に増えた場合のみ、その分だけウィンドウをスクロール
-        // (最大高さに達してスクロールバーが出た時は heightDifference = 0 になる)
-        if (heightDifference > 0) {
-            // 6. カーソルのY座標を追従させるため、即座にスクロール
-            window.scrollBy(0, heightDifference);
-        }
+        // 5. 高さが変化した場合のみ、その分だけウィンドウをスクロール
+	// (最大高さに達した時などは heightDifference = 0 になる)
+	if (heightDifference !== 0) {
+    		// 6. カーソルのY座標を追従させるため、即座にスクロール
+    		window.scrollBy(0, heightDifference);
+	}
     });
 });
 
