@@ -479,11 +479,13 @@ form input[type="password"] {
         .comment-content { max-height: 80px; }
     }
 
-    /* --- モーダル用のCSS --- */
+
+/* --- モーダル用のCSS --- */
 　　#editor-overlay {
-    	position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    	background-color: rgba(0, 0, 0, 0.7); z-index: 2000;
-    	align-items: center; justify-content: center;
+        display: flex; /* ▼▼▼ この行を追加 ▼▼▼ */
+    　　position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    　　background-color: rgba(0, 0, 0, 0.7); z-index: 2000;
+    　　align-items: center; justify-content: center;
 　　}
 　　#editor-modal {
    	 background-color: white; width: 90%; height: 70%; max-width: 600px;
@@ -607,7 +609,7 @@ form input[type="password"] {
         </div>
     </main>
 
-　　<div id="editor-overlay" class="hidden" style="display: none;">
+　　<div id="editor-overlay" class="hidden">
     　　<div id="editor-modal">
 
         　　<div id="modal-header" style="display: flex; justify-content: flex-end; padding-bottom: 1em;">
@@ -685,7 +687,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // 意図: 背景のスクロール禁止を解除します。
             document.body.style.overflow = '';
             // ▲▲▲ ② ここまで修正 ▲▲▲
-            editorOverlay.style.display = 'none';
+            editorOverlay.classList.add('hidden');
             activeTextarea = null;
         });
     }
@@ -703,7 +705,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.body.style.overflow = 'hidden';
                 // ▲▲▲ ② ここまで修正 ▲▲▲
                 
-                editorOverlay.style.display = 'flex';
+                editorOverlay.classList.remove('hidden');
                 
                 setTimeout(() => modalTextarea.focus(), 100);
             });
