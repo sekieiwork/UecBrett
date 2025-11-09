@@ -59,7 +59,8 @@
     </div>
 {% endif %}
 
-    <h2>投稿一覧</h2>
+    <h2 style="max-width: 770px; margin: 1.5em auto 0.5em auto; padding-left: 1.5em; box-sizing: border-box;">投稿一覧</h2>
+    
     {% for post in posts.items %}
     <div class="post">
         <h3>
@@ -102,6 +103,25 @@
     </div>
     {% endfor %}
 
-    <div class="pagination">
-        </div>
+    <div class="pagination" style="max-width: 770px; margin: 1.5em auto; text-align: center;">
+        {% if posts.has_prev %}
+            <a href="{{ url_for('index', page=posts.prev_num) }}">« 前へ</a>
+        {% endif %}
+        
+        {% for page_num in posts.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+            {% if page_num %}
+                {% if posts.page == page_num %}
+                    <a href="{{ url_for('index', page=page_num) }}" style="font-weight: bold;">{{ page_num }}</a>
+                {% else %}
+                    <a href="{{ url_for('index', page=page_num) }}">{{ page_num }}</a>
+                {% endif %}
+            {% else %}
+                <span style="padding: 0 0.5em;">...</span>
+            {% endif %}
+        {% endfor %}
+        
+        {% if posts.has_next %}
+            <a href="{{ url_for('index', page=posts.next_num) }}">次へ »</a>
+        {% endif %}
+    </div>
 {% endblock %}
