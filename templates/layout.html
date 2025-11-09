@@ -25,18 +25,6 @@
     a { color: #007bff; text-decoration: none; }
 
     a:hover { text-decoration: underline; }
-    .container { max-width: 800px; margin: 2em auto; padding: 1em; }
-    .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info {
-        background-color: #fff;
-        border: 1px solid #dee2e6;
-        border-radius: 0.25rem;
-        padding: 1.5em;
-        margin-bottom: 1.5em;
-        max-width: 770px;
-        margin-left: auto;
-        margin-right: auto;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
 
 
     /* コンテナの幅を制限 */
@@ -48,6 +36,7 @@
 
     /* ボックスの共通スタイル */
     .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info {
+        position: relative; /* ▼▼▼ この行を追加 ▼▼▼ */
         background-color: #fff;
         border: 1px solid #dee2e6;
         border-radius: 0.25rem;
@@ -77,8 +66,7 @@
     /* ▼▼▼ ① ここから修正 ▼▼▼ */
     /* 意図: form内のテキスト入力欄のスタイルを定義します。
        width: 100% と box-sizing: border-box; で、textareaと横幅が揃うようになります。*/
-    form input[type="text"],
-form input[type="password"] {
+    form input[type="text"],form input[type="password"] {
         width: 100%;
         padding: 0.5em;
         box-sizing: border-box;

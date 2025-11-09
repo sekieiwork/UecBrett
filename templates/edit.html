@@ -5,21 +5,22 @@
 {% block content %}
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <h1>投稿編集</h1>
-        {% if templates %}
-	<div style="text-align: center; margin-bottom: 1em;">
-        	<div class="template-dropdown">
-            		<button type="button" class="template-select-btn">テンプレートを選択</button>
-            		<div class="template-dropdown-content hidden">
-                		{% for t in templates %}
-                		<a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
-                		{% endfor %}
-            		</div>
-        	</div>
-	</div>
-        {% endif %}
-    </div>
-    <form method="POST" enctype="multipart/form-data">
+        
+        </div>
+
+    <form method="POST" enctype="multipart/form-data" class="post-form" style="padding-top: 4em;">
         {{ form.csrf_token }}
+
+        {% if templates %}
+        <div class="template-dropdown" style="position: absolute; top: 1.5em; right: 1.5em;">
+            <button type="button" class="template-select-btn">テンプレートを選択</button>
+            <div class="template-dropdown-content hidden">
+                {% for t in templates %}
+                <a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
         <div class="form-field">
             {{ form.title.label }}<br>
             {{ form.title() }}
