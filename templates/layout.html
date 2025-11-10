@@ -458,15 +458,12 @@
         body { padding-top: 60px; }
         
         .container {
-            padding-left: 0;
-            padding-right: 0;
-            margin-top: 1em; /* 上部マージンを調整 */
+            padding: 0 1em; /* 左右に1emの余白 */
+            margin-top: 1em;
+            box-sizing: border-box; /* paddingを含めて幅を計算 */
         }
-        /* ▼▼▼ スマホ表示の余白（95%）をすべてのボックスに適用 ▼▼▼ */
         .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info {
-            max-width: 95%;
-            margin-left: auto;
-            margin-right: auto;
+            /* max-width: 95%; などの指定を削除 */
         }
         /* ▲▲▲ ここまで修正 ▲▲▲ */
         .header-content { padding: 0 5px; flex-wrap: nowrap; justify-content: space-between; }
@@ -904,7 +901,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                         const commentCountHeader = document.getElementById('comment-count-header');
                         if (commentCountHeader) { commentCountHeader.innerText = `コメント (${data.remaining_comments})`; }
                         const titleCommentCount = document.getElementById('title-comment-count');
-                        if (titleCommentCount) { titleCommentCount.innerText = `コメント数(${data.remaining_columns})`; }
+                        if (titleCommentCount) { titleCommentCount.innerText = `コメント数(${data.remaining_comments})`; }
                     } else { alert('コメントの削除に失敗しました。'); }
                 })
                 .catch(error => console.error('Error:', error));
