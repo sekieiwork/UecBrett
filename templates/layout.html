@@ -537,7 +537,34 @@
     }
 /* ▲▲▲ UECreviewフォーム用CSS ▲▲▲ */
 
+/* ▼▼▼ 連続フィード用のスタイル (ここから追加) ▼▼▼ */
 
+/* 投稿一覧(.post) と コメント一覧(.comment-item) の「箱」の見た目を消す */
+.post, .comment-item {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 1.5em 0; /* 上下の余白は残し、左右の余白を0にする */
+    margin-bottom: 0; /* <hr> がマージンを管理する */
+}
+
+/* 投稿とコメントの間の区切り線 (<hr>) のスタイル */
+.post + hr, .comment-item + hr {
+    border: 0;
+    height: 1px;
+    background-color: #dee2e6; /* 元のボーダーの色 */
+    margin: 0 auto; /* 中央揃え */
+    max-width: 770px; /* .post と同じ幅にする */
+}
+
+/* スマホ表示の区切り線 */
+@media (max-width: 768px) {
+    .post + hr, .comment-item + hr {
+        max-width: 100%; /* スマホでは幅100%にする */
+    }
+}
+/* ▲▲▲ 連続フィード用のスタイル (ここまで追加) ▲▲▲ */
 
     </style>
     {% block extra_head %}{% endblock %}

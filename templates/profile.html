@@ -76,6 +76,7 @@
                 {% endif %}
             </div>
         </div>
+        <hr>
         {% endfor %}
         
         <div class="pagination content-width-limiter">
@@ -114,6 +115,7 @@
                     {{ md.convert(comment.content) | safe }}
                 </div>
             </div>
+            <hr>
             {% endfor %}
         {% else %}
             <p class="content-width-limiter">コメント履歴はありません。</p>
