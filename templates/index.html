@@ -64,7 +64,7 @@
     <div class="post content-width-limiter">
     <h3>
             <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a>
-            {% if post.updated_at and post.created_at_jst.strftime('%Y%m%d%H%M%S') != post.updated_at_jst.strftime('%Y%m%d%H%M%S') %}
+            {% if post.updated_at and post.created_at_jst.strftime('%Ym%d%H%M%S') != post.updated_at_jst.strftime('%Ym%d%H%M%S') %}
                 <small style="color: gray; font-size: 0.3em;">(編集済み)</small>
             {% endif %}
             <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
