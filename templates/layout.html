@@ -392,7 +392,6 @@
         color: #007bff;
     }
 
-    /* ▼▼▼ [修正] セレクタに #toggle-comment-form-btn を追加 ▼▼▼ */
     #toggle-post-form-btn, #toggle-comment-form-btn {
         padding: 0.5em 1em;
         border: none;
@@ -406,7 +405,6 @@
         gap: 0.5em;
     }
 
-    /* ▼▼▼ [修正] セレクタに #toggle-comment-form-btn:hover を追加 ▼▼▼ */
     #toggle-post-form-btn:hover, #toggle-comment-form-btn:hover {
         background-color: #0056b3;
     }
@@ -459,15 +457,21 @@
     @media (max-width: 768px) {
         body { padding-top: 60px; }
         
+        /* ▼▼▼ [修正] スマホの .container の padding を 0 に戻します ▼▼▼ */
         .container {
-            padding: 0 1em; /* 左右に1emの余白 */
+            padding: 0; /* 左右の余白は .post 側で管理 */
             margin-top: 1em;
             box-sizing: border-box; /* paddingを含めて幅を計算 */
         }
+        
+        /* ▼▼▼ [修正] スマホ表示では max-width: 95% を適用し、必ず余白を作る ▼▼▼ */
         .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info {
-            /* max-width: 95%; などの指定を削除 */
+            max-width: 95%;
+            margin-left: auto !important; /* !importantでインラインスタイルを上書き */
+            margin-right: auto !important; /* !importantでインラインスタイルを上書き */
         }
-        /* ▲▲▲ ここまで修正 ▲▲▲ */
+        /* ▲▲▲ 修正ここまで ▲▲▲ */
+
         .header-content { padding: 0 5px; flex-wrap: nowrap; justify-content: space-between; }
         .header-left { order: 0; }
         .header-left h1 { font-size: 1.2em; margin-right: 5px; }
