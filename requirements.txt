@@ -26,4 +26,3 @@ gunicorn
 psycopg2
 Pillow
 cloudinary
-# 2025-11-11: キャッシュ破壊用のコメント
