@@ -41,11 +41,14 @@
         border: 1px solid #dee2e6;
         border-radius: 0.25rem;
         padding: 1.5em;
-        margin-bottom: 1.5em;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info, .content-width-limiter {
         max-width: 770px;
         margin-left: auto;
         margin-right: auto;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        margin-bottom: 1.5em; /* 共通のボトムマージン */
     }
 
     /* ▼▼▼ 重複していたCSSルールを削除しました (L51-L66) ▼▼▼ */
@@ -465,10 +468,10 @@
         }
         
         /* ▼▼▼ [修正] スマホ表示では max-width: 95% を適用し、必ず余白を作る ▼▼▼ */
-        .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info {
+        .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info, .content-width-limiter {
             max-width: 95%;
-            margin-left: auto !important; /* !importantでインラインスタイルを上書き */
-            margin-right: auto !important; /* !importantでインラインスタイルを上書き */
+            margin-left: auto; /* !important 削除 */
+            margin-right: auto; /* !important 削除 */
         }
         /* ▲▲▲ 修正ここまで ▲▲▲ */
 
