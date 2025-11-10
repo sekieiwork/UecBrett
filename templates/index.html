@@ -2,6 +2,24 @@
 
 {% block title %}トップページ{% endblock %}
 
+{% block extra_head %}
+<style>
+    /*
+    Render.com のキャッシュが layout.html の変更を反映しないため、
+    index.html 専用のスマホ用CSSを強制的に上書きします。
+    */
+    @media (max-width: 768px) {
+        .container {
+            padding: 0 10px !important;
+            box-sizing: border-box !important;
+        }
+        .post, .post-form, .content-width-limiter {
+            max-width: 100% !important;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 
 {% if current_user.is_authenticated %}
