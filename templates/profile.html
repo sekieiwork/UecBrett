@@ -27,16 +27,16 @@
         </div>
     {% endif %}
 
-    <div class="tabs">
-        <a href="{{ url_for('user_profile', username=user.username, active_tab='posts') }}" class="tab-link {% if active_tab == 'posts' %}active{% endif %}">投稿一覧</a>
+    <div class="tabs content-width-limiter">
+    <a href="{{ url_for('user_profile', username=user.username, active_tab='posts') }}" class="tab-link {% if active_tab == 'posts' %}active{% endif %}">投稿一覧</a>
         <a href="{{ url_for('user_profile', username=user.username, active_tab='comments') }}" class="tab-link {% if active_tab == 'comments' %}active{% endif %}">コメント履歴</a>
     </div>
 
     <div id="posts" class="tab-content" style="display: {% if active_tab == 'posts' %}block{% else %}none{% endif %};">
-        <h3>投稿一覧</h3>
+        <h3 class="content-width-limiter">投稿一覧</h3>
         {% for post in posts.items %}
-        <div class="post">
-            <h3>
+        <div class="post content-width-limiter">
+        <h3>
                 <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a>
                 {% if post.updated_at and post.created_at_jst.strftime('%Y%m%d%H%M%S') != post.updated_at_jst.strftime('%Y%m%d%H%M%S') %}
                     <small style="color: gray; font-size: 0.3em;">(編集済み)</small>
@@ -78,8 +78,8 @@
         </div>
         {% endfor %}
         
-        <div class="pagination">
-            {% if posts.has_prev %}
+        <div class="pagination content-width-limiter">
+        {% if posts.has_prev %}
                 <a href="{{ url_for('user_profile', username=user.username, post_page=posts.prev_num, active_tab='posts') }}">« 前へ</a>
             {% endif %}
             {% for page_num in posts.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
@@ -100,11 +100,11 @@
         </div>
     
     <div id="comments" class="tab-content" style="display: {% if active_tab == 'comments' %}block{% else %}none{% endif %};">
-        <h3>コメント履歴</h3>
+        <h3 class="content-width-limiter">コメント履歴</h3>
         {% if comments.items %}
             {% for comment in comments.items %}
-            <div class="comment-item" style="margin-bottom: 1em; background-color: #fff; padding: 1.5em; border: 1px solid #dee2e6; border-radius: 0.25rem;">
-                <p style="font-size: 0.9em; color: #6c757d; margin-top: 0;">
+            <div class="comment-item content-width-limiter" style="margin-bottom: 1em; background-color: #fff; padding: 1.5em; border: 1px solid #dee2e6; border-radius: 0.25rem;">
+            <p style="font-size: 0.9em; color: #6c757d; margin-top: 0;">
                     <a href="{{ url_for('post_detail', post_id=comment.post.id, _anchor='comment-' + comment.id|string) }}">
                         <strong>「{{ comment.post.title }}」</strong>
                     </a>
@@ -116,11 +116,11 @@
             </div>
             {% endfor %}
         {% else %}
-            <p>コメント履歴はありません。</p>
-        {% endif %}
+            <p class="content-width-limiter">コメント履歴はありません。</p>
+            {% endif %}
         
-        <div class="pagination">
-            {% if comments.has_prev %}
+        <div class="pagination content-width-limiter">
+        {% if comments.has_prev %}
                 <a href="{{ url_for('user_profile', username=user.username, comment_page=comments.prev_num, active_tab='comments') }}">« 前へ</a>
             {% endif %}
             {% for page_num in comments.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}

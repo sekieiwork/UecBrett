@@ -59,9 +59,10 @@
 {% endif %}
 
     <h2 class="content-width-limiter" style="margin-top: 0; margin-bottom: 0.5em; box-sizing: border-box;">投稿一覧</h2>
+    
     {% for post in posts.items %}
-    <div class="post">
-        <h3>
+    <div class="post content-width-limiter">
+    <h3>
             <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a>
             {% if post.updated_at and post.created_at_jst.strftime('%Y%m%d%H%M%S') != post.updated_at_jst.strftime('%Y%m%d%H%M%S') %}
                 <small style="color: gray; font-size: 0.3em;">(編集済み)</small>

@@ -3,12 +3,11 @@
 {% block title %}ブックマーク一覧{% endblock %}
 
 {% block content %}
-    <h2>ブックマーク一覧</h2>
-
+    <h2 class="content-width-limiter">ブックマーク一覧</h2>
     {% if posts %}
         {% for post in posts %}
-        <div class="post">
-            <h3>
+        <div class="post content-width-limiter">
+        <h3>
                 <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a>
                 {% if post.updated_at and post.created_at_jst.strftime('%Y%m%d%H%M%S') != post.updated_at_jst.strftime('%Y%m%d%H%M%S') %}
                     <small style="color: gray; font-size: 0.3em;">(編集済み)</small>
@@ -47,6 +46,6 @@
         </div>
         {% endfor %}
     {% else %}
-        <p>ブックマークされた投稿はありません。</p>
-    {% endif %}
+        <p class="content-width-limiter">ブックマークされた投稿はありません。</p>
+        {% endif %}
 {% endblock %}

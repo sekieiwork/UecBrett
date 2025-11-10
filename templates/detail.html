@@ -3,10 +3,8 @@
 {% block title %}{{ post.title }}{% endblock %}
 
 {% block content %}
-    <div class="post-detail">
-       
-        
-       <h1>
+    <div class="post-detail content-width-limiter">
+    <h1>
     	{{ post.title }}
     	<span id="title-comment-count" style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
 	</h1>
