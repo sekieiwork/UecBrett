@@ -563,35 +563,6 @@ def show_notifications():
     return render_template('notifications.html', notifications=notifications, search_form=search_form, md=md, linkify_urls=linkify_urls)
 
 
-# -----------------------------------------------------------------
-# ▼▼▼ 【一時的な管理者権限付与ルート】 ▼▼▼
-# -----------------------------------------------------------------
-# 目的: '二酸化ケイ素' アカウントに管理者権限を付与する
-# 実行後、このコードブロックは必ず削除してください。
-@app.route('/make-me-admin-temp-route-123xyz') # <-- 他人に推測されない秘密のURL
-@login_required # <-- ログインが必須
-def make_me_admin():
-    # ログイン中のユーザーが '二酸化ケイ素' であることを確認
-    if current_user.username == '二酸化ケイ素':
-        try:
-            # 管理者フラグを True に設定
-            current_user.is_admin = True
-            db.session.commit()
-            flash('管理者権限が付与されました！ 【重要】app.pyから一時的なコードを削除してください。')
-            # 管理者ダッシュボードにリダイレクト
-            return redirect(url_for('admin_dashboard'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'エラーが発生しました: {str(e)}')
-            return redirect(url_for('index'))
-    else:
-        # '二酸化ケイ素' 以外のアカウントがアクセスしたら拒否
-        flash('権限がありません。')
-        return redirect(url_for('index'))
-# -----------------------------------------------------------------
-# ▲▲▲ 【一時的な管理者権限付与ルート】 ▲▲▲
-# -----------------------------------------------------------------
-
 
 if __name__ == '__main__':
     app.run(debug=True)
