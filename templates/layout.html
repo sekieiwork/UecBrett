@@ -614,7 +614,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleButton = document.getElementById('toggle-post-form-btn');
     const postFormContainer = document.getElementById('post-form-container');
     const imageInput = document.getElementById('image');
-
+    
+    const toggleCommentButton = document.getElementById('toggle-comment-form-btn');
+    const commentFormContainer = document.getElementById('comment-form-container');
     // --- 2. テキストエリア関連の要素を取得 ---
     const allEditableTextareas = document.querySelectorAll('.auto-resize-textarea');
 
@@ -644,7 +646,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-// --- テキストエリアの自動リサイズ処理 (全デバイス共通) ---
+    if (toggleCommentButton && commentFormContainer) {
+        toggleCommentButton.addEventListener('click', function() {
+            commentFormContainer.classList.toggle('hidden');
+            if (commentFormContainer.classList.contains('hidden')) {
+                toggleCommentButton.innerHTML = 'コメントをする <i class="fas fa-plus"></i>';
+            } else {
+                toggleCommentButton.innerHTML = 'フォームを閉じる <i class="fas fa-minus"></i>';
+            }
+        });
+    }
+    // --- テキストエリアの自動リサイズ処理 (全デバイス共通) ---
 allEditableTextareas.forEach(textarea => {
     // ページ読み込み時の初回リサイズ (スクロールなし)
     setTimeout(() => resizeTextarea(textarea), 100);

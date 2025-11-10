@@ -54,7 +54,12 @@
         </div>
         <hr>
 
-        <div class="comment-container">
+        <div style="margin-bottom: 1em;">
+            <button id="toggle-comment-form-btn">
+                コメントをする <i class="fas fa-plus"></i>
+            </button>
+        </div>
+        <div id="comment-form-container" class="comment-container hidden">
             {% if current_user.is_authenticated %}
             <div class="comment-form">
            
@@ -73,6 +78,7 @@
             </div>
             {% endif %}
         </div>
+        
         <div class="comments">
             <h3 id="comment-count-header">コメント ({{ post.comments|length }})</h3>
             {% for comment in post.comments %}
