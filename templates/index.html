@@ -2,27 +2,24 @@
 
 {% block title %}トップページ{% endblock %}
 
-{% block content %}
-
+{% block extra_head %}
 <style>
     /*
-      最終手段として、index.htmlに直接CSSを書き込みます。
+      layout.htmlのCSSキャッシュ問題を解決するため、
+      このページ専用のスタイルを<head>に直接注入します。
+      スマホ表示時(.container)に左右10pxの余白(padding)を
+      !important で強制的に適用します。
     */
     @media (max-width: 768px) {
-        
-        /* 1. 本来の目的：左右に10pxの余白を強制適用 */
         .container {
             padding: 0 10px !important;
             box-sizing: border-box !important;
         }
-
-        /* 2. 反映確認テスト：スマホ表示の時、「投稿一覧」の文字を赤くする */
-        h2.content-width-limiter {
-            color: red !important;
-        }
-
     }
 </style>
+{% endblock %}
+{% block content %}
+
 {% if current_user.is_authenticated %}
     <div class="content-width-limiter" style="margin-bottom: 0;">
         <button id="toggle-post-form-btn">
