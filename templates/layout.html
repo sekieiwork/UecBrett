@@ -392,7 +392,8 @@
         color: #007bff;
     }
 
-    #toggle-post-form-btn {
+    /* ▼▼▼ [修正] セレクタに #toggle-comment-form-btn を追加 ▼▼▼ */
+    #toggle-post-form-btn, #toggle-comment-form-btn {
         padding: 0.5em 1em;
         border: none;
         border-radius: 0.25rem;
@@ -405,7 +406,8 @@
         gap: 0.5em;
     }
 
-    #toggle-post-form-btn:hover {
+    /* ▼▼▼ [修正] セレクタに #toggle-comment-form-btn:hover を追加 ▼▼▼ */
+    #toggle-post-form-btn:hover, #toggle-comment-form-btn:hover {
         background-color: #0056b3;
     }
 
@@ -617,6 +619,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const toggleCommentButton = document.getElementById('toggle-comment-form-btn');
     const commentFormContainer = document.getElementById('comment-form-container');
+
+
     // --- 2. テキストエリア関連の要素を取得 ---
     const allEditableTextareas = document.querySelectorAll('.auto-resize-textarea');
 
@@ -656,7 +660,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    // --- テキストエリアの自動リサイズ処理 (全デバイス共通) ---
+
+// --- テキストエリアの自動リサイズ処理 (全デバイス共通) ---
 allEditableTextareas.forEach(textarea => {
     // ページ読み込み時の初回リサイズ (スクロールなし)
     setTimeout(() => resizeTextarea(textarea), 100);
