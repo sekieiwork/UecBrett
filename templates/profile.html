@@ -79,9 +79,64 @@
         {% endfor %}
         
         <div class="pagination">
-            </div>
-    </div>
+            {% if posts.has_prev %}
+                <a href="{{ url_for('user_profile', username=user.username, post_page=posts.prev_num, active_tab='posts') }}">« 前へ</a>
+            {% endif %}
+            {% for page_num in posts.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                    {% if posts.page == page_num %}
+                        <a href="{{ url_for('user_profile', username=user.username, post_page=page_num, active_tab='posts') }}" style="font-weight: bold;">{{ page_num }}</a>
+                    {% else %}
+                        <a href="{{ url_for('user_profile', username=user.username, post_page=page_num, active_tab='posts') }}">{{ page_num }}</a>
+                    {% endif %}
+                {% else %}
+                    <span style="padding: 0 0.5em;">...</span>
+                {% endif %}
+            {% endfor %}
+            {% if posts.has_next %}
+                <a href="{{ url_for('user_profile', username=user.username, post_page=posts.next_num, active_tab='posts') }}">次へ »</a>
+            {% endif %}
+        </div>
+        </div>
     
     <div id="comments" class="tab-content" style="display: {% if active_tab == 'comments' %}block{% else %}none{% endif %};">
+        <h3>コメント履歴</h3>
+        {% if comments.items %}
+            {% for comment in comments.items %}
+            <div class="comment-item" style="margin-bottom: 1em; background-color: #fff; padding: 1.5em; border: 1px solid #dee2e6; border-radius: 0.25rem;">
+                <p style="font-size: 0.9em; color: #6c757d; margin-top: 0;">
+                    <a href="{{ url_for('post_detail', post_id=comment.post.id, _anchor='comment-' + comment.id|string) }}">
+                        <strong>「{{ comment.post.title }}」</strong>
+                    </a>
+                    へのコメント ({{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M') }})
+                </p>
+                <div class="comment-content" style="max-height: 100px; overflow-y: auto;">
+                    {{ md.convert(comment.content) | safe }}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>コメント履歴はありません。</p>
+        {% endif %}
+        
+        <div class="pagination">
+            {% if comments.has_prev %}
+                <a href="{{ url_for('user_profile', username=user.username, comment_page=comments.prev_num, active_tab='comments') }}">« 前へ</a>
+            {% endif %}
+            {% for page_num in comments.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                    {% if comments.page == page_num %}
+                        <a href="{{ url_for('user_profile', username=user.username, comment_page=page_num, active_tab='comments') }}" style="font-weight: bold;">{{ page_num }}</a>
+                    {% else %}
+                        <a href="{{ url_for('user_profile', username=user.username, comment_page=page_num, active_tab='comments') }}">{{ page_num }}</a>
+                    {% endif %}
+                {% else %}
+                    <span style="padding: 0 0.5em;">...</span>
+                {% endif %}
+            {% endfor %}
+            {% if comments.has_next %}
+                <a href="{{ url_for('user_profile', username=user.username, comment_page=comments.next_num, active_tab='comments') }}">次へ »</a>
+            {% endif %}
         </div>
-{% endblock %}
+    </div>
+    {% endblock %}
