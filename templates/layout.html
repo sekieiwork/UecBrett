@@ -460,18 +460,19 @@
     @media (max-width: 768px) {
         body { padding-top: 60px; }
         
-        /* ▼▼▼ [修正] スマホの .container の padding を 0 に戻します ▼▼▼ */
+        /* ▼▼▼ [修正] .container に padding を設定して余白を管理します ▼▼▼ */
         .container {
-            padding: 0; /* 左右の余白は .post 側で管理 */
+            /* padding: 0; (元の設定を削除) */
+            padding: 0 10px; /* 左右に10pxのパディングを追加 */
             margin-top: 1em;
             box-sizing: border-box; /* paddingを含めて幅を計算 */
         }
         
-        /* ▼▼▼ [修正] スマホ表示では max-width: 95% を適用し、必ず余白を作る ▼▼▼ */
+        /* ▼▼▼ [修正] .post などの max-width を 100% に戻します ▼▼▼ */
         .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info, .content-width-limiter {
-            max-width: 95%;
-            margin-left: auto; /* !important 削除 */
-            margin-right: auto; /* !important 削除 */
+            max-width: 100%; /* 95% から 100% に変更 (コンテナのpaddingを利用) */
+            margin-left: auto; 
+            margin-right: auto; 
         }
         /* ▲▲▲ 修正ここまで ▲▲▲ */
 
