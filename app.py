@@ -324,7 +324,7 @@ def show_bookmarks():
             post.updated_at_jst = None
         post.is_bookmarked = True
 
-    return render_template('bookmarks.html', posts=bookmarked_posts, search_form=search_form, md=md, linkify_urls=linkify_urls)
+    return render_template('bookmarks.html', posts=bookmarked_posts, search_form=search_form, md=md)
 
 @app.route('/post/<int:post_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -478,8 +478,7 @@ def search(page=1):
                            posts=posts,
                            search_query=search_query,
                            md=md,
-                           search_form=form,
-                           linkify_urls=linkify_urls)
+                           search_form=form)
 
 @app.route('/profile/edit/<string:username>', methods=['GET', 'POST'])
 @login_required

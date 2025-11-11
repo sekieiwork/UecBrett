@@ -23,7 +23,7 @@
     {% if user.bio %}
         <div class="bio post-form">
             <h3>自己紹介</h3>
-             <div class="post-content" style="max-height: none; overflow-y: visible;">{{ linkify_urls(user.bio) | safe }}</div>
+             <div class="post-content" style="max-height: none; overflow-y: visible;">{{ user.bio | safe_markdown | safe }}</div>
         </div>
     {% endif %}
 
