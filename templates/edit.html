@@ -11,6 +11,9 @@
     <form method="POST" enctype="multipart/form-data" class="post-form" style="padding-top: 4em;">
         {{ form.csrf_token }}
 
+        <a href="javascript:void(0)" id="toggle-tag-form-btn" title="タグを編集" style="position: absolute; top: 1.5em; left: 1.5em;">
+            <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 24px; height: 24px; vertical-align: middle;">
+        </a>
         {% if templates %}
         <div class="template-dropdown" style="position: absolute; top: 1.5em; right: 1.5em;">
             <button type="button" class="template-select-btn">テンプレートを選択</button>
@@ -22,12 +25,6 @@
         </div>
         {% endif %}
 
-        <div style="margin-bottom: 1em;">
-            <a href="javascript:void(0)" id="toggle-tag-form-btn" style="display: flex; align-items: center; text-decoration: none; font-weight: bold; color: #333;">
-                <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 20px; height: 20px; margin-right: 8px;">
-                <span>タグを編集する <i class="fas fa-plus"></i></span>
-            </a>
-        </div>
         <div id="tag-form-container" class="form-field hidden">
             {{ form.tags.label }} (カンマ区切りで入力)<br>
             {{ form.tags(placeholder="例: 1クラス, Python, 実験") }}

@@ -13,16 +13,16 @@
                 <span style="color: red;">[{{ error }}]</span>
             {% endfor %}
         </div>
-        <div class="form-field">
+
+        <div class="form-field" style="position: relative;">
             {{ form.bio.label }}<br>
             {{ form.bio(cols=40, rows=5) }}
-        </div>
-
-        <div style="margin-bottom: 1em;">
-            <a href="javascript:void(0)" id="toggle-tag-form-btn" style="text-decoration: none; font-weight: bold; color: #333;">
-                タグをつける <i class="fas fa-plus"></i>
+            
+            <a href="javascript:void(0)" id="toggle-tag-form-btn" title="タグを編集" style="position: absolute; top: 0; right: 0;">
+                <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 24px; height: 24px; vertical-align: middle;">
             </a>
         </div>
+
         <div id="tag-form-container" class="form-field hidden">
             {{ form.tags.label }} (カンマ区切りで入力)<br>
             {{ form.tags(placeholder="例: 1クラス, 情シ, B4") }}
