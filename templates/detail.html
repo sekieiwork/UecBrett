@@ -16,7 +16,7 @@
             </div>
             {% endif %}
             
-            <div class="post-content" style="max-height: none; overflow-y: visible;">{{ md.convert(linkify_urls(post.content)) | safe }}</div>
+            <div class="post-content" style="max-height: none; overflow-y: visible;">{{ post.content | safe_markdown | safe }}</div>
 
             <div class="post-meta">
                 <div>
@@ -108,7 +108,7 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="comment-content">{{ md.convert(comment.content) | safe }}</div>
+            <div class="comment-content">{{ comment.content | safe_markdown | safe }}</div>
         </div>
     </div>
     {% endfor %}

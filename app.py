@@ -17,6 +17,8 @@ import json
 from PIL import Image
 import cloudinary
 import cloudinary.uploader
+import bleach
+from bleach.linkifier import Linker
 
 cloudinary.config(
   cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
@@ -35,14 +37,46 @@ migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Helper Functions
-def linkify_urls(text):
-    url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
-    return re.sub(
-        url_pattern,
-        lambda match: f'<a href="{match.group(0)}" target="_blank">{match.group(0)}</a>',
-        text
+# 1. アプリケーションで許可するHTMLタグを定義します
+# (Markdownが生成するもの + UECreviewで使うspan)
+ALLOWED_TAGS = [
+    'p', 'br', 'strong', 'em', 'ol', 'ul', 'li', 'a', 'span', 'hr',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'code', 'blockquote',
+]
+
+# 2. 許可するタグに付随する属性を定義します
+ALLOWED_ATTRIBUTES = {
+    'a': ['href', 'target'], # リンク
+    'span': ['class']        # UECreviewの <span class="text-red"> 用
+}
+
+# 3. BleachのLinkerを設定（自動でリンクに target="_blank" を追加）
+linker = Linker(callbacks=[
+    lambda attrs, new: attrs.update({(None, 'target'): '_blank'})
+])
+
+# 4. 「safe_markdown」という名前のカスタムフィルターを定義
+@app.template_filter('safe_markdown')
+def safe_markdown_filter(text):
+    if not text:
+        return ""
+    
+    # ステップ1: まずMarkdownをHTMLに変換する
+    html = md.convert(text)
+    
+    # ステップ2: HTMLから危険なタグ(<script>等)を「消毒」する
+    # ALLOWED_TAGS と ALLOWED_ATTRIBUTES 以外のすべてが除去される
+    sanitized_html = bleach.clean(
+        html,
+        tags=ALLOWED_TAGS,
+        attributes=ALLOWED_ATTRIBUTES
     )
+    
+    # ステップ3: 消毒済みのHTML内の「http://...」をリンク(<a href=...>)に変換する
+    linked_and_sanitized_html = linker.linkify(sanitized_html)
+    
+    return linked_and_sanitized_html
+
 
 def parse_review_for_editing(content):
     """
