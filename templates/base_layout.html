@@ -648,6 +648,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const toggleCommentButton = document.getElementById('toggle-comment-form-btn');
     const commentFormContainer = document.getElementById('comment-form-container');
+    const toggleTagButton = document.getElementById('toggle-tag-form-btn');
+    const tagFormContainer = document.getElementById('tag-form-container');
 
 
     // --- 2. テキストエリア関連の要素を取得 ---
@@ -957,6 +959,29 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             }
         });
     });
+
+
+    // --- [追加] タグフォームのトグル処理 ---
+    if (toggleTagButton && tagFormContainer) {
+        toggleTagButton.addEventListener('click', function(event) {
+            event.preventDefault(); // aタグのデフォルト動作をキャンセル
+            tagFormContainer.classList.toggle('hidden');
+            
+            // アイコンの + / - をトグルする (あれば)
+            const icon = toggleTagButton.querySelector('i'); // (iタグは <i class="fas fa-plus"></i> のこと)
+            if (icon) {
+                if (tagFormContainer.classList.contains('hidden')) {
+                    icon.classList.remove('fa-minus');
+                    icon.classList.add('fa-plus');
+                } else {
+                    icon.classList.remove('fa-plus');
+                    icon.classList.add('fa-minus');
+                }
+            }
+        });
+    }
+
+
 
 // --- 6. フォーム送信時の処理 (ここから新規追加) ---
     // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼

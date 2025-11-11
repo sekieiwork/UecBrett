@@ -22,7 +22,13 @@
         </div>
         {% endif %}
 
-        <div class="form-field">
+        <div style="margin-bottom: 1em;">
+            <a href="javascript:void(0)" id="toggle-tag-form-btn" style="display: flex; align-items: center; text-decoration: none; font-weight: bold; color: #333;">
+                <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 20px; height: 20px; margin-right: 8px;">
+                <span>タグを編集する <i class="fas fa-plus"></i></span>
+            </a>
+        </div>
+        <div id="tag-form-container" class="form-field hidden">
             {{ form.tags.label }} (カンマ区切りで入力)<br>
             {{ form.tags(placeholder="例: 1クラス, Python, 実験") }}
         </div>
