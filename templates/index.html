@@ -2,33 +2,6 @@
 
 {% block title %}トップページ{% endblock %}
 
-{% block extra_head %}
-<style>
-    @media (max-width: 768px) {
-        /* * base_layout.html の .container { padding: 0 10px; } が
-         * index.html でだけ機能しないため、!important で強制的に再定義する。
-         */
-        .container {
-            padding: 0 10px !important;
-            box-sizing: border-box !important;
-        }
-        /*
-         * base_layout.html の .post { max-width: 100%; } が
-         * index.html でだけ機能しないため、!important で強制的に再定義する。
-         */
-        .post, .post-form, .content-width-limiter {
-            max-width: 100% !important;
-        }
-
-        .post.content-width-limiter {
-            padding-left: 10px !important;
-            padding-right: 10px !important;
-            box-sizing: border-box !important; /* paddingを含めて幅を計算 */
-        }
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 
 {% if current_user.is_authenticated %}
