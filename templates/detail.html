@@ -18,6 +18,13 @@
             
             <div class="post-content" style="max-height: none; overflow-y: visible;">{{ post.content | safe_markdown | safe }}</div>
 
+            {% if post.tags %}
+                <div class="tag-container">
+                    {% for tag in post.tags %}
+                        <span class="tag-box">{{ tag.name }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
             <div class="post-meta">
                 <div>
                     <small>投稿者: <a href="{{ url_for('user_profile', username=post.author.username) }}" class="{{ post.author.get_username_class() }}">{{ post.author.username }}</a></small> | 

@@ -36,7 +36,11 @@
     			    {{ form.content(cols=40, rows=5, class="textarea-content auto-resize-textarea") }}
 		        </div>
 
-		        <div id="uecreview-form-container" class="hidden"></div>
+                <div class="form-field">
+                    {{ form.tags.label }} (カンマ区切りで入力)<br>
+                    {{ form.tags(placeholder="例: 1クラス, Python, 実験") }}
+                </div>
+                <div id="uecreview-form-container" class="hidden"></div>
 
                 <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
     			    {{ form.submit }}
@@ -88,6 +92,10 @@
                 </div>
                 
                 {% if current_user.is_authenticated %}
+                <div style="display: flex; align-items: center;">
+                    {% if post.tags %}
+                        <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 20px; height: 20px; margin-right: 8px;">
+                    {% endif %}
                 <form class="bookmark-form" data-post-id="{{ post.id }}">
                     <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
                         <span id="bookmark-icon-{{ post.id }}">
@@ -100,7 +108,8 @@
                         </span>
                     </button>
                 </form>
-                {% endif %}
+                
+                </div> {% endif %}
             </div>
         </div>
     </div>

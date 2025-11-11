@@ -17,6 +17,11 @@
             {{ form.bio.label }}<br>
             {{ form.bio(cols=40, rows=5) }}
         </div>
+
+        <div class="form-field">
+            {{ form.tags.label }} (カンマ区切りで入力)<br>
+            {{ form.tags(placeholder="例: 1クラス, 情シ, B4") }}
+        </div>
         <div class="form-field">
             {{ form.icon.label }}<br>
             {{ form.icon(accept="image/jpeg, image/png, image/gif") }}

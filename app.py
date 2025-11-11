@@ -20,6 +20,8 @@ import cloudinary.uploader
 import bleach
 from bleach.linkifier import Linker
 
+
+
 cloudinary.config(
   cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
   api_key = os.environ.get('CLOUDINARY_API_KEY'), 
@@ -76,6 +78,36 @@ def safe_markdown_filter(text):
     linked_and_sanitized_html = linker.linkify(sanitized_html)
     
     return linked_and_sanitized_html
+
+# ▼▼▼ [追加] タグ処理ヘルパー関数 ▼▼▼
+def get_or_create_tags_from_string(tag_string):
+    """
+    "tag1,tag2, tag3" のようなカンマ区切りの文字列をパースし、
+    Tagオブジェクトのリストを返す。
+    新しいタグはDBに作成し、last_usedを更新する。
+    """
+    tag_objects = []
+    if not tag_string:
+        return tag_objects
+
+    # "tag1, tag2 , tag3" -> ["tag1", "tag2", "tag3"]
+    tag_names = [name.strip() for name in tag_string.split(',') if name.strip()]
+    
+    for name in tag_names:
+        tag = Tag.query.filter_by(name=name).first()
+        if not tag:
+            # 新しいタグを作成
+            tag = Tag(name=name, last_used=datetime.utcnow())
+            db.session.add(tag)
+        else:
+            # 既存タグの last_used を更新
+            tag.last_used = datetime.utcnow()
+        
+        tag_objects.append(tag)
+        
+    db.session.commit() # このセッションで追加されたタグをコミット
+    return tag_objects
+# ▲▲▲ [追加] ここまで ▲▲▲
 
 
 def parse_review_for_editing(content):
@@ -157,6 +189,28 @@ def delete_from_cloudinary(image_url):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# ▼▼▼ [修正] タグモデル定義を User/Post クラスの「前」に移動 ▼▼▼
+# 1. Post と Tag の中間テーブル (多対多)
+post_tags = db.Table('post_tags',
+    db.Column('post_id', db.Integer, db.ForeignKey('post.id', ondelete="CASCADE"), primary_key=True),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id', ondelete="CASCADE"), primary_key=True)
+)
+
+# 2. User と Tag の中間テーブル (多対多)
+user_tags = db.Table('user_tags',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), primary_key=True),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id', ondelete="CASCADE"), primary_key=True)
+)
+
+# 3. Tagモデル
+class Tag(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    # 最後に使われた日時 (「最近使用したタグ」機能のため)
+    last_used = db.Column(db.DateTime, default=datetime.utcnow)
+# ▲▲▲ [修正] ここまで ▲▲▲
+
+
 # Database Models
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -169,7 +223,12 @@ class User(db.Model, UserMixin):
     comments = db.relationship('Comment', backref='commenter', lazy=True)
     bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic')
     notifications = db.relationship('Notification', backref='recipient', lazy='dynamic')
-
+    
+    # ▼▼▼ [修正] 'user_tags' を使うように
+    tags = db.relationship('Tag', secondary=user_tags, lazy='subquery',
+        backref=db.backref('users', lazy=True), cascade="all, delete")
+    # ▲▲▲ [修正] ここまで ▲▲▲
+    
     def get_username_class(self):
         return 'admin-username' if self.is_admin else ''
 
@@ -187,6 +246,11 @@ class Post(db.Model):
     comments = db.relationship('Comment', backref='post', lazy=True, cascade="all, delete")
     bookmarks = db.relationship('Bookmark', backref='post', lazy='dynamic', cascade="all, delete")
     notifications = db.relationship('Notification', backref='post', lazy='dynamic', cascade="all, delete")
+    
+    # ▼▼▼ [追加] 'post_tags' を使う
+    tags = db.relationship('Tag', secondary=post_tags, lazy='subquery',
+        backref=db.backref('posts', lazy=True), cascade="all, delete")
+    # ▲▲▲ [追加] ここまで ▲▲▲
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -221,7 +285,12 @@ def index(page):
         if form.image.data:
             image_url_str = save_picture(form.image.data)
 
-        post = Post(title=form.title.data, content=form.content.data, author=current_user, image_url=image_url_str) # image_filenameをimage_urlに変更
+        post = Post(title=form.title.data, content=form.content.data, author=current_user, image_url=image_url_str)
+        
+        # ▼▼▼ [追加] タグを保存 ▼▼▼
+        post.tags = get_or_create_tags_from_string(form.tags.data)
+        # ▲▲▲ [追加] ここまで ▲▲▲
+
         db.session.add(post)
         db.session.commit()
         return redirect(url_for('index'))
@@ -268,11 +337,7 @@ def post_detail(post_id):
             db.session.add(notification)
         
         db.session.commit()
-        # ▼▼▼ ③ ここから修正 ▼▼▼
-        # 意図: url_forに _anchor を追加し、リダイレクト先のURLに #comment-ID を付与します。
-        # これにより、ブラウザが自動でそのコメントの位置までスクロールします。
         return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
-        # ▲▲▲ ③ ここまで修正 ▲▲▲
 
     japan_tz = timezone('Asia/Tokyo')
     post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
@@ -339,21 +404,27 @@ def edit_post(post_id):
     if form.validate_on_submit():
         post.title = form.title.data
         post.content = form.content.data
+        
+        # ▼▼▼ [修正] タグの更新 ▼▼▼
+        post.tags.clear()
+        post.tags = get_or_create_tags_from_string(form.tags.data)
+        # ▲▲▲ [修正] ここまで ▲▲▲
+        
         if form.image.data:
-            # ▼▼▼ ここから追加 ▼▼▼
-                # 古い画像があればURLを取得し、Cloudinaryから削除
             if post.image_url:
                 delete_from_cloudinary(post.image_url)
-            # ▲▲▲ ここまで ▲▲▲
             image_url_str = save_picture(form.image.data)
-            post.image_url = image_url_str # image_filenameをimage_urlに変更
+            post.image_url = image_url_str
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id))
 
     elif request.method == 'GET': # GETリクエスト（ページを最初に開いた時）
-        # フォームに現在の投稿データをセットする
         form.title.data = post.title
         form.content.data = post.content
+        
+        # ▼▼▼ [追加] GET時にタグをフォームにセット ▼▼▼
+        form.tags.data = ','.join([tag.name for tag in post.tags])
+        # ▲▲▲ [追加] ここまで ▲▲▲
 
     templates = [
         {
@@ -366,13 +437,10 @@ def edit_post(post_id):
     uec_review_data = parse_review_for_editing(post.content)
     uec_review_data_json = None
     if uec_review_data:
-        # パース成功時、データをJSON文字列に変換
         uec_review_data_json = json.dumps(uec_review_data)
-        # ※この時点では元の post.content (テキストエリアの値) は変更しない
-        # JavaScript側でこのJSONを読み取ってフォームを動的に生成する
-    # ▲▲▲ 追加ここまで ▲▲▲
-
+    
     return render_template('edit.html', form=form, post=post, search_form=search_form, md=md, templates=templates, templates_for_js=json.dumps(templates), uec_review_data_json=uec_review_data_json)
+
 @app.route('/post/<int:post_id>/delete', methods=['POST'])
 @login_required
 def delete_post(post_id):
@@ -390,11 +458,10 @@ def delete_post(post_id):
 @login_required
 def delete_comment(comment_id):
     comment = Comment.query.get_or_404(comment_id)
-    post_id = comment.post_id # 投稿IDを先に取得しておく
+    post_id = comment.post_id 
     if comment.commenter == current_user or comment.post.author == current_user or current_user.is_admin:
         db.session.delete(comment)
         db.session.commit()
-        # リダイレクトの代わりに、成功のJSONを返す
         remaining_comments = Comment.query.filter_by(post_id=post_id).count()
         return jsonify({'status': 'success', 'remaining_comments': remaining_comments})
     else:
@@ -445,17 +512,12 @@ def search():
     search_query = None
     form = SearchForm()
     
-    # どのタブがアクティブか（デフォルトは 'posts'）
     active_tab = request.args.get('active_tab', 'posts')
-    
-    # ページネーションのページ番号
     post_page = request.args.get('post_page', 1, type=int)
     user_page = request.args.get('user_page', 1, type=int)
 
-    # フォーム送信時
     if form.validate_on_submit():
         search_query = form.search_query.data
-    # ページネーションやタブ切り替え時 (GET)
     elif request.method == 'GET' and request.args.get('search_query'):
         search_query = request.args.get('search_query')
         form.search_query.data = search_query
@@ -466,19 +528,16 @@ def search():
     if search_query:
         like_query = f'%{search_query}%'
         
-        # 投稿の検索（タスク③を反映し per_page=40 に）
         posts_query = Post.query.filter(
             (Post.title.like(like_query)) | (Post.content.like(like_query))
         ).order_by(Post.created_at.desc())
         posts = posts_query.paginate(page=post_page, per_page=40, error_out=False)
 
-        # ユーザーの検索（タスク③を反映し per_page=40 に）
         users_query = User.query.filter(
             User.username.like(like_query)
         ).order_by(User.username.asc())
         users = users_query.paginate(page=user_page, per_page=40, error_out=False)
 
-        # 投稿の日時設定 (JST)
         japan_tz = timezone('Asia/Tokyo')
         for post in posts.items:
             post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
@@ -492,7 +551,6 @@ def search():
                 post.is_bookmarked = False
     
     else:
-        # 何も検索していない場合
         posts = db.paginate(db.select(Post).where(False), page=post_page, per_page=40, error_out=False)
         users = db.paginate(db.select(User).where(False), page=user_page, per_page=40, error_out=False)
 
@@ -518,18 +576,24 @@ def edit_profile(username):
         user.username = form.username.data
         user.bio = form.bio.data
         
+        # ▼▼▼ [追加] タグの更新 ▼▼▼
+        user.tags.clear()
+        user.tags = get_or_create_tags_from_string(form.tags.data)
+        # ▲▲▲ [追加] ここまで ▲▲▲
+        
         if form.icon.data:
-            # ▼▼▼ ここから追加 ▼▼▼
-            # 古いアイコンがあればURLを取得し、Cloudinaryから削除
             if user.icon_url:
                 delete_from_cloudinary(user.icon_url)
-            # ▲▲▲ ここまで ▲▲▲
-            # Cloudinaryにアイコンを保存し、URLを取得
             icon_url = save_icon(form.icon.data)
             user.icon_url = icon_url
         
         db.session.commit()
         return redirect(url_for('user_profile', username=user.username))
+    
+    # ▼▼▼ [追加] GET時にタグをフォームにセット ▼▼▼
+    elif request.method == 'GET':
+        form.tags.data = ','.join([tag.name for tag in user.tags])
+    # ▲▲▲ [追加] ここまで ▲▲▲
     
     return render_template('edit_profile.html', form=form, search_form=search_form, user=user)
 

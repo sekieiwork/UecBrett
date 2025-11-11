@@ -37,6 +37,10 @@
                             <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
                         </div>
                         {% if current_user.is_authenticated %}
+                        <div style="display: flex; align-items: center;">
+                            {% if post.tags %}
+                                <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 20px; height: 20px; margin-right: 8px;">
+                            {% endif %}
                         <form class="bookmark-form" data-post-id="{{ post.id }}">
                             <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
                                 <span id="bookmark-icon-{{ post.id }}">
@@ -49,7 +53,8 @@
                                 </span>
                             </button>
                         </form>
-                        {% endif %}
+
+                        </div> {% endif %}
                     </div>
                 </div>
             {% endfor %}
