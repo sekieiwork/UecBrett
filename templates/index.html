@@ -79,17 +79,21 @@
     </div>
 {% endif %}
 
-    <h2 class="content-width-limiter" style="margin-top: 0; margin-bottom: 0.5em; box-sizing: border-box;">投稿一覧</h2>
+    <div class="content-width-limiter">
+        <h2 style="margin-top: 0; margin-bottom: 0.5em; box-sizing: border-box;">投稿一覧</h2>
+    </div>
     
     {% for post in posts.items %}
     <div class="post content-width-limiter">
+    <div class="post">
     <h3>
             <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a>
             {% if post.updated_at and post.created_at_jst.strftime('%Ym%d%H%M%S') != post.updated_at_jst.strftime('%Ym%d%H%M%S') %}
                 <small style="color: gray; font-size: 0.3em;">(編集済み)</small>
             {% endif %}
             <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
-        </h3>
+    </h3>
+    </div>
 
         {% if post.image_url %}
         <a href="{{ url_for('post_detail', post_id=post.id) }}">
@@ -122,8 +126,8 @@
         </div>
     </div>
     {% endfor %}
-
-    <div class="pagination content-width-limiter" style="text-align: center;">
+    <div class="content-width-limiter">
+        <div class="pagination" style="text-align: center;">
         {% if posts.has_prev %}
             <a href="{{ url_for('index', page=posts.prev_num) }}">« 前へ</a>
         {% endif %}
@@ -143,5 +147,6 @@
         {% if posts.has_next %}
             <a href="{{ url_for('index', page=posts.next_num) }}">次へ »</a>
         {% endif %}
+    </div>
     </div>
     {% endblock %}
