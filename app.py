@@ -251,7 +251,7 @@ def index(page):
             }
         ]
     
-    return render_template('index.html', form=form, search_form=search_form, posts=posts, linkify_urls=linkify_urls, md=md, templates=templates, templates_for_js=json.dumps(templates))
+    return render_template('index.html', form=form, search_form=search_form, posts=posts,  md=md, templates=templates, templates_for_js=json.dumps(templates))
 
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
@@ -286,7 +286,7 @@ def post_detail(post_id):
     
     post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
     
-    return render_template('detail.html', post=post, comment_form=comment_form, linkify_urls=linkify_urls, md=md, search_form=search_form)
+    return render_template('detail.html', post=post, comment_form=comment_form,  md=md, search_form=search_form)
 
 @app.route('/bookmark_post/<int:post_id>', methods=['POST'])
 @login_required
@@ -372,7 +372,7 @@ def edit_post(post_id):
         # JavaScript側でこのJSONを読み取ってフォームを動的に生成する
     # ▲▲▲ 追加ここまで ▲▲▲
 
-    return render_template('edit.html', form=form, post=post, search_form=search_form, md=md, templates=templates, templates_for_js=json.dumps(templates), linkify_urls=linkify_urls,uec_review_data_json=uec_review_data_json)
+    return render_template('edit.html', form=form, post=post, search_form=search_form, md=md, templates=templates, templates_for_js=json.dumps(templates), uec_review_data_json=uec_review_data_json)
 @app.route('/post/<int:post_id>/delete', methods=['POST'])
 @login_required
 def delete_post(post_id):
@@ -538,7 +538,7 @@ def user_profile(username):
     
     search_form = SearchForm()
     
-    return render_template('profile.html', user=user, posts=posts, comments=comments, active_tab=active_tab, linkify_urls=linkify_urls, md=md, search_form=search_form)
+    return render_template('profile.html', user=user, posts=posts, comments=comments, active_tab=active_tab,  md=md, search_form=search_form)
 
 @app.route('/admin')
 @login_required
