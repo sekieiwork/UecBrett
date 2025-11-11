@@ -460,22 +460,20 @@
     @media (max-width: 768px) {
         body { padding-top: 60px; }
         
-        /* ▼▼▼ [修正] .container に padding を設定して余白を管理します ▼▼▼ */
+        /* ▼▼▼ [変更] .container の padding は 0 にします ▼▼▼ */
         .container {
-            /* padding: 0; (元の設定を削除) */
-            padding: 0 10px; /* 左右に10pxのパディングを追加 (この値で余白を調整できます) */
+            padding: 0; /* 親のpaddingに頼らない */
             margin-top: 1em;
-            box-sizing: border-box; /* paddingを含めて幅を計算 */
+            box-sizing: border-box;
         }
         
-        /* ▼▼▼ [修正] .post などの max-width を 100% に戻します ▼▼▼ */
-        /* (親の.containerにpaddingがあるので、子は100%でOK) */
+        /* ▼▼▼ [変更] .post などを 95% に縮小し、marginで余白を作ります ▼▼▼ */
+        /* (これで index.html も detail.html も同じロジックになります) */
         .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info, .content-width-limiter {
-            max-width: 100%; /* 95% から 100% に変更 */
-            margin-left: auto; 
-            margin-right: auto; 
+            max-width: 95%; /* 画面幅より小さくする */
+            margin-left: auto; /* 自動で中央揃え (左余白) */
+            margin-right: auto; /* 自動で中央揃え (右余白) */
         }
-        /* ▲▲▲ 修正ここまで ▲▲▲ */
 
         .header-content { padding: 0 5px; flex-wrap: nowrap; justify-content: space-between; }
         .header-left { order: 0; }
