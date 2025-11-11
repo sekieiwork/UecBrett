@@ -226,7 +226,7 @@ def index(page):
         db.session.commit()
         return redirect(url_for('index'))
 
-    posts_per_page = 5
+    posts_per_page = 40
     posts = Post.query.order_by(Post.created_at.desc()).paginate(
         page=page, per_page=posts_per_page, error_out=False
     )
@@ -441,24 +441,44 @@ def logout():
     return redirect(url_for('index'))
 
 @app.route('/search', methods=['GET', 'POST'])
-@app.route('/search/page/<int:page>', methods=['GET', 'POST'])
-def search(page=1):
-    form = SearchForm()
+def search():
     search_query = None
-    posts = None
+    form = SearchForm()
+    
+    # どのタブがアクティブか（デフォルトは 'posts'）
+    active_tab = request.args.get('active_tab', 'posts')
+    
+    # ページネーションのページ番号
+    post_page = request.args.get('post_page', 1, type=int)
+    user_page = request.args.get('user_page', 1, type=int)
 
+    # フォーム送信時
     if form.validate_on_submit():
         search_query = form.search_query.data
+    # ページネーションやタブ切り替え時 (GET)
     elif request.method == 'GET' and request.args.get('search_query'):
         search_query = request.args.get('search_query')
         form.search_query.data = search_query
 
+    posts = None
+    users = None
+    
     if search_query:
+        like_query = f'%{search_query}%'
+        
+        # 投稿の検索（タスク③を反映し per_page=40 に）
         posts_query = Post.query.filter(
-            (Post.title.like(f'%{search_query}%')) | (Post.content.like(f'%{search_query}%'))
+            (Post.title.like(like_query)) | (Post.content.like(like_query))
         ).order_by(Post.created_at.desc())
-        posts = posts_query.paginate(page=page, per_page=5, error_out=False)
+        posts = posts_query.paginate(page=post_page, per_page=40, error_out=False)
 
+        # ユーザーの検索（タスク③を反映し per_page=40 に）
+        users_query = User.query.filter(
+            User.username.like(like_query)
+        ).order_by(User.username.asc())
+        users = users_query.paginate(page=user_page, per_page=40, error_out=False)
+
+        # 投稿の日時設定 (JST)
         japan_tz = timezone('Asia/Tokyo')
         for post in posts.items:
             post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
@@ -470,15 +490,19 @@ def search(page=1):
                 post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
             else:
                 post.is_bookmarked = False
+    
     else:
-        posts = db.paginate(db.select(Post).where(False), page=page, per_page=5, error_out=False)
+        # 何も検索していない場合
+        posts = db.paginate(db.select(Post).where(False), page=post_page, per_page=40, error_out=False)
+        users = db.paginate(db.select(User).where(False), page=user_page, per_page=40, error_out=False)
 
     return render_template('search_results.html',
-                           form=form,
+                           search_form=form,
                            posts=posts,
+                           users=users,
                            search_query=search_query,
-                           md=md,
-                           search_form=form)
+                           active_tab=active_tab,
+                           md=md)
 
 @app.route('/profile/edit/<string:username>', methods=['GET', 'POST'])
 @login_required
@@ -518,10 +542,10 @@ def user_profile(username):
     comment_page = request.args.get('comment_page', 1, type=int)
     
     posts = Post.query.filter_by(author=user).order_by(Post.created_at.desc()).paginate(
-        page=post_page, per_page=5, error_out=False
+        page=post_page, per_page=40, error_out=False
     )
     comments = Comment.query.filter_by(commenter=user).order_by(Comment.created_at.desc()).paginate(
-        page=comment_page, per_page=5, error_out=False
+        page=comment_page, per_page=40, error_out=False
     )
     
     japan_tz = timezone('Asia/Tokyo')
@@ -593,7 +617,7 @@ def show_notifications():
         n.is_read = True
     db.session.commit()
     
-    return render_template('notifications.html', notifications=notifications, search_form=search_form, md=md, linkify_urls=linkify_urls)
+    return render_template('notifications.html', notifications=notifications, search_form=search_form, md=md)
 
 
 

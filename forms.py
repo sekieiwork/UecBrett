@@ -6,7 +6,7 @@ from flask_wtf.file import FileField, FileAllowed
 class PostForm(FlaskForm):
     title = StringField('タイトル', validators=[DataRequired()])
     content = TextAreaField('本文', validators=[DataRequired()])
-    image = FileField('画像', validators=[FileAllowed(['jpg', 'png', 'gif', 'jpeg'], '画像ファイルのみ！')]) # <-- この行を追加
+    image = FileField('画像', validators=[FileAllowed(['jpg', 'png', 'gif', 'jpeg','heic', 'heif'], '画像ファイルのみ！')]) # <-- この行を追加
     submit = SubmitField('投稿')
 
 class CommentForm(FlaskForm):
@@ -35,7 +35,7 @@ class SearchForm(FlaskForm):
 class ProfileForm(FlaskForm):
     username = StringField('ユーザー名', validators=[DataRequired(), Length(min=2, max=20)])
     bio = TextAreaField('自己紹介')
-    icon = FileField('新しいアイコン', validators=[FileAllowed(['jpg', 'png', 'gif'], '画像ファイルのみ')])
+    icon = FileField('新しいアイコン', validators=[FileAllowed(['jpg', 'png', 'gif','heic', 'heif'], '画像ファイルのみ')])
     submit = SubmitField('更新')
 
     def validate_username(self, username):

@@ -1,77 +1,127 @@
 {% extends "base_layout.html" %}
 
-{% block title %}検索結果{% endblock %}
+{% block title %}「{{ search_query }}」の検索結果{% endblock %}
 
 {% block content %}
-    <h2>検索結果一覧</h2>
-    {% if posts and posts.items %}
-        <p>「{{ search_query }}」の検索結果: {{ posts.total }}件</p>
-        {% for post in posts.items %}
-        <div class="post">
-            <h3>
-                <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a>
-                {% if post.updated_at and post.created_at_jst.strftime('%Y%m%d%H%M%S') != post.updated_at_jst.strftime('%Y%m%d%H%M%S') %}
-                    <small style="color: gray; font-size: 0.3em;">(編集済み)</small>
-                {% endif %}
-                <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
-            </h3>
+    <h2 class="content-width-limiter">「{{ search_query or '...' }}」の検索結果</h2>
 
-            {% if post.image_url %}
-            <a href="{{ url_for('post_detail', post_id=post.id) }}">
-                <img src="{{ post.image_url }}" alt="投稿画像" class="post-image">
-            </a>
-            {% endif %}
+    <div class="tabs content-width-limiter">
+        <a href="{{ url_for('search', search_query=search_query, active_tab='posts') }}" class="tab-link {% if active_tab == 'posts' %}active{% endif %}">
+            投稿 ({{ posts.total if posts else 0 }})
+        </a>
+        <a href="{{ url_for('search', search_query=search_query, active_tab='users') }}" class="tab-link {% if active_tab == 'users' %}active{% endif %}">
+            ユーザー ({{ users.total if users else 0 }})
+        </a>
+    </div>
 
-            <div class="post-content">{{ post.content | safe_markdown | safe }}</div>
-            
-            <div class="post-meta">
-                <div>
-                    <small>投稿者: <a href="{{ url_for('user_profile', username=post.author.username) }}" class="{{ post.author.get_username_class() }}">{{ post.author.username }}</a></small> | 
-                    <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+    <div id="posts" class="tab-content" style="display: {% if active_tab == 'posts' %}block{% else %}none{% endif %};">
+        {% if posts and posts.items %}
+            {% for post in posts.items %}
+                <div class="post content-width-limiter">
+                    <h3>
+                        <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a>
+                        {% if post.updated_at and post.created_at_jst.strftime('%Ym%d%H%M%S') != post.updated_at_jst.strftime('%Ym%d%H%M%S') %}
+                            <small style="color: gray; font-size: 0.3em;">(編集済み)</small>
+                        {% endif %}
+                        <span style="color: black; font-size: 0.7em; white-space: nowrap;">コメント数({{ post.comments|length }})</span>
+                    </h3>
+                    {% if post.image_url %}
+                        <a href="{{ url_for('post_detail', post_id=post.id) }}">
+                            <img src="{{ post.image_url }}" alt="投稿画像" class="post-image">
+                        </a>
+                    {% endif %}
+                    <div class="post-content">{{ post.content | safe_markdown | safe }}</div>
+                    <div class="post-meta">
+                        <div>
+                            <small>投稿者: <a href="{{ url_for('user_profile', username=post.author.username) }}" class="{{ post.author.get_username_class() }}">{{ post.author.username }}</a></small> | 
+                            <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                        </div>
+                        {% if current_user.is_authenticated %}
+                        <form class="bookmark-form" data-post-id="{{ post.id }}">
+                            <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
+                                <span id="bookmark-icon-{{ post.id }}">
+                                    {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
+                                    {% if is_bookmarked %}
+                                        <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
+                                    {% else %}
+                                        <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
+                                    {% endif %}
+                                </span>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
                 </div>
-                
-                {% if current_user.is_authenticated %}
-                <form class="bookmark-form" data-post-id="{{ post.id }}">
-                    <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
-                        <span id="bookmark-icon-{{ post.id }}">
-                            {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
-                            {% if is_bookmarked %}
-                                <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
-                            {% else %}
-                                <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
-                            {% endif %}
-                        </span>
-                    </button>
-                </form>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
+            {% endfor %}
+        {% else %}
+            <p class="content-width-limiter">関連する投稿は見つかりませんでした。</p>
+        {% endif %}
         
-        <div class="pagination">
-            {% if posts.has_prev %}
-                <a href="{{ url_for('search', page=posts.prev_num, search_query=search_query) }}">前へ</a>
+        <div class="pagination content-width-limiter" style="text-align: center;">
+            {% if posts and posts.has_prev %}
+                <a href="{{ url_for('search', search_query=search_query, post_page=posts.prev_num, active_tab='posts') }}">« 前へ</a>
             {% endif %}
-            {% for p in posts.iter_pages() %}
-                {% if p %}
-                    {% if p == posts.page %}
-                        <a href="{{ url_for('search', page=p, search_query=search_query) }}" style="font-weight: bold;">{{ p }}</a>
+            {% if posts %}
+            {% for page_num in posts.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                    {% if posts.page == page_num %}
+                        <a href="{{ url_for('search', search_query=search_query, post_page=page_num, active_tab='posts') }}" style="font-weight: bold;">{{ page_num }}</a>
                     {% else %}
-                        <a href="{{ url_for('search', page=p, search_query=search_query) }}">{{ p }}</a>
+                        <a href="{{ url_for('search', search_query=search_query, post_page=page_num, active_tab='posts') }}">{{ page_num }}</a>
                     {% endif %}
                 {% else %}
-                    <span>...</span>
+                    <span style="padding: 0 0.5em;">...</span>
                 {% endif %}
             {% endfor %}
-            {% if posts.has_next %}
-                <a href="{{ url_for('search', page=posts.next_num, search_query=search_query) }}">次へ</a>
+            {% endif %}
+            {% if posts and posts.has_next %}
+                <a href="{{ url_for('search', search_query=search_query, post_page=posts.next_num, active_tab='posts') }}">次へ »</a>
             {% endif %}
         </div>
-    {% else %}
-        {% if search_query %}
-            <p>「{{ search_query }}」に一致する投稿は見つかりませんでした。</p>
+    </div>
+    
+    <div id="users" class="tab-content" style="display: {% if active_tab == 'users' %}block{% else %}none{% endif %};">
+        {% if users and users.items %}
+            {% for user in users.items %}
+                <div class="post content-width-limiter" style="padding: 1em 1.5em;">
+                    <div style="display: flex; align-items: center;">
+                        <a href="{{ url_for('user_profile', username=user.username) }}" style="margin-right: 1em;">
+                            {% if user.icon_url %}
+                                <img src="{{ user.icon_url }}" alt="{{ user.username }}のアイコン" class="user-icon">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="デフォルトアイコン" class="user-icon">
+                            {% endif %}
+                        </a>
+                        <a href="{{ url_for('user_profile', username=user.username) }}" class="{{ user.get_username_class() }}" style="font-size: 1.2em; font-weight: bold;">
+                            {{ user.username }}
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
         {% else %}
-            <p>検索キーワードを入力してください。</p>
+            <p class="content-width-limiter">関連するユーザーは見つかりませんでした。</p>
         {% endif %}
-    {% endif %}
+
+        <div class="pagination content-width-limiter" style="text-align: center;">
+            {% if users and users.has_prev %}
+                <a href="{{ url_for('search', search_query=search_query, user_page=users.prev_num, active_tab='users') }}">« 前へ</a>
+            {% endif %}
+            {% if users %}
+            {% for page_num in users.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                    {% if users.page == page_num %}
+                        <a href="{{ url_for('search', search_query=search_query, user_page=page_num, active_tab='users') }}" style="font-weight: bold;">{{ page_num }}</a>
+                    {% else %}
+                        <a href="{{ url_for('search', search_query=search_query, user_page=page_num, active_tab='users') }}">{{ page_num }}</a>
+                    {% endif %}
+                {% else %}
+                    <span style="padding: 0 0.5em;">...</span>
+                {% endif %}
+            {% endfor %}
+            {% endif %}
+            {% if users and users.has_next %}
+                <a href="{{ url_for('search', search_query=search_query, user_page=users.next_num, active_tab='users') }}">次へ »</a>
+            {% endif %}
+        </div>
+    </div>
 {% endblock %}
