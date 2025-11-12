@@ -21,8 +21,8 @@
             {% if post.tags %}
                 <div class="tag-container">
                     {% for tag in post.tags %}
-                        <span class="tag-box">{{ tag.name }}</span>
-                    {% endfor %}
+                        <a href="{{ url_for('search', search_query=tag.name) }}" class="tag-box">{{ tag.name }}</a>
+                        {% endfor %}
                 </div>
             {% endif %}
             <div class="post-meta">

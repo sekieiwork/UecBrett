@@ -532,17 +532,49 @@ def search():
     users = None
     
     if search_query:
+        
+        # ▼▼▼ ★★★ ここからロジックを変更 ★★★ ▼▼▼
+        
+        # 1. 検索クエリと「完全一致」するタグがあるか探す
+        # (タグ検索は曖昧検索(like)ではなく完全一致が望ましい)
+        # (ilike は大文字/小文字を区別しない)
+        tag_match = Tag.query.filter(Tag.name.ilike(search_query)).first()
+
         like_query = f'%{search_query}%'
         
-        posts_query = Post.query.filter(
+        # 2. 投稿(Post)の検索クエリを構築 (ベース)
+        posts_query_builder = Post.query.filter(
+            # タイトル または 本文 が曖昧一致
             (Post.title.like(like_query)) | (Post.content.like(like_query))
-        ).order_by(Post.created_at.desc())
-        posts = posts_query.paginate(page=post_page, per_page=40, error_out=False)
-
-        users_query = User.query.filter(
+        )
+        
+        # 3. ユーザー(User)の検索クエリを構築 (ベース)
+        users_query_builder = User.query.filter(
+            # ユーザー名 が曖昧一致
             User.username.like(like_query)
-        ).order_by(User.username.asc())
-        users = users_query.paginate(page=user_page, per_page=40, error_out=False)
+        )
+
+        # 4. もし「タグ」が見つかったら、検索クエリに追加する
+        if tag_match:
+            # タグに紐づく投稿を検索
+            post_tag_query = Post.query.join(post_tags).join(Tag).filter(Tag.id == tag_match.id)
+            # OR 条件でクエリを結合 ( | 演算子)
+            posts_query_builder = posts_query_builder.union(post_tag_query)
+
+            # タグに紐づくユーザーを検索
+            user_tag_query = User.query.join(user_tags).join(Tag).filter(Tag.id == tag_match.id)
+            # OR 条件でクエリを結合 ( | 演算子)
+            users_query_builder = users_query_builder.union(user_tag_query)
+
+        # 5. 構築したクエリを実行し、ページネーション
+        posts = posts_query_builder.order_by(Post.created_at.desc()).paginate(
+            page=post_page, per_page=40, error_out=False
+        )
+        users = users_query_builder.order_by(User.username.asc()).paginate(
+            page=user_page, per_page=40, error_out=False
+        )
+
+        # ▲▲▲ ★★★ ここまでロジックを変更 ★★★ ▲▲▲
 
         japan_tz = timezone('Asia/Tokyo')
         for post in posts.items:
@@ -567,7 +599,6 @@ def search():
                            search_query=search_query,
                            active_tab=active_tab,
                            md=md)
-
 @app.route('/profile/edit/<string:username>', methods=['GET', 'POST'])
 @login_required
 def edit_profile(username):

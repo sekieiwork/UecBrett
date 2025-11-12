@@ -537,7 +537,7 @@
     }
 /* ▲▲▲ UECreviewフォーム用CSS ▲▲▲ */
 
-/* ▼▼▼ [前回追加] タグ表示用CSS ▼▼▼ */
+/* ▼▼▼ タグ表示用CSS ▼▼▼ */
 .tag-container {
     display: flex;
     flex-wrap: wrap;
@@ -551,11 +551,19 @@
     font-weight: 500;
     color: #333;
     background-color: #fff;
-    border: 1px solid #333; /* ご要望の「黒枠」 */
-    border-radius: 15px; /* ご要望の「角丸め」 */
+    border: 1px solid #333; 
+    border-radius: 15px; 
     text-decoration: none;
     white-space: nowrap;
 }
+
+a.tag-box:hover {
+    background-color: #f1f1f1;
+    border-color: #007bff;
+    color: #007bff;
+    text-decoration: none; /* 下線はつけない */
+}
+
 /* ▲▲▲ タグ表示用CSS ▲▲▲ */
 
 /* ▼▼▼ [前回追加] 最近のタグ ドロップダウン用CSS ▼▼▼ */

@@ -26,8 +26,8 @@
             {% if user.tags %}
                 <div class="tag-container" style="margin-top: 0; margin-bottom: 10px;">
                     {% for tag in user.tags %}
-                        <span class="tag-box">{{ tag.name }}</span>
-                    {% endfor %}
+                        <a href="{{ url_for('search', search_query=tag.name) }}" class="tag-box">{{ tag.name }}</a>
+                        {% endfor %}
                 </div>
             {% endif %}
             {% if user.bio %}
