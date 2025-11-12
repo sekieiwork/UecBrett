@@ -1,0 +1,25 @@
+{% extends "base_layout.html" %}
+
+{% block title %}回覧板{% endblock %}
+
+{% block content %}
+    <div class="content-width-limiter">
+        
+        {% if is_developer %}
+            <!-- 「二酸化ケイ素」さんだけに表示される開発中画面 -->
+            <div class="post-form">
+                <h2>回覧板 (開発者モード)</h2>
+                <p>回覧板機能は現在開発中です。</p>
+                <p>ここに、落とし物や連絡事項を作成するフォームが入る予定です。</p>
+            </div>
+
+        {% else %}
+            <!-- 他の全ユーザーに表示される画面 -->
+            <div class="post-form">
+                <h2>開発中です</h2>
+                <p>この機能は現在開発中です。公開までしばらくお待ちください。</p>
+            </div>
+        {% endif %}
+
+    </div>
+{% endblock %}

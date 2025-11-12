@@ -457,10 +457,114 @@
         background-color: #f1f1f1;
     }
 
+    /* --- PC用 サイドナビ --- */
+.desktop-nav {
+    display: none; /* デフォルトは非表示 */
+    position: fixed;
+    top: 100px; /* ヘッダーの下 */
+    /* 画面中央 + コンテンツ幅半分(400px) + 隙間(20px) */
+    left: calc(50% + 420px); 
+    width: 60px;
+    z-index: 900;
+}
+
+.desktop-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.desktop-nav a {
+    display: block;
+    padding: 10px;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+}
+
+.desktop-nav a:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.desktop-nav img {
+    width: 40px;
+    height: 40px;
+    display: block;
+}
+
+/* --- スマホ用 フッターナビ --- */
+.mobile-nav {
+    display: none; /* デフォルトは非表示 */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 70px;
+    background-color: #ffffff;
+    border-top: 1px solid #dee2e6;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+    z-index: 1000;
+}
+
+.mobile-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+/* 当たり判定を大きくする (要求通り) */
+.mobile-nav li {
+    flex: 1; /* 3等分 */
+    height: 100%;
+}
+
+.mobile-nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    text-decoration: none;
+    color: #555;
+    font-size: 0.7em;
+    gap: 2px;
+}
+
+.mobile-nav a:hover {
+    background-color: #f8f9fa;
+}
+
+.mobile-nav img {
+    width: 28px;
+    height: 28px;
+}
+
+/* 1024px 以上をPCとみなす */
+@media (min-width: 1025px) {
+    .desktop-nav {
+        display: block;
+    }
+}
+
     @media (max-width: 768px) {
-        body { padding-top: 60px; }
+        body { 
+            padding-top: 60px; 
+            padding-bottom: 70px; /* ★ スマホナビの高さ分、余白を追加 ★ */
+        }
         
-        /* ▼▼▼ [修正] .container に padding を設定して余白を管理します ▼▼▼ */
+        /*  .container に padding を設定して余白を管理します  */
         .container {
             /* padding: 0; (元の設定を削除) */
             padding: 0 10px; /* 左右に10pxのパディングを追加 (この値で余白を調整できます) */
@@ -468,7 +572,7 @@
             box-sizing: border-box; /* paddingを含めて幅を計算 */
         }
         
-        /* ▼▼▼ [修正] .post などの max-width を 100% に戻します ▼▼▼ */
+        /*  .post などの max-width を 100% に戻します */
         /* (親の.containerにpaddingがあるので、子は100%でOK) */
         .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info, .content-width-limiter {
             max-width: 95%; /* 95% から 100% に変更 */
@@ -476,6 +580,10 @@
             margin-right: auto; 
         }
         /* ▲▲▲ 修正ここまで ▲▲▲ */
+
+        .mobile-nav {
+        display: flex;
+    }
 
         .header-content { padding: 0 5px; flex-wrap: nowrap; justify-content: space-between; }
         .header-left { order: 0; }
@@ -669,7 +777,54 @@ a.tag-box:hover {
         </div>
     </main>
 
+{% if current_user.is_authenticated %}
+        
+        <!-- --- 1. PC用 サイドナビ --- -->
+        <nav class="desktop-nav">
+            <ul>
+                <li>
+                    <a href="{{ url_for('index') }}" title="ホーム">
+                        <img src="{{ url_for('static', filename='icons/home.png') }}" alt="ホーム">
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('kairanban_index') }}" title="回覧板">
+                        <img src="{{ url_for('static', filename='icons/note.png') }}" alt="回覧板">
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('mailbox_index') }}" title="メールボックス">
+                        <img src="{{ url_for('static', filename='icons/mailbox.png') }}" alt="メールボックス">
+                    </a>
+                </li>
+            </ul>
+        </nav>
 
+        <!-- --- 2. スマホ用 フッターナビ --- -->
+        <nav class="mobile-nav">
+            <ul>
+                <li>
+                    <a href="{{ url_for('mailbox_index') }}">
+                        <img src="{{ url_for('static', filename='icons/mailbox.png') }}" alt="メールボックス">
+                        <span>メール</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('index') }}">
+                        <img src="{{ url_for('static', filename='icons/home.png') }}" alt="ホーム">
+                        <span>ホーム</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('kairanban_index') }}">
+                        <img src="{{ url_for('static', filename='icons/note.png') }}" alt="回覧板">
+                        <span>回覧板</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+    {% endif %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

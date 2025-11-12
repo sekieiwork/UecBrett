@@ -40,6 +40,18 @@ migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+@app.context_processor
+def inject_common_vars():
+    """
+    全てのテンプレートに共通の変数を自動で渡す
+    """
+    search_form = SearchForm()
+    is_developer = False
+    if current_user.is_authenticated and current_user.username == '二酸化ケイ素':
+        is_developer = True
+    
+    return dict(search_form=search_form, is_developer=is_developer)
+
 # 1. アプリケーションで許可するHTMLタグを定義します
 # (Markdownが生成するもの + UECreviewで使うspan)
 ALLOWED_TAGS = [
@@ -280,7 +292,6 @@ class Notification(db.Model):
 @app.route('/page/<int:page>', methods=['GET', 'POST'])
 def index(page):
     form = PostForm()
-    search_form = SearchForm()
     if form.validate_on_submit() and current_user.is_authenticated:
         image_url_str = None # 変数名を変更
         if form.image.data:
@@ -321,13 +332,13 @@ def index(page):
             }
         ]
     
-    return render_template('index.html', form=form, search_form=search_form, posts=posts,  md=md, templates=templates, templates_for_js=json.dumps(templates))
+    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
+    return render_template('index.html', form=form, posts=posts,  md=md, templates=templates, templates_for_js=json.dumps(templates))
 
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
     post = Post.query.get_or_404(post_id)
     comment_form = CommentForm()
-    search_form = SearchForm()
 
     if comment_form.validate_on_submit() and current_user.is_authenticated:
         comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
@@ -352,7 +363,8 @@ def post_detail(post_id):
     
     post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
     
-    return render_template('detail.html', post=post, comment_form=comment_form,  md=md, search_form=search_form)
+    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
+    return render_template('detail.html', post=post, comment_form=comment_form,  md=md)
 
 @app.route('/bookmark_post/<int:post_id>', methods=['POST'])
 @login_required
@@ -377,7 +389,6 @@ def bookmark_post(post_id):
 @app.route('/bookmarks')
 @login_required
 def show_bookmarks():
-    search_form = SearchForm()
     bookmarked_posts_query = Post.query.join(Bookmark, Post.id == Bookmark.post_id).filter(Bookmark.user_id == current_user.id).order_by(Bookmark.timestamp.desc())
     bookmarked_posts = bookmarked_posts_query.all()
     
@@ -390,7 +401,8 @@ def show_bookmarks():
             post.updated_at_jst = None
         post.is_bookmarked = True
 
-    return render_template('bookmarks.html', posts=bookmarked_posts, search_form=search_form, md=md)
+    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
+    return render_template('bookmarks.html', posts=bookmarked_posts, md=md)
 
 @app.route('/post/<int:post_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -400,19 +412,13 @@ def edit_post(post_id):
         abort(403)
 
     form = PostForm() # まず空のフォームを作成
-    search_form = SearchForm()
 
-    # ▼▼▼ ★★★ ここから修正 ★★★ ▼▼▼
-    # (edit_profile のロジックが混入していたため、
-    #  正しい edit_post のロジックに戻します)
     if form.validate_on_submit():
         post.title = form.title.data
         post.content = form.content.data
         
-        # ▼▼▼ [修正] タグの更新 ▼▼▼
         post.tags.clear()
         post.tags = get_or_create_tags_from_string(form.tags.data)
-        # ▲▲▲ [修正] ここまで ▲▲▲
         
         if form.image.data:
             if post.image_url:
@@ -426,11 +432,7 @@ def edit_post(post_id):
     elif request.method == 'GET': # GETリクエスト（ページを最初に開いた時）
         form.title.data = post.title
         form.content.data = post.content
-        
-        # ▼▼▼ [追加] GET時にタグをフォームにセット ▼▼▼
         form.tags.data = ','.join([tag.name for tag in post.tags])
-        # ▲▲▲ [追加] ここまで ▲▲▲
-    # ▲▲▲ ★★★ ここまで修正 ★★★ ▲▲▲
 
     templates = [
         {
@@ -445,7 +447,8 @@ def edit_post(post_id):
     if uec_review_data:
         uec_review_data_json = json.dumps(uec_review_data)
     
-    return render_template('edit.html', form=form, post=post, search_form=search_form, md=md, templates=templates, templates_for_js=json.dumps(templates), uec_review_data_json=uec_review_data_json)
+    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
+    return render_template('edit.html', form=form, post=post, md=md, templates=templates, templates_for_js=json.dumps(templates), uec_review_data_json=uec_review_data_json)
 
 @app.route('/post/<int:post_id>/delete', methods=['POST'])
 @login_required
@@ -478,7 +481,6 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     form = RegisterForm()
-    search_form = SearchForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user:
@@ -490,14 +492,15 @@ def register():
         db.session.commit()
         flash('登録が完了しました。ログインしてください。')
         return redirect(url_for('login'))
-    return render_template('register.html', form=form, search_form=search_form)
+    
+    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
+    return render_template('register.html', form=form)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     form = LoginForm()
-    search_form = SearchForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user and check_password_hash(user.password, form.password.data):
@@ -505,7 +508,9 @@ def login():
             return redirect(url_for('index'))
         else:
             flash('ユーザー名またはパスワードが正しくありません。')
-    return render_template('login.html', form=form, search_form=search_form)
+            
+    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
+    return render_template('login.html', form=form)
 
 @app.route('/logout')
 @login_required
@@ -533,37 +538,26 @@ def search():
     
     if search_query:
         
-        # ▼▼▼ ★★★ ここからロジックを変更 ★★★ ▼▼▼
-        
         # 1. 検索クエリと「完全一致」するタグがあるか探す
-        # (タグ検索は曖昧検索(like)ではなく完全一致が望ましい)
-        # (ilike は大文字/小文字を区別しない)
         tag_match = Tag.query.filter(Tag.name.ilike(search_query)).first()
 
         like_query = f'%{search_query}%'
         
         # 2. 投稿(Post)の検索クエリを構築 (ベース)
         posts_query_builder = Post.query.filter(
-            # タイトル または 本文 が曖昧一致
             (Post.title.like(like_query)) | (Post.content.like(like_query))
         )
         
         # 3. ユーザー(User)の検索クエリを構築 (ベース)
         users_query_builder = User.query.filter(
-            # ユーザー名 が曖昧一致
             User.username.like(like_query)
         )
 
         # 4. もし「タグ」が見つかったら、検索クエリに追加する
         if tag_match:
-            # タグに紐づく投稿を検索
             post_tag_query = Post.query.join(post_tags).join(Tag).filter(Tag.id == tag_match.id)
-            # OR 条件でクエリを結合 ( | 演算子)
             posts_query_builder = posts_query_builder.union(post_tag_query)
-
-            # タグに紐づくユーザーを検索
             user_tag_query = User.query.join(user_tags).join(Tag).filter(Tag.id == tag_match.id)
-            # OR 条件でクエリを結合 ( | 演算子)
             users_query_builder = users_query_builder.union(user_tag_query)
 
         # 5. 構築したクエリを実行し、ページネーション
@@ -573,8 +567,6 @@ def search():
         users = users_query_builder.order_by(User.username.asc()).paginate(
             page=user_page, per_page=40, error_out=False
         )
-
-        # ▲▲▲ ★★★ ここまでロジックを変更 ★★★ ▲▲▲
 
         japan_tz = timezone('Asia/Tokyo')
         for post in posts.items:
@@ -592,6 +584,7 @@ def search():
         posts = db.paginate(db.select(Post).where(False), page=post_page, per_page=40, error_out=False)
         users = db.paginate(db.select(User).where(False), page=user_page, per_page=40, error_out=False)
 
+    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=form は *削除しない*)
     return render_template('search_results.html',
                            search_form=form,
                            posts=posts,
@@ -606,21 +599,15 @@ def edit_profile(username):
     if user != current_user:
         abort(403)
     
-    # ▼▼▼ ★ 変更点 1 ★ ▼▼▼
-    # フォームが送信される「前」の、元のユーザー名を控えておく
     original_username = user.username
-    # ▲▲▲ ★ 変更点 1 ★ ▲▲▲
-
+    
     form = ProfileForm(obj=user)
-    search_form = SearchForm()
     
     if form.validate_on_submit():
         
-        # ▼▼▼ ★ 変更点 2 ★ ▼▼▼
-        # 新しいユーザー名（フォームから送られてきたデータ）を取得
         new_username = form.username.data
         
-        user.username = new_username # ここでユーザー名を更新
+        user.username = new_username 
         user.bio = form.bio.data
         
         user.tags.clear()
@@ -632,23 +619,21 @@ def edit_profile(username):
             icon_url = save_icon(form.icon_data)
             user.icon_url = icon_url
         
-        db.session.commit() # まずDBに変更を保存
+        db.session.commit() 
         
-        # ▼▼▼ ★ 変更点 3 ★ ▼▼▼
-        # 元のユーザー名と新しいユーザー名が「異なる」場合だけログアウト
         if original_username != new_username:
             logout_user() 
             flash(f'ユーザー名が「{new_username}」に変更されました。新しいユーザー名で再度ログインしてください。')
             return redirect(url_for('login'))
         else:
-            # ユーザー名が同じ（bioやアイコンだけ変更）場合は、そのままプロフィールへ
             return redirect(url_for('user_profile', username=user.username))
-        # ▲▲▲ ★ 変更点 3 ★ ▲▲▲
 
     elif request.method == 'GET':
         form.tags.data = ','.join([tag.name for tag in user.tags])
     
-    return render_template('edit_profile.html', form=form, search_form=search_form, user=user)
+    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
+    return render_template('edit_profile.html', form=form, user=user)
+
 @app.route('/user/<string:username>')
 def user_profile(username):
     user = User.query.filter_by(username=username).first_or_404()
@@ -675,20 +660,20 @@ def user_profile(username):
     for comment in comments.items:
         comment.created_at_jst = comment.created_at.replace(tzinfo=utc).astimezone(japan_tz)
     
-    search_form = SearchForm()
-    
-    return render_template('profile.html', user=user, posts=posts, comments=comments, active_tab=active_tab,  md=md, search_form=search_form)
+    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
+    return render_template('profile.html', user=user, posts=posts, comments=comments, active_tab=active_tab,  md=md)
 
 @app.route('/admin')
 @login_required
 def admin_dashboard():
     if not current_user.is_admin:
         abort(403)
-    search_form = SearchForm()
     all_users = User.query.all()
     all_posts = Post.query.all()
     all_comments = Comment.query.all()
-    return render_template('admin_dashboard.html', users=all_users, posts=all_posts, comments=all_comments, search_form=search_form)
+    
+    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
+    return render_template('admin_dashboard.html', users=all_users, posts=all_posts, comments=all_comments)
 
 @app.route('/admin/delete_comment/<int:comment_id>', methods=['POST'])
 @login_required
@@ -726,14 +711,14 @@ def admin_delete_user(user_id):
 @app.route('/notifications')
 @login_required
 def show_notifications():
-    search_form = SearchForm()
     notifications = Notification.query.filter_by(recipient=current_user).order_by(Notification.timestamp.desc()).all()
     
     for n in notifications:
         n.is_read = True
     db.session.commit()
     
-    return render_template('notifications.html', notifications=notifications, search_form=search_form, md=md)
+    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
+    return render_template('notifications.html', notifications=notifications, md=md)
 
 
 #  最近使用したタグ5件を返すAPI 
@@ -771,6 +756,23 @@ def get_recent_tags():
     tag_names = [tag.name for tag in combined_tags.values()][:5]
 
     return jsonify(tag_names)
+
+@app.route('/kairanban')
+@login_required
+def kairanban_index():
+    """
+    回覧板ページ
+    """
+    # is_developer は context_processor から自動で渡される
+    return render_template('kairanban.html')
+
+@app.route('/mailbox')
+@login_required
+def mailbox_index():
+    """
+    メールボックスページ (開発中)
+    """
+    return render_template('mailbox.html')
 
 
 
