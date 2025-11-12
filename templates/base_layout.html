@@ -724,6 +724,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    /* ▼▼▼ [バグ修正] 742行目-759行目の重複したロジックを削除しました ▼▼▼ */
     
 // --- テキストエリアの自動リサイズ処理 (全デバイス共通) ---
 allEditableTextareas.forEach(textarea => {
@@ -991,7 +993,9 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 .catch(error => console.error('Error:', error));
             }
         });
-    }); /* [バグ修正] 981行目にあった余分な }); を削除 */
+    }); 
+    /* ▼▼▼ [バグ修正] 981行目にあった余分な }); を削除しました ▼▼▼ */
+    
 
 
     // --- [追加] タグフォームのトグル処理 ---
