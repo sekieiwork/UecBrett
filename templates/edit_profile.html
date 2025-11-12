@@ -14,13 +14,14 @@
             {% endfor %}
         </div>
 
-        <div class="form-field" style="position: relative;">
-            {{ form.bio.label }}<br>
+        <div class="form-field">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5em;">
+                {{ form.bio.label }}
+                <a href="javascript:void(0)" id="toggle-tag-form-btn" title="タグを編集">
+                    <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 24px; height: 24px; vertical-align: middle;">
+                </a>
+            </div>
             {{ form.bio(cols=40, rows=5) }}
-            
-            <a href="javascript:void(0)" id="toggle-tag-form-btn" title="タグを編集" style="position: absolute; top: 0; right: 0;">
-                <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 24px; height: 24px; vertical-align: middle;">
-            </a>
         </div>
 
         <div id="tag-form-container" class="form-field hidden">

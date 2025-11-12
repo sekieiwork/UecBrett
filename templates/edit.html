@@ -11,20 +11,22 @@
     <form method="POST" enctype="multipart/form-data" class="post-form" style="padding-top: 4em;">
         {{ form.csrf_token }}
 
-        <a href="javascript:void(0)" id="toggle-tag-form-btn" title="タグを編集" style="position: absolute; top: 1.5em; left: 1.5em;">
-            <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 24px; height: 24px; vertical-align: middle;">
-        </a>
-        {% if templates %}
-        <div class="template-dropdown" style="position: absolute; top: 1.5em; right: 1.5em;">
-            <button type="button" class="template-select-btn">テンプレートを選択</button>
-            <div class="template-dropdown-content hidden">
-                {% for t in templates %}
-                <a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
-                {% endfor %}
+        <div style="position: absolute; top: 1.5em; right: 1.5em; display: flex; align-items: center; gap: 15px;">
+            <a href="javascript:void(0)" id="toggle-tag-form-btn" title="タグを編集">
+                <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 24px; height: 24px; vertical-align: middle;">
+            </a>
+            
+            {% if templates %}
+            <div class="template-dropdown">
+                <button type="button" class="template-select-btn">テンプレートを選択</button>
+                <div class="template-dropdown-content hidden">
+                    {% for t in templates %}
+                    <a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
+                    {% endfor %}
+                </div>
             </div>
+            {% endif %}
         </div>
-        {% endif %}
-
         <div id="tag-form-container" class="form-field hidden">
             {{ form.tags.label }} (カンマ区切りで入力)<br>
             {{ form.tags(placeholder="例: 1クラス, Python, 実験") }}

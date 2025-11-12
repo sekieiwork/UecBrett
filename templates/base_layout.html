@@ -692,25 +692,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    if (toggleTagButton && tagFormContainer) {
-        toggleTagButton.addEventListener('click', function(event) {
-            event.preventDefault(); // aタグのデフォルト動作をキャンセル
-            tagFormContainer.classList.toggle('hidden');
-            
-            // アイコンの + / - をトグルする (あれば)
-            const icon = toggleTagButton.querySelector('i'); // (iタグは <i class="fas fa-plus"></i> のこと)
-            if (icon) {
-                if (tagFormContainer.classList.contains('hidden')) {
-                    icon.classList.remove('fa-minus');
-                    icon.classList.add('fa-plus');
-                } else {
-                    icon.classList.remove('fa-plus');
-                    icon.classList.add('fa-minus');
-                }
-            }
-        });
-    }
-
+    /* ▼▼▼ [バグ修正] 重複していたブロック (L742-760) を削除しました ▼▼▼ */
+    
 // --- テキストエリアの自動リサイズ処理 (全デバイス共通) ---
 allEditableTextareas.forEach(textarea => {
     // ページ読み込み時の初回リサイズ (スクロールなし)
@@ -977,6 +960,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 .catch(error => console.error('Error:', error));
             }
         });
+    /* ▼▼▼ [バグ修正] 981行目にあった余分な }); を削除しました ▼▼▼ */
     });
 
 
