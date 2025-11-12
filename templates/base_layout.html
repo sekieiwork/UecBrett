@@ -558,7 +558,7 @@
 }
 /* ▲▲▲ タグ表示用CSS ▲▲▲ */
 
-/* ▼▼▼ [ここから追加] 最近のタグ ドロップダウン用CSS ▼▼▼ */
+/* ▼▼▼ [前回追加] 最近のタグ ドロップダウン用CSS ▼▼▼ */
 .recent-tags-dropdown {
     display: block; /* JSで .hidden をトグルする */
     position: absolute;
@@ -585,7 +585,7 @@
 .recent-tags-dropdown .recent-tag-item {
     cursor: pointer;
 }
-/* ▲▲▲ [ここまで追加] ▲▲▲ */
+/* ▲▲▲ [前回追加] ▲▲▲ */
 
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -680,11 +680,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleTagButton = document.getElementById('toggle-tag-form-btn');
     const tagFormContainer = document.getElementById('tag-form-container');
     
-    // ▼▼▼ [ここから追加] 最近のタグ機能用 ▼▼▼
     const recentTagsToggle = document.getElementById('recent-tags-toggle');
     const recentTagsList = document.getElementById('recent-tags-list');
-    const tagsInputField = document.getElementById('tags-input-field'); // HTML側でIDを追加する必要あり
-    // ▲▲▲ [ここまで追加] ▲▲▲
+    const tagsInputField = document.getElementById('tags-input-field'); 
 
 
     // --- 2. テキストエリア関連の要素を取得 ---
@@ -993,7 +991,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 .catch(error => console.error('Error:', error));
             }
         });
-    }); /* [バグ修正] 981行目の }); を削除し、ここに移動 */
+    }); /* [バグ修正] 981行目にあった余分な }); を削除 */
 
 
     // --- [追加] タグフォームのトグル処理 ---
@@ -1016,7 +1014,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         });
     }
 
-    // ▼▼▼ [ここから追加] 最近のタグ ドロップダウン機能 ▼▼▼
+    // ▼▼▼ [前回追加] 最近のタグ ドロップダウン機能 ▼▼▼
     if (recentTagsToggle && recentTagsList && tagsInputField) {
         
         // 1. アイコンクリックでドロップダウンを開閉
@@ -1071,7 +1069,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             }
         });
     }
-    // ▲▲▲ [ここまで追加] ▲▲▲
+    // ▲▲▲ [前回追加] ▲▲▲
 
 
 //   6. フォーム送信時の処理 ---
@@ -1141,21 +1139,14 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             });
         }
 
-        // ▼▼▼ [ここが修正箇所] ▼▼▼
         // 3. 「最近のタグ」ドロップダウン
-        //    - リスト(#recent-tags-list)が存在し、
-        //    - 非表示(hidden)ではなく、
-        //    - クリックされた場所がトグルボタン(#recent-tags-toggle)でもなく、
-        //    - クリックされた場所がリスト(#recent-tags-list)の中でもない場合
         if (recentTagsList && 
             !recentTagsList.classList.contains('hidden') && 
             !event.target.closest('#recent-tags-toggle') && 
             !event.target.closest('#recent-tags-list')
         ) {
-            // リストを非表示(hidden)にする
             recentTagsList.classList.add('hidden');
         }
-        // ▲▲▲ [修正完了] ▲▲▲
     });
     
 }); // <-- ★★★ DOMContentLoaded はここで閉じる ★★★
