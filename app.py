@@ -426,11 +426,7 @@ if form.validate_on_submit():
 elif request.method == 'GET': # GETリクエスト（ページを最初に開いた時）
         form.title.data = post.title
         form.content.data = post.content
-        
-        # ▼▼▼ [追加] GET時にタグをフォームにセット ▼▼▼
         form.tags.data = ','.join([tag.name for tag in post.tags])
-        # ▲▲▲ [追加] ここまで ▲▲▲
-
     templates = [
         {
             'name': 'UECreview',
