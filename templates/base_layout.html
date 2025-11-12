@@ -1128,26 +1128,38 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
     }
     // --- ドロップダウンを閉じるグローバルなクリック処理 ---
     document.addEventListener('click', function(event) {
+        // 1. ヘッダーのユーザーアイコン
         if (headerDropdownContainer && !headerDropdownContainer.contains(event.target)) {
             const content = headerDropdownContainer.querySelector('.dropdown-content');
             if (content) content.style.display = 'none';
         }
+        
+        // 2. 投稿フォームの「テンプレートを選択」
         if (!event.target.closest('.template-dropdown')) {
             document.querySelectorAll('.template-dropdown-content').forEach(content => {
                 content.classList.add('hidden');
             });
         }
-        // ▼▼▼ [追加] 最近のタグ ドロップダウン以外をクリックしたら閉じる ▼▼▼
-        if (recentTagsList && !recentTagsList.classList.contains('hidden') && !event.target.closest('#recent-tags-toggle') && !event.target.closest('#recent-tags-list')) {
+
+        // ▼▼▼ [ここが修正箇所] ▼▼▼
+        // 3. 「最近のタグ」ドロップダウン
+        //    - リスト(#recent-tags-list)が存在し、
+        //    - 非表示(hidden)ではなく、
+        //    - クリックされた場所がトグルボタン(#recent-tags-toggle)でもなく、
+        //    - クリックされた場所がリスト(#recent-tags-list)の中でもない場合
+        if (recentTagsList && 
+            !recentTagsList.classList.contains('hidden') && 
+            !event.target.closest('#recent-tags-toggle') && 
+            !event.target.closest('#recent-tags-list')
+        ) {
+            // リストを非表示(hidden)にする
             recentTagsList.classList.add('hidden');
         }
+        // ▲▲▲ [修正完了] ▲▲▲
     });
+    
 }); // <-- ★★★ DOMContentLoaded はここで閉じる ★★★
 
-
-
 </script>
-
-
 </body>
 </html>
