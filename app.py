@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
 from flask_migrate import Migrate, upgrade
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, TextAreaField, SubmitField
@@ -401,30 +402,32 @@ def edit_post(post_id):
     form = PostForm() # まず空のフォームを作成
     search_form = SearchForm()
 
-    if form.validate_on_submit():
-        post.title = form.title.data
-        post.content = form.content.data
+if form.validate_on_submit():
+        user.username = form.username.data
+        user.bio = form.bio.data
+        user.tags.clear()
+        user.tags = get_or_create_tags_from_string(form.tags.data)
         
-        # ▼▼▼ [修正] タグの更新 ▼▼▼
-        post.tags.clear()
-        post.tags = get_or_create_tags_from_string(form.tags.data)
-        # ▲▲▲ [修正] ここまで ▲▲▲
+        if form.icon.data:
+            if user.icon_url:
+                delete_from_cloudinary(user.icon_url)
+            icon_url = save_icon(form.icon.data)
+            user.icon_url = icon_url
         
-        if form.image.data:
-            if post.image_url:
-                delete_from_cloudinary(post.image_url)
-            image_url_str = save_picture(form.image.data)
-            post.image_url = image_url_str
         db.session.commit()
-        return redirect(url_for('post_detail', post_id=post.id))
+
+        # 1. ユーザーをログアウトさせる
+        logout_user() 
+        
+        # 2. ログインページにリダイレクトし、メッセージを表示
+        flash('ユーザー情報が更新されました。新しいユーザー名で再度ログインしてください。')
+        return redirect(url_for('login'))
 
     elif request.method == 'GET': # GETリクエスト（ページを最初に開いた時）
         form.title.data = post.title
         form.content.data = post.content
-        
-        # ▼▼▼ [追加] GET時にタグをフォームにセット ▼▼▼
+
         form.tags.data = ','.join([tag.name for tag in post.tags])
-        # ▲▲▲ [追加] ここまで ▲▲▲
 
     templates = [
         {
@@ -688,10 +691,37 @@ def show_notifications():
 @app.route('/api/recent-tags')
 @login_required
 def get_recent_tags():
-    # データベースから last_used が最新の5件を取得
-    tags = Tag.query.order_by(Tag.last_used.desc()).limit(5).all()
-    # タグの名前のリストをJSONで返す
-    return jsonify([tag.name for tag in tags])
+    # 1. 最近使われたタグ (last_used 順)
+    recent_tags_query = Tag.query.order_by(Tag.last_used.desc()).limit(5).all()
+
+    # 2. 人気のタグ (投稿数 順)
+    # 投稿 (post_tags) とタグ (Tag) を結合し、投稿IDの数でグループ化・カウント
+    popular_tags_query = db.session.query(
+        Tag, func.count(post_tags.c.post_id).label('post_count')
+    ).join(
+        post_tags, Tag.id == post_tags.c.tag_id
+    ).group_by(
+        Tag.id
+    ).order_by(
+        func.count(post_tags.c.post_id).desc()
+    ).limit(5).all()
+
+    # 3. 結合と重複除去
+    combined_tags = {} # dict を使って重複を名前で除去
+
+    # まず最近のタグを入れる (優先)
+    for tag in recent_tags_query:
+        combined_tags[tag.name] = tag
+
+    # 次に人気のタグを入れる (まだ入っていないものだけ)
+    for tag, count in popular_tags_query:
+        if tag.name not in combined_tags:
+            combined_tags[tag.name] = tag
+
+    # 4. 最終的なリストを返す (最大5件)
+    tag_names = [tag.name for tag in combined_tags.values()][:5]
+
+    return jsonify(tag_names)
 
 
 

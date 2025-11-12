@@ -647,6 +647,16 @@
     
     <main>
         <div class="container">
+
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <div class="post-form" style="background-color: #e6f7ff; border-color: #b3e0ff; margin-bottom: 1.5em;">
+                  {% for message in messages %}
+                    <p style="margin: 0;">{{ message }}</p>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
             {% block content %}{% endblock %}
         </div>
     </main>
