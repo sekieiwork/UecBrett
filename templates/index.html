@@ -42,9 +42,16 @@
     			    {{ form.content(cols=40, rows=5, class="textarea-content auto-resize-textarea") }}
 		        </div>
 
-                <div id="tag-form-container" class="form-field hidden">
-                    {{ form.tags.label }} (カンマ区切りで入力)<br>
-                    {{ form.tags(placeholder="例: 1クラス, Python, 実験") }}
+                <div id="tag-form-container" class="form-field hidden" style="position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em;">
+                        <label for="tags-input-field">タグ (カンマ区切りで入力)</label>
+                        <a href="javascript:void(0)" id="recent-tags-toggle" title="最近使用したタグ">
+                            <img src="{{ url_for('static', filename='icons/underdir.png') }}" alt="最近のタグ" style="width: 20px; height: 20px;">
+                        </a>
+                    </div>
+                    <div id="recent-tags-list" class="recent-tags-dropdown hidden">
+                        </div>
+                    {{ form.tags(id="tags-input-field", placeholder="例: 1クラス, Python, 実験") }}
                 </div>
                 <div id="uecreview-form-container" class="hidden"></div>
 

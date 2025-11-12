@@ -684,6 +684,16 @@ def show_notifications():
     return render_template('notifications.html', notifications=notifications, search_form=search_form, md=md)
 
 
+#  最近使用したタグ5件を返すAPI 
+@app.route('/api/recent-tags')
+@login_required
+def get_recent_tags():
+    # データベースから last_used が最新の5件を取得
+    tags = Tag.query.order_by(Tag.last_used.desc()).limit(5).all()
+    # タグの名前のリストをJSONで返す
+    return jsonify([tag.name for tag in tags])
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

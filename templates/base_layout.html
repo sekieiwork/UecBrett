@@ -537,7 +537,7 @@
     }
 /* ▲▲▲ UECreviewフォーム用CSS ▲▲▲ */
 
-/* ▼▼▼ [ここから追加] タグ表示用CSS ▼▼▼ */
+/* ▼▼▼ [前回追加] タグ表示用CSS ▼▼▼ */
 .tag-container {
     display: flex;
     flex-wrap: wrap;
@@ -557,6 +557,35 @@
     white-space: nowrap;
 }
 /* ▲▲▲ タグ表示用CSS ▲▲▲ */
+
+/* ▼▼▼ [ここから追加] 最近のタグ ドロップダウン用CSS ▼▼▼ */
+.recent-tags-dropdown {
+    display: block; /* JSで .hidden をトグルする */
+    position: absolute;
+    right: 0;
+    top: 100%; /* 親要素のすぐ下に表示 */
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 10;
+    border-radius: 0.25rem;
+    padding: 0.5em 0;
+    margin-top: 2px;
+}
+.recent-tags-dropdown a {
+    color: black;
+    padding: 8px 12px;
+    text-decoration: none;
+    display: block;
+    font-size: 0.9em;
+}
+.recent-tags-dropdown a:hover {
+    background-color: #f1f1f1;
+}
+.recent-tags-dropdown .recent-tag-item {
+    cursor: pointer;
+}
+/* ▲▲▲ [ここまで追加] ▲▲▲ */
 
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -650,6 +679,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const commentFormContainer = document.getElementById('comment-form-container');
     const toggleTagButton = document.getElementById('toggle-tag-form-btn');
     const tagFormContainer = document.getElementById('tag-form-container');
+    
+    // ▼▼▼ [ここから追加] 最近のタグ機能用 ▼▼▼
+    const recentTagsToggle = document.getElementById('recent-tags-toggle');
+    const recentTagsList = document.getElementById('recent-tags-list');
+    const tagsInputField = document.getElementById('tags-input-field'); // HTML側でIDを追加する必要あり
+    // ▲▲▲ [ここまで追加] ▲▲▲
 
 
     // --- 2. テキストエリア関連の要素を取得 ---
@@ -691,8 +726,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
-    /* ▼▼▼ [バグ修正] 重複していたブロック (L742-760) を削除しました ▼▼▼ */
     
 // --- テキストエリアの自動リサイズ処理 (全デバイス共通) ---
 allEditableTextareas.forEach(textarea => {
@@ -960,8 +993,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 .catch(error => console.error('Error:', error));
             }
         });
-    /* ▼▼▼ [バグ修正] 981行目にあった余分な }); を削除しました ▼▼▼ */
-    });
+    }); /* [バグ修正] 981行目の }); を削除し、ここに移動 */
 
 
     // --- [追加] タグフォームのトグル処理 ---
@@ -984,6 +1016,62 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         });
     }
 
+    // ▼▼▼ [ここから追加] 最近のタグ ドロップダウン機能 ▼▼▼
+    if (recentTagsToggle && recentTagsList && tagsInputField) {
+        
+        // 1. アイコンクリックでドロップダウンを開閉
+        recentTagsToggle.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation(); // ドキュメント全体のクリックに伝播しないように
+
+            // リストが非表示の時だけ、中身をフェッチして表示
+            if (recentTagsList.classList.contains('hidden')) {
+                fetch('{{ url_for("get_recent_tags") }}')
+                    .then(response => response.json())
+                    .then(tags => {
+                        recentTagsList.innerHTML = ''; // 中身をクリア
+                        if (tags.length > 0) {
+                            tags.forEach(tagName => {
+                                const tagItem = document.createElement('a');
+                                tagItem.href = '#';
+                                tagItem.className = 'recent-tag-item';
+                                tagItem.textContent = tagName;
+                                
+                                // 2. ドロップダウン内のタグをクリックした時の処理
+                                tagItem.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    
+                                    // 現在の入力値を取得し、Setで重複を管理
+                                    const currentTags = new Set(
+                                        tagsInputField.value
+                                            .split(',')
+                                            .map(t => t.trim())
+                                            .filter(Boolean) // 空の文字列を除去
+                                    );
+                                    
+                                    // 新しいタグを追加
+                                    currentTags.add(tagName);
+                                    
+                                    // 入力欄に反映
+                                    tagsInputField.value = Array.from(currentTags).join(', ');
+                                    
+                                    // リストを閉じる
+                                    recentTagsList.classList.add('hidden');
+                                });
+                                recentTagsList.appendChild(tagItem);
+                            });
+                        } else {
+                            recentTagsList.innerHTML = '<span style="padding: 8px 12px; display: block; font-size: 0.9em; color: #6c757d;">最近使用したタグはありません</span>';
+                        }
+                        recentTagsList.classList.remove('hidden');
+                    });
+            } else {
+                // すでに表示されている場合は、閉じるだけ
+                recentTagsList.classList.add('hidden');
+            }
+        });
+    }
+    // ▲▲▲ [ここまで追加] ▲▲▲
 
 
 //   6. フォーム送信時の処理 ---
@@ -1048,6 +1136,10 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             document.querySelectorAll('.template-dropdown-content').forEach(content => {
                 content.classList.add('hidden');
             });
+        }
+        // ▼▼▼ [追加] 最近のタグ ドロップダウン以外をクリックしたら閉じる ▼▼▼
+        if (recentTagsList && !recentTagsList.classList.contains('hidden') && !event.target.closest('#recent-tags-toggle') && !event.target.closest('#recent-tags-list')) {
+            recentTagsList.classList.add('hidden');
         }
     });
 }); // <-- ★★★ DOMContentLoaded はここで閉じる ★★★
