@@ -24,10 +24,10 @@ from bleach.linkifier import Linker
 
 
 cloudinary.config(
-  cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
-  api_key = os.environ.get('CLOUDINARY_API_KEY'), 
-  api_secret = os.environ.get('CLOUDINARY_API_SECRET'),
-  secure = True
+    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
+    api_key = os.environ.get('CLOUDINARY_API_KEY'), 
+    api_secret = os.environ.get('CLOUDINARY_API_SECRET'),
+    secure = True
 )
 
 app = Flask(__name__)
@@ -402,31 +402,36 @@ def edit_post(post_id):
     form = PostForm() # まず空のフォームを作成
     search_form = SearchForm()
 
-if form.validate_on_submit():
-        user.username = form.username.data
-        user.bio = form.bio.data
-        user.tags.clear()
-        user.tags = get_or_create_tags_from_string(form.tags.data)
+    # ▼▼▼ ★★★ ここから修正 ★★★ ▼▼▼
+    # (edit_profile のロジックが混入していたため、
+    #  正しい edit_post のロジックに戻します)
+    if form.validate_on_submit():
+        post.title = form.title.data
+        post.content = form.content.data
         
-        if form.icon.data:
-            if user.icon_url:
-                delete_from_cloudinary(user.icon_url)
-            icon_url = save_icon(form.icon.data)
-            user.icon_url = icon_url
+        # ▼▼▼ [修正] タグの更新 ▼▼▼
+        post.tags.clear()
+        post.tags = get_or_create_tags_from_string(form.tags.data)
+        # ▲▲▲ [修正] ここまで ▲▲▲
         
+        if form.image.data:
+            if post.image_url:
+                delete_from_cloudinary(post.image_url)
+            image_url_str = save_picture(form.image.data)
+            post.image_url = image_url_str
+            
         db.session.commit()
+        return redirect(url_for('post_detail', post_id=post.id))
 
-        # 1. ユーザーをログアウトさせる
-        logout_user() 
-        
-        # 2. ログインページにリダイレクトし、メッセージを表示
-        flash('ユーザー情報が更新されました。新しいユーザー名で再度ログインしてください。')
-        return redirect(url_for('login'))
-
-elif request.method == 'GET': # GETリクエスト（ページを最初に開いた時）
+    elif request.method == 'GET': # GETリクエスト（ページを最初に開いた時）
         form.title.data = post.title
         form.content.data = post.content
+        
+        # ▼▼▼ [追加] GET時にタグをフォームにセット ▼▼▼
         form.tags.data = ','.join([tag.name for tag in post.tags])
+        # ▲▲▲ [追加] ここまで ▲▲▲
+    # ▲▲▲ ★★★ ここまで修正 ★★★ ▲▲▲
+
     templates = [
         {
             'name': 'UECreview',
@@ -573,6 +578,8 @@ def edit_profile(username):
     form = ProfileForm(obj=user)
     search_form = SearchForm()
     
+    # ▼▼▼ ★★★ ここから修正 ★★★ ▼▼▼
+    # (前回提案した「ログアウト＆通知」のロジックを適用します)
     if form.validate_on_submit():
         user.username = form.username.data
         user.bio = form.bio.data
@@ -589,12 +596,18 @@ def edit_profile(username):
             user.icon_url = icon_url
         
         db.session.commit()
-        return redirect(url_for('user_profile', username=user.username))
+        
+        # 1. ユーザーをログアウトさせる
+        logout_user() 
+        
+        # 2. ログインページにリダイレクトし、メッセージを表示
+        flash('ユーザー情報が更新されました。新しいユーザー名で再度ログインしてください。')
+        return redirect(url_for('login'))
     
     # ▼▼▼ [追加] GET時にタグをフォームにセット ▼▼▼
     elif request.method == 'GET':
         form.tags.data = ','.join([tag.name for tag in user.tags])
-    # ▲▲▲ [追加] ここまで ▲▲▲
+    # ▲▲▲ ★★★ ここまで修正 ★★★ ▲▲▲
     
     return render_template('edit_profile.html', form=form, search_form=search_form, user=user)
 
