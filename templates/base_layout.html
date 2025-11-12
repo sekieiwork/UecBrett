@@ -1144,12 +1144,12 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         }
 
         // 3. 「最近のタグ」ドロップダウン
-        if (recentTagsList && 
-            !recentTagsList.classList.contains('hidden') && 
-            !event.target.closest('#recent-tags-toggle') && 
-            !event.target.closest('#recent-tags-list')
-        ) {
-            recentTagsList.classList.add('hidden');
+        if (!event.target.closest('#recent-tags-toggle') && !event.target.closest('.recent-tags-dropdown')) {
+            
+            // ページ上にある「全ての」最近のタグリストを閉じる
+            document.querySelectorAll('.recent-tags-dropdown').forEach(list => {
+                list.classList.add('hidden');
+            });
         }
     });
     
