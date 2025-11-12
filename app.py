@@ -423,11 +423,13 @@ if form.validate_on_submit():
         flash('ユーザー情報が更新されました。新しいユーザー名で再度ログインしてください。')
         return redirect(url_for('login'))
 
-    elif request.method == 'GET': # GETリクエスト（ページを最初に開いた時）
+elif request.method == 'GET': # GETリクエスト（ページを最初に開いた時）
         form.title.data = post.title
         form.content.data = post.content
-
+        
+        # ▼▼▼ [追加] GET時にタグをフォームにセット ▼▼▼
         form.tags.data = ','.join([tag.name for tag in post.tags])
+        # ▲▲▲ [追加] ここまで ▲▲▲
 
     templates = [
         {
