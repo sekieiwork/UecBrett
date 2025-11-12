@@ -4,11 +4,13 @@
 
 {% block content %}
     <h1>プロフィール編集</h1>
-    <form method="POST" enctype="multipart/form-data">
-        {{ form.csrf_token }}
+
+    <form method="POST" enctype="multipart/form-data" id="profile-edit-form">
+    {{ form.csrf_token }}
         <div class="form-field">
             {{ form.username.label }}<br>
-            {{ form.username(size=20) }}
+
+            {{ form.username(size=20, id="username-input", **{'data-original-username': current_user.username}) }}
             {% for error in form.username.errors %}
                 <span style="color: red;">[{{ error }}]</span>
             {% endfor %}
@@ -25,26 +27,49 @@
         </div>
 
         <div id="tag-form-container" class="form-field hidden" style="position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em;">
-                <label for="tags-input-field">タグ (カンマ区切りで入力)</label>
-                <a href="javascript:void(0)" id="recent-tags-toggle" title="最近使用したタグ">
-                    <img src="{{ url_for('static', filename='icons/underdir.png') }}" alt="最近のタグ" style="width: 20px; height: 20px;">
-                </a>
-            </div>
-            <div id="recent-tags-list" class="recent-tags-dropdown hidden">
-                </div>
             {{ form.tags(id="tags-input-field", placeholder="例: nクラス, review, B2") }}
         </div>
         <div class="form-field">
-            {{ form.icon.label }}<br>
             {{ form.icon(accept="image/jpeg, image/png, image/gif") }}
-            {% if current_user.icon_url %}
-                <br>現在のアイコン: <img src="{{ current_user.icon_url }}" alt="現在のアイコン" style="width: 50px; height: 50px; border-radius: 50%;">
-            {% endif %}
-            {% for error in form.icon.errors %}
-                <span style="color: red;">[{{ error }}]</span>
-            {% endfor %}
         </div>
+
         {{ form.submit }}
     </form>
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const editForm = document.getElementById('profile-edit-form');
+    const usernameInput = document.getElementById('username-input');
+
+    if (editForm && usernameInput) {
+        
+        // フォームが「送信」されようとした瞬間に割り込む
+        editForm.addEventListener('submit', function(event) {
+            
+            // 1. フォームに入力された「新しい」ユーザー名
+            const newUsername = usernameInput.value.trim();
+            
+            // 2. HTMLに埋め込んだ「元の」ユーザー名
+            const originalUsername = usernameInput.dataset.originalUsername;
+
+            // 3. ユーザー名が変更されているかチェック
+            if (newUsername !== originalUsername) {
+                
+                // 4. 変更されている場合、確認ダイアログを表示（ご要望の選択肢②）
+                const message = `ユーザー名が変更されています ( ${originalUsername} → ${newUsername} )。\n\n更新後は自動的にログアウトします。\nよろしいですか？`;
+                
+                if (!confirm(message)) {
+                    // ユーザーが「キャンセル」を押したら、フォームの送信を中止
+                    event.preventDefault(); 
+                }
+                // (ユーザーが「OK」を押したら、そのまま送信される)
+            }
+            // (ユーザー名が変更されていなければ、何もせずそのまま送信される)
+        });
+    }
+});
+</script>
 {% endblock %}

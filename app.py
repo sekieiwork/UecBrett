@@ -575,42 +575,49 @@ def edit_profile(username):
     if user != current_user:
         abort(403)
     
+    # ▼▼▼ ★ 変更点 1 ★ ▼▼▼
+    # フォームが送信される「前」の、元のユーザー名を控えておく
+    original_username = user.username
+    # ▲▲▲ ★ 変更点 1 ★ ▲▲▲
+
     form = ProfileForm(obj=user)
     search_form = SearchForm()
     
-    # ▼▼▼ ★★★ ここから修正 ★★★ ▼▼▼
-    # (前回提案した「ログアウト＆通知」のロジックを適用します)
     if form.validate_on_submit():
-        user.username = form.username.data
+        
+        # ▼▼▼ ★ 変更点 2 ★ ▼▼▼
+        # 新しいユーザー名（フォームから送られてきたデータ）を取得
+        new_username = form.username.data
+        
+        user.username = new_username # ここでユーザー名を更新
         user.bio = form.bio.data
         
-        # ▼▼▼ [追加] タグの更新 ▼▼▼
         user.tags.clear()
         user.tags = get_or_create_tags_from_string(form.tags.data)
-        # ▲▲▲ [追加] ここまで ▲▲▲
         
         if form.icon.data:
             if user.icon_url:
                 delete_from_cloudinary(user.icon_url)
-            icon_url = save_icon(form.icon.data)
+            icon_url = save_icon(form.icon_data)
             user.icon_url = icon_url
         
-        db.session.commit()
+        db.session.commit() # まずDBに変更を保存
         
-        # 1. ユーザーをログアウトさせる
-        logout_user() 
-        
-        # 2. ログインページにリダイレクトし、メッセージを表示
-        flash('ユーザー情報が更新されました。新しいユーザー名で再度ログインしてください。')
-        return redirect(url_for('login'))
-    
-    # ▼▼▼ [追加] GET時にタグをフォームにセット ▼▼▼
+        # ▼▼▼ ★ 変更点 3 ★ ▼▼▼
+        # 元のユーザー名と新しいユーザー名が「異なる」場合だけログアウト
+        if original_username != new_username:
+            logout_user() 
+            flash(f'ユーザー名が「{new_username}」に変更されました。新しいユーザー名で再度ログインしてください。')
+            return redirect(url_for('login'))
+        else:
+            # ユーザー名が同じ（bioやアイコンだけ変更）場合は、そのままプロフィールへ
+            return redirect(url_for('user_profile', username=user.username))
+        # ▲▲▲ ★ 変更点 3 ★ ▲▲▲
+
     elif request.method == 'GET':
         form.tags.data = ','.join([tag.name for tag in user.tags])
-    # ▲▲▲ ★★★ ここまで修正 ★★★ ▲▲▲
     
     return render_template('edit_profile.html', form=form, search_form=search_form, user=user)
-
 @app.route('/user/<string:username>')
 def user_profile(username):
     user = User.query.filter_by(username=username).first_or_404()
