@@ -94,10 +94,16 @@ ALLOWED_ATTRIBUTES = {
     'span': ['class']        # UECreviewの <span class="text-red"> 用
 }
 
-# 3. BleachのLinkerを設定（自動でリンクに target="_blank" を追加）
-linker = Linker(callbacks=[
-    lambda attrs, new: attrs.update({(None, 'target'): '_blank'})
-])
+# 3. BleachのLinkerを設定（消毒とリンク化を兼ねる）
+linker = Linker(
+    # 許可するタグと属性を渡す
+    tags=ALLOWED_TAGS,
+    attributes=ALLOWED_ATTRIBUTES,
+    # 自動でリンクに target="_blank" を追加
+    callbacks=[
+        lambda attrs, new: attrs.update({(None, 'target'): '_blank'})
+    ]
+)
 
 # 4. 「safe_markdown」という名前のカスタムフィルターを定義
 @app.template_filter('safe_markdown')
@@ -108,16 +114,10 @@ def safe_markdown_filter(text):
     # ステップ1: まずMarkdownをHTMLに変換する
     html = md.convert(text)
     
-    # ステップ2: HTMLから危険なタグ(<script>等)を「消毒」する
-    # ALLOWED_TAGS と ALLOWED_ATTRIBUTES 以外のすべてが除去される
-    sanitized_html = bleach.clean(
-        html,
-        tags=ALLOWED_TAGS,
-        attributes=ALLOWED_ATTRIBUTES
-    )
-    
-    # ステップ3: 消毒済みのHTML内の「http://...」をリンク(<a href=...>)に変換する
-    linked_and_sanitized_html = linker.linkify(sanitized_html)
+    # ステップ2: 消毒しつつ、リンクを有効化 (bleach.clean を削除)
+    # (Linkerオブジェクトが ALLOWED_TAGS/ATTRIBUTES を持って
+    #  いるので、linker.linkify だけで消毒とリンク化を同時に行える)
+    linked_and_sanitized_html = linker.linkify(html)
     
     return linked_and_sanitized_html
 
