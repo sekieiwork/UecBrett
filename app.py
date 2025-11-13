@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from pytz import timezone, utc
 import os
 from flask_wtf.file import FileField, FileAllowed
-from forms import PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm
+from forms import PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm, KairanbanForm
 import markdown
 import re
 import json
