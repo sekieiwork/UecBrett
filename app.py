@@ -7,7 +7,7 @@ from wtforms import StringField, PasswordField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, Length, EqualTo, ValidationError
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 from pytz import timezone, utc
 import os
 from flask_wtf.file import FileField, FileAllowed
@@ -221,7 +221,38 @@ class Tag(db.Model):
     name = db.Column(db.String(100), unique=True, nullable=False)
     # 最後に使われた日時 (「最近使用したタグ」機能のため)
     last_used = db.Column(db.DateTime, default=datetime.utcnow)
-# ▲▲▲ [修正] ここまで ▲▲▲
+
+# 4. Kairanban と Tag の中間テーブル (多対多)
+kairanban_tags = db.Table('kairanban_tags',
+    db.Column('kairanban_id', db.Integer, db.ForeignKey('kairanban.id', ondelete="CASCADE"), primary_key=True),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id', ondelete="CASCADE"), primary_key=True)
+)
+
+# 5. Kairanbanモデル
+class Kairanban(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # 投稿時に created_at + N日 で設定する
+    expires_at = db.Column(db.DateTime, nullable=False) 
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
+    
+    author = db.relationship('User', backref='kairanbans')
+    tags = db.relationship('Tag', secondary=kairanban_tags, lazy='subquery',
+        backref=db.backref('kairanbans', lazy=True), cascade="all, delete")
+    
+    # どのユーザーがチェックしたか (KairanbanCheckモデルとの連携)
+    checks = db.relationship('KairanbanCheck', backref='kairanban', lazy='dynamic', cascade="all, delete")
+
+# 6. Kairanban確認チェックモデル
+class KairanbanCheck(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    kairanban_id = db.Column(db.Integer, db.ForeignKey('kairanban.id', ondelete="CASCADE"), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='kairanban_checks')
+    __table_args__ = (db.UniqueConstraint('user_id', 'kairanban_id', name='_user_kairanban_uc'),)
 
 
 # Database Models
@@ -757,14 +788,78 @@ def get_recent_tags():
 
     return jsonify(tag_names)
 
-@app.route('/kairanban')
+@app.route('/kairanban', methods=['GET', 'POST'])
 @login_required
 def kairanban_index():
     """
-    回覧板ページ
+    回覧板ページ (表示と作成)
     """
-    # is_developer は context_processor から自動で渡される
-    return render_template('kairanban.html')
+    form = KairanbanForm()
+    
+    # --- POST (回覧板の新規作成) ---
+    if form.validate_on_submit() and is_developer: # 開発者のみ作成可能
+        try:
+            days = int(form.expires_in_days.data)
+            expires_at_datetime = datetime.utcnow() + timedelta(days=days)
+            
+            new_kairanban = Kairanban(
+                content=form.content.data,
+                author=current_user,
+                expires_at=expires_at_datetime
+            )
+            
+            # タグの処理
+            new_kairanban.tags = get_or_create_tags_from_string(form.tags.data)
+            
+            db.session.add(new_kairanban)
+            db.session.commit()
+            flash('回覧板を送信しました。')
+            return redirect(url_for('kairanban_index'))
+            
+        except ValueError:
+            flash('日数の値が無効です。')
+
+    # --- GET (回覧板の一覧表示) ---
+    
+    # 期限切れでないものをベースクエリとする
+    base_query = Kairanban.query.filter(Kairanban.expires_at > datetime.utcnow())
+    
+    # 閲覧権限のフィルタリング
+    show_all = request.args.get('show_all')
+    kairanbans_query = None
+
+    if not current_user.is_authenticated:
+        # 1. ログインしていない (要求仕様: すべて表示)
+        kairanbans_query = base_query
+    
+    elif is_developer or show_all:
+        # 2. 開発者または「すべて表示」が押された (すべて表示)
+        kairanbans_query = base_query
+
+    else:
+        # 3. 通常のログインユーザー (タグが一致するもののみ表示)
+        user_tag_ids = {tag.id for tag in current_user.tags}
+        if user_tag_ids:
+            kairanbans_query = base_query.join(kairanban_tags).filter(kairanban_tags.c.tag_id.in_(user_tag_ids))
+        else:
+            # ユーザーがタグを持っていない場合、何も表示しない
+            kairanbans_query = base_query.filter(Kairanban.id < 0) # (空の結果を返す)
+
+    
+    kairanbans = kairanbans_query.order_by(Kairanban.created_at.desc()).all() if kairanbans_query else []
+
+    # ソート処理 (未チェックを上、チェック済みを下に)
+    checked_ids = set()
+    if current_user.is_authenticated:
+        checked_ids = {c.kairanban_id for c in KairanbanCheck.query.filter_by(user_id=current_user.id)}
+        
+        # 1. 作成日で降順ソート
+        kairanbans.sort(key=lambda k: k.created_at, reverse=True)
+        # 2. チェック済み(True)が下に、未チェック(False)が上に来るようにソート
+        kairanbans.sort(key=lambda k: k.id in checked_ids)
+
+    
+    return render_template('kairanban.html', form=form, kairanbans=kairanbans, checked_ids=checked_ids)
 
 @app.route('/mailbox')
 @login_required
@@ -774,7 +869,31 @@ def mailbox_index():
     """
     return render_template('mailbox.html')
 
+@app.route('/kairanban/check/<int:kairanban_id>', methods=['POST'])
+@login_required
+def check_kairanban(kairanban_id):
+    kairanban = Kairanban.query.get_or_404(kairanban_id)
+    
+    # 既存のチェックを探す
+    existing_check = KairanbanCheck.query.filter_by(
+        user_id=current_user.id, 
+        kairanban_id=kairanban_id
+    ).first()
+    
+    is_checked = False
+    
+    if existing_check:
+        # チェック済み -> 未チェックに戻す
+        db.session.delete(existing_check)
+        is_checked = False
+    else:
+        # 未チェック -> チェック済みにする
+        new_check = KairanbanCheck(user_id=current_user.id, kairanban_id=kairanban_id)
+        db.session.add(new_check)
+        is_checked = True
 
+    db.session.commit()
+    return jsonify({'status': 'success', 'is_checked': is_checked})
 
 if __name__ == '__main__':
     app.run(debug=True)

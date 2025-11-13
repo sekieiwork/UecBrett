@@ -1167,11 +1167,11 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             }
         });
     }); 
-    /* ▼▼▼ [バグ修正] 981行目にあった余分な }); を削除しました ▼▼▼ */
+   
     
 
 
-    // --- [追加] タグフォームのトグル処理 ---
+    // --- タグフォームのトグル処理 ---
     if (toggleTagButton && tagFormContainer) {
         toggleTagButton.addEventListener('click', function(event) {
             event.preventDefault(); // aタグのデフォルト動作をキャンセル
@@ -1191,7 +1191,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         });
     }
 
-    // ▼▼▼ [前回追加] 最近のタグ ドロップダウン機能 ▼▼▼
+    // ▼▼▼ 最近のタグ ドロップダウン機能 ▼▼▼
     if (recentTagsToggle && recentTagsList && tagsInputField) {
         
         // 1. アイコンクリックでドロップダウンを開閉
@@ -1246,12 +1246,11 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             }
         });
     }
-    // ▲▲▲ [前回追加] ▲▲▲
+
 
 
 //   6. フォーム送信時の処理 ---
-    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-
+ 
     // ページ内のすべての投稿/編集フォームを取得
     const postForms = document.querySelectorAll('form[method="POST"][enctype="multipart/form-data"]');
 
@@ -1324,6 +1323,37 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 list.classList.add('hidden');
             });
         }
+    });
+
+    document.querySelectorAll('.kairanban-check-toggle').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const kairanbanId = this.dataset.kairanbanId;
+            const url = `/kairanban/check/${kairanbanId}`;
+            const itemElement = document.getElementById(`kairanban-${kairanbanId}`);
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json' 
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // ソート（並び替え）のために、チェック状態に応じてクラスを付け外し
+                    if (data.is_checked) {
+                        if (itemElement) itemElement.classList.add('checked');
+                        // JSで即座に並び替えるのは複雑なため、
+                        // ここでは「確認済み」の視覚的フィードバックのみ行う
+                        // （次回リロード時にソートが適用される）
+                    } else {
+                        if (itemElement) itemElement.classList.remove('checked');
+                    }
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
     });
     
 }); // <-- ★★★ DOMContentLoaded はここで閉じる ★★★

@@ -3,23 +3,108 @@
 {% block title %}回覧板{% endblock %}
 
 {% block content %}
-    <div class="content-width-limiter">
+    
+    <div class="content-width-limiter" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em;">
+        <h2>回覧板</h2>
         
-        {% if is_developer %}
-            <!-- 「二酸化ケイ素」さんだけに表示される開発中画面 -->
-            <div class="post-form">
-                <h2>回覧板 (開発者モード)</h2>
-                <p>回覧板機能は現在開発中です。</p>
-                <p>ここに、落とし物や連絡事項を作成するフォームが入る予定です。</p>
-            </div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <a href="{{ url_for('kairanban_index', show_all=1) }}" style="font-size: 0.8em;">(すべてを表示)</a>
 
-        {% else %}
-            <!-- 他の全ユーザーに表示される画面 -->
-            <div class="post-form">
-                <h2>開発中です</h2>
-                <p>この機能は現在開発中です。公開までしばらくお待ちください。</p>
-            </div>
-        {% endif %}
-
+            {% if is_developer %}
+            <button id="toggle-kairanban-form-btn" style="background: none; border: none; cursor: pointer; padding: 0;">
+                <img src="{{ url_for('static', filename='icons/kairanpen.png') }}" alt="新規作成" title="新規作成" style="width: 32px; height: 32px;">
+            </button>
+            {% endif %}
+        </div>
     </div>
+
+    {% if is_developer %}
+    <div id="kairanban-form-container" class="hidden content-width-limiter">
+        <div class="post-form">
+            <h3 style="margin-top:0;">回覧板を新規作成</h3>
+            <form method="POST">
+                {{ form.csrf_token }}
+
+                <div class="form-field">
+                    {{ form.content.label }}<br>
+                    {{ form.content(rows=5, class="auto-resize-textarea") }}
+                </div>
+
+                <div class="form-field" style="position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em;">
+                        <label for="tags-input-field">{{ form.tags.label }}</label>
+                        <a href="javascript:void(0)" id="recent-tags-toggle" title="最近使用したタグ">
+                            <img src="{{ url_for('static', filename='icons/underdir.png') }}" alt="最近のタグ" style="width: 20px; height: 20px;">
+                        </a>
+                    </div>
+                    <div id="recent-tags-list" class="recent-tags-dropdown hidden"></div>
+                    {{ form.tags(id="tags-input-field", placeholder="例: 1クラス, B4, 学生課") }}
+                </div>
+
+                <div class="form-field">
+                    {{ form.expires_in_days.label }}<br>
+                    {{ form.expires_in_days() }}
+                </div>
+
+                {{ form.submit }}
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+
+    {% if kairanbans %}
+        {% for k in kairanbans %}
+        <div class="content-width-limiter">
+            <div class="post kairanban-item {% if k.id in checked_ids %}checked{% endif %}" id="kairanban-{{ k.id }}">
+                
+                <div class="post-content" style="max-height: 150px;">{{ k.content | safe_markdown | safe }}</div>
+                
+                {% if k.tags %}
+                    <div class="tag-container">
+                        {% for tag in k.tags %}
+                            <a href="{{ url_for('search', search_query=tag.name) }}" class="tag-box">{{ tag.name }}</a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="post-meta">
+                    <div>
+                        <small>差出人: <a href="{{ url_for('user_profile', username=k.author.username) }}" class="{{ k.author.get_username_class() }}">{{ k.author.username }}</a></small> |
+                        <small>掲示期限: <span style="color: #dc3545;">{{ k.expires_at.replace(tzinfo=utc).astimezone(japan_tz).strftime('%Y-%m-%d %H:%M') }} まで</span></small>
+                    </div>
+
+                    <div class="kairanban-check-container" style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" class="kairanban-check-toggle" data-kairanban-id="{{ k.id }}" id="check-{{ k.id }}"
+                            {% if k.id in checked_ids %}checked{% endif %}>
+                        <label for="check-{{ k.id }}" style="font-size: 0.9em; color: #555; cursor: pointer;">確認済み</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="content-width-limiter">
+            <div class="post-form">
+                <p>表示対象の回覧板はありません。</p>
+            </div>
+        </div>
+    {% endif %}
+
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleButton = document.getElementById('toggle-kairanban-form-btn');
+    const formContainer = document.getElementById('kairanban-form-container');
+    
+    if (toggleButton && formContainer) {
+        toggleButton.addEventListener('click', function() {
+            formContainer.classList.toggle('hidden');
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, TextAreaField, SubmitField
+from wtforms import StringField, PasswordField, TextAreaField, SubmitField, SelectField
 from wtforms.validators import DataRequired, Length, EqualTo, ValidationError
 from flask_wtf.file import FileField, FileAllowed
 
@@ -43,3 +43,17 @@ class ProfileForm(FlaskForm):
     def validate_username(self, username):
         # この部分はapp.pyのUserモデルに依存するため、後で修正が必要になる場合があります
         pass
+    
+class KairanbanForm(FlaskForm):
+    content = TextAreaField('本文', validators=[DataRequired()])
+    tags = StringField('対象タグ (カンマ区切り)')
+    
+    # 1日～31日の選択肢を生成
+    days_choices = [(str(i), f'{i} 日間') for i in range(1, 32)]
+    expires_in_days = SelectField(
+        '表示期間', 
+        choices=days_choices, 
+        default='7', # デフォルト7日
+        validators=[DataRequired()]
+    )
+    submit = SubmitField('送信')
