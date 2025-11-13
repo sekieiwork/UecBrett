@@ -112,10 +112,11 @@ def safe_markdown_filter(text):
 
     # ステップ2: bleach.clean() で先に消毒する (tags と attributes を使う)
     # (エラーログから、'filters'引数は使えないと判断)
-    sanitized_html = bleach.clean(
+    sanitized_and_linked_html = bleach.clean(
         html,
-        tags=ALLOWED_TAGS,
-        attributes=ALLOWED_ATTRIBUTES
+        tags=ALLOWED_TAGS,         
+        attributes=ALLOWED_ATTRIBUTES, 
+        filters=[linker]           # <-- v6.2.0 ではこれが正しく動作します
     )
     
     # ステップ3: linkifyコールバックを定義 (target="_blank" を追加)
