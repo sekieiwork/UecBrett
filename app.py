@@ -108,29 +108,32 @@ def safe_markdown_filter(text):
     # ステップ1: まずMarkdownをHTMLに変換する
     html = md.convert(text)
 
-    # ▼▼▼ ▼▼▼ このコードになっているか確認 ▼▼▼ ▼▼▼
+    # ▼▼▼ ▼▼▼ [修正] 処理の順序を入れ替えます ▼▼▼ ▼▼▼
 
-    # ステップ2: bleach.clean() で先に消毒する (tags と attributes を使う)
-    # (filters=[linker] はエラーになるため使わない)
-    sanitized_html = bleach.clean(
+    # ステップ2: linkifyコールバックを定義 (target="_blank" を追加)
+    def add_target_blank(attrs, new=False):
+        # (None, 'target'): '_blank' を attrs に追加
+        attrs[(None, 'target')] = '_blank'
+        return attrs
+
+    # ステップ3: bleach.linkify() で先にリンク化する
+    # (リンク化をスキップするのは 'a', 'pre', 'code' タグの中だけ)
+    linked_html = bleach.linkify(
         html,
+        callbacks=[add_target_blank],
+        skip_tags=['a', 'pre', 'code'] # <-- ALLOWED_TAGS から変更
+    )
+
+    # ステップ4: bleach.clean() で最後に全体を消毒する
+    # (ALLOWED_TAGS と ALLOWED_ATTRIBUTES を使う)
+    sanitized_html = bleach.clean(
+        linked_html,
         tags=ALLOWED_TAGS,       
         attributes=ALLOWED_ATTRIBUTES
     )
 
-    # ステップ3: linkifyコールバックを定義 (target="_blank" を追加)
-    def add_target_blank(attrs, new=False):
-        attrs[(None, 'target')] = '_blank'
-        return attrs
+    return sanitized_html
 
-    # ステップ4: bleach.linkify() でリンク化する
-    sanitized_and_linked_html = bleach.linkify(
-        sanitized_html,
-        callbacks=[add_target_blank],
-        skip_tags=ALLOWED_TAGS       
-    )
-
-    return sanitized_and_linked_html
 
 
 # ▼▼▼タグ処理ヘルパー関数 ▼▼▼
