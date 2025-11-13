@@ -5,11 +5,13 @@
 {% block content %}
     
     <div class="content-width-limiter" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em;">
-        <h2>回覧板</h2>
+        
+        <div style="display: flex; align-items: baseline; gap: 10px;">
+            <h2>回覧板</h2>
+            <a href="{{ url_for('kairanban_index', show_all=1) }}" style="font-size: 0.8em;">(すべてを表示)</a>
+        </div>
         
         <div style="display: flex; align-items: center; gap: 15px;">
-            <a href="{{ url_for('kairanban_index', show_all=1) }}" style="font-size: 0.8em;">(すべてを表示)</a>
-
             {% if is_developer %}
             <button id="toggle-kairanban-form-btn" style="background: none; border: none; cursor: pointer; padding: 0;">
                 <img src="{{ url_for('static', filename='icons/kairanpen.png') }}" alt="新規作成" title="新規作成" style="width: 32px; height: 32px;">
@@ -17,7 +19,6 @@
             {% endif %}
         </div>
     </div>
-
     {% if is_developer %}
     <div id="kairanban-form-container" class="hidden content-width-limiter">
         <div class="post-form">
@@ -27,8 +28,8 @@
 
                 <div class="form-field">
                     {{ form.content.label }}<br>
-                    {{ form.content(rows=5, class="auto-resize-textarea") }}
-                </div>
+                    {{ form.content(rows=5, class="textarea-content auto-resize-textarea") }}
+                    </div>
 
                 <div class="form-field" style="position: relative;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em;">
@@ -41,11 +42,10 @@
                     {{ form.tags(id="tags-input-field", placeholder="例: 1クラス, B4, 学生課") }}
                 </div>
 
-                <div class="form-field">
-                    {{ form.expires_in_days.label }}<br>
+                <div class="form-field" style="display: flex; align-items: center; gap: 10px;">
+                    <label for="expires_in_days" style="margin: 0; white-space: nowrap;">{{ form.expires_in_days.label }}</label>
                     {{ form.expires_in_days() }}
                 </div>
-
                 {{ form.submit }}
             </form>
         </div>
