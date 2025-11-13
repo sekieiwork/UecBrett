@@ -108,18 +108,16 @@ def safe_markdown_filter(text):
     # ステップ1: まずMarkdownをHTMLに変換する
     html = md.convert(text)
     
-    # ステップ2: 消毒とリンク化を「同時に」行う
-    # bleach.clean() が消毒のメイン処理
-    # callbacks=[linker] を渡すことで、消毒処理中に
-    # linker がテキストノードを見つけてリンク化してくれる
-    sanitized_and_linked_html = bleach.clean(
+    # ステップ2: bleach.linkify() を使い、消毒とリンク化を同時に行う
+    # (bleach.clean() ではなく、bleach.linkify() が正しい関数)
+    linked_and_sanitized_html = bleach.linkify(
         html,
         tags=ALLOWED_TAGS,
         attributes=ALLOWED_ATTRIBUTES,
-        callbacks=[linker] # <-- ★★★ これが正しい方法 ★★★
+        callbacks=[linker] # <--- bleach.linkify() は 'callbacks' を受け取ります
     )
     
-    return sanitized_and_linked_html
+    return linked_and_sanitized_html
 
 # ▼▼▼ [追加] タグ処理ヘルパー関数 ▼▼▼
 def get_or_create_tags_from_string(tag_string):
