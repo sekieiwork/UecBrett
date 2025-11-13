@@ -1350,7 +1350,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         }
     });
 
-    document.querySelectorAll('.kairanban-check-toggle').forEach(checkbox => {
+document.querySelectorAll('.kairanban-check-toggle').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const kairanbanId = this.dataset.kairanbanId;
             const url = `/kairanban/check/${kairanbanId}`;
@@ -1366,14 +1366,31 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // ソート（並び替え）のために、チェック状態に応じてクラスを付け外し
+                    
+                    // 1. まずクリックされたアイテムのスタイルを更新 (既存の処理)
                     if (data.is_checked) {
                         if (itemElement) itemElement.classList.add('checked');
-                        // JSで即座に並び替えるのは複雑なため、
-                        // ここでは「確認済み」の視覚的フィードバックのみ行う
-                        // （次回リロード時にソートが適用される）
                     } else {
                         if (itemElement) itemElement.classList.remove('checked');
+                    }
+
+                    // 2. 【リアルタイム更新】
+                    //    ページ上の「チェックされていない回覧板」の数を数える
+                    const unreadCount = document.querySelectorAll('.kairanban-item:not(.checked)').length;
+
+                    // 3. ページ上の「すべての」回覧板アイコンコンテナを取得
+                    const iconContainers = document.querySelectorAll('.kairanban-icon-container');
+                    
+                    if (unreadCount === 0) {
+                        // 4a. もし未読が 0 件になったら、すべてのアイコンから赤丸クラスを削除
+                        iconContainers.forEach(container => {
+                            container.classList.remove('has-unread-kairanban');
+                        });
+                    } else {
+                        // 4b. もし未読が 1 件以上ある（またはチェックを外した）場合、すべてのアイコンに赤丸クラスを追加
+                         iconContainers.forEach(container => {
+                            container.classList.add('has-unread-kairanban');
+                        });
                     }
                 }
             })
