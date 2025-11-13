@@ -1,0 +1,25 @@
+/* 回覧板アイコンのコンテナ */
+.kairanban-icon-container {
+    position: relative; /* 疑似要素の基準位置 */
+    display: inline-block; /* img要素に合わせる */
+}
+
+/* 未読がある場合の赤丸 */
+.kairanban-icon-container.has-unread-kairanban::after {
+    content: ''; /* 疑似要素にはcontentが必要 */
+    position: absolute;
+    top: -5px; /* アイコンの右上外側に配置 */
+    right: -5px; /* アイコンの右上外側に配置 */
+    width: 7px; /* 赤丸の直径 */
+    height: 7px; /* 赤丸の直径 */
+    background-color: #dc3545; /* 赤色 */
+    border-radius: 50%; /* 円形にする */
+    border: 1.5px solid #fff; /* 白い縁取り */
+    z-index: 10; /* 他の要素の上に表示 */
+}
+
+/* スマホ版のフッターアイコンに対する調整 */
+.mobile-nav .kairanban-icon-container.has-unread-kairanban::after {
+    top: -2px; /* スマホ版では少し調整 */
+    right: -2px;
+}
