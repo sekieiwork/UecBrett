@@ -373,17 +373,16 @@ def index(page):
             image_url_str = save_picture(form.image.data)
 
         post = Post(title=form.title.data, content=form.content.data, author=current_user, image_url=image_url_str)
-        
-        # ▼▼▼ [追加] タグを保存 ▼▼▼
         post.tags = get_or_create_tags_from_string(form.tags.data)
-        # ▲▲▲ [追加] ここまで ▲▲▲
-
+        
         db.session.add(post)
         db.session.commit()
         return redirect(url_for('index'))
 
     posts_per_page = 40
-    posts = Post.query.order_by(Post.created_at.desc()).paginate(
+
+    order_by_clause = func.coalesce(Post.updated_at, Post.created_at).desc()
+    posts = Post.query.order_by(order_by_clause).paginate(
         page=page, per_page=posts_per_page, error_out=False
     )
     
@@ -421,6 +420,27 @@ def post_detail(post_id):
         
         if current_user != post.author:
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
+            db.session.add(notification)
+        
+        # この投稿に（このコメント以前に）コメントしたユーザーを重複なく取得
+        previous_commenters = db.session.query(User).join(Comment).filter(
+            Comment.post_id == post.id
+        ).distinct().all()
+
+        for user in previous_commenters:
+            # 1. 自分自身には通知しない
+            if user.id == current_user.id:
+                continue
+            # 2. 投稿者には（上記のロジックで）通知済みなのでスキップ
+            if user.id == post.author.id:
+                continue
+            
+            # 3. それ以外のコメント済みユーザーに通知
+            notification = Notification(
+                recipient=user, 
+                post=post, 
+                message="あなたがコメントした投稿にコメントが付きました。"
+            )
             db.session.add(notification)
         
         db.session.commit()
@@ -502,6 +522,22 @@ def edit_post(post_id):
             post.image_url = image_url_str
             
         db.session.commit()
+
+        # この投稿をブックマークしているユーザーに通知
+        # (post.bookmarks は Bookmark モデルとのリレーション)
+        for bookmark in post.bookmarks.all():
+            # 編集者（自分）には通知しない
+            if bookmark.user_id != current_user.id:
+                notification = Notification(
+                    recipient=bookmark.user, # bookmark.user で User オブジェクトが取れます
+                    post=post,
+                    message="あなたがブックマークした投稿に変更がありました。"
+                )
+                db.session.add(notification)
+        
+        # 通知を追加したので、再度コミット
+        db.session.commit()
+
         return redirect(url_for('post_detail', post_id=post.id))
 
     elif request.method == 'GET': # GETリクエスト（ページを最初に開いた時）
