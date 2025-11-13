@@ -12,16 +12,14 @@
         </div>
         
         <div style="display: flex; align-items: center; gap: 15px;">
-            {% if is_developer %}
             <button id="toggle-kairanban-form-btn" style="background: none; border: none; cursor: pointer; padding: 0;">
                 <img src="{{ url_for('static', filename='icons/kairanpen.png') }}" alt="新規作成" title="新規作成" style="width: 32px; height: 32px;">
             </button>
-            {% endif %}
-        </div>
+            </div>
     </div>
 
     <div id="kairanban-form-container" class="hidden content-width-limiter">
-        <div class="post-form">
+    <div class="post-form">
             <h3 style="margin-top:0;">回覧板を新規作成</h3>
             <form method="POST">
                 {{ form.csrf_token }}
@@ -50,8 +48,6 @@
             </form>
         </div>
     </div>
-
-
 
     {% if kairanbans %}
         {% for k in kairanbans %}

@@ -834,7 +834,7 @@ def kairanban_index():
     form = KairanbanForm()
     
     # --- POST (回覧板の新規作成) ---
-    if form.validate_on_submit(): # 開発者のみ作成可能
+    if form.validate_on_submit(): # 全ユーザー作成可能
         try:
             days = int(form.expires_in_days.data)
             expires_at_datetime = datetime.utcnow() + timedelta(days=days)
