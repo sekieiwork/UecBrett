@@ -787,8 +787,12 @@ a.tag-box:hover {
                 </li>
                 <li>
                     <a href="{{ url_for('kairanban_index') }}" title="回覧板">
-                        <img src="{{ url_for('static', filename='icons/note.png') }}" alt="回覧板">
-                    </a>
+                        {% if has_unread_kairanban %}
+                            <img src="{{ url_for('static', filename='icons/note_new.png') }}" alt="回覧板 (未読あり)">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='icons/note.png') }}" alt="回覧板">
+                        {% endif %}
+                        </a>
                 </li>
                 <li>
                     <a href="{{ url_for('mailbox_index') }}" title="メールボックス">
@@ -815,9 +819,13 @@ a.tag-box:hover {
                 </li>
                 <li>
                     <a href="{{ url_for('kairanban_index') }}">
-                        <img src="{{ url_for('static', filename='icons/note.png') }}" alt="回覧板">
+                        {% if has_unread_kairanban %}
+                            <img src="{{ url_for('static', filename='icons/note_new.png') }}" alt="回覧板 (未読あり)">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='icons/note.png') }}" alt="回覧板">
+                        {% endif %}
                         <span>回覧板</span>
-                    </a>
+                        </a>
                 </li>
             </ul>
         </nav>

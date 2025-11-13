@@ -47,8 +47,26 @@ def inject_common_vars():
     """
     search_form = SearchForm()
     is_developer = False
+    has_unread_kairanban = False
     if current_user.is_authenticated and current_user.username == '二酸化ケイ素':
         is_developer = True
+    # 1. 期限切れでない回覧板
+    base_query = Kairanban.query.filter(Kairanban.expires_at > datetime.utcnow())
+        
+    # 2. 自分のタグに一致する回覧板 (開発者と「すべて表示」を除く)
+    user_tag_ids = {tag.id for tag in current_user.tags}
+    if user_tag_ids:
+        target_kairanbans_query = base_query.join(kairanban_tags).filter(kairanban_tags.c.tag_id.in_(user_tag_ids))
+            
+        # 3. チェック済みのIDを取得
+        checked_ids = {c.kairanban_id for c in KairanbanCheck.query.filter_by(user_id=current_user.id)}
+            
+        # 4. 1件ずつチェック (効率化のため .limit(5) などでも良いが、確実性を優先)
+        target_kairanbans = target_kairanbans_query.all()
+        for k in target_kairanbans:
+            if k.id not in checked_ids:
+                has_unread_kairanban = True
+                break # 1件でも未チェックがあればループ終了
     
     return dict(search_form=search_form, is_developer=is_developer)
 
@@ -647,7 +665,7 @@ def edit_profile(username):
         if form.icon.data:
             if user.icon_url:
                 delete_from_cloudinary(user.icon_url)
-            icon_url = save_icon(form.icon_data)
+            icon_url = save_icon(form.icon.data)
             user.icon_url = icon_url
         
         db.session.commit() 
@@ -805,7 +823,7 @@ def kairanban_index():
     form = KairanbanForm()
     
     # --- POST (回覧板の新規作成) ---
-    if form.validate_on_submit() and is_developer: # 開発者のみ作成可能
+    if form.validate_on_submit(): # 開発者のみ作成可能
         try:
             days = int(form.expires_in_days.data)
             expires_at_datetime = datetime.utcnow() + timedelta(days=days)
