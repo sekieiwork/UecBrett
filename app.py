@@ -108,15 +108,29 @@ def safe_markdown_filter(text):
     # ステップ1: まずMarkdownをHTMLに変換する
     html = md.convert(text)
     
-    # ▼▼▼ ▼▼▼ ここから修正 ▼▼▼ ▼▼▼
+    # ▼▼▼ ▼▼▼ [修正] filters=[linker] (line 115) を含むブロックを削除します ▼▼▼ ▼▼▼
 
     # ステップ2: bleach.clean() で先に消毒する (tags と attributes を使う)
-    # (エラーログから、'filters'引数は使えないと判断)
-    sanitized_and_linked_html = bleach.clean(
+    # (filters=[linker] はエラーになるため使わない)
+    sanitized_html = bleach.clean(
         html,
-        tags=ALLOWED_TAGS,         
-        attributes=ALLOWED_ATTRIBUTES, 
-        filters=[linker]           # <-- v6.2.0 ではこれが正しく動作します
+        tags=ALLOWED_TAGS,        
+        attributes=ALLOWED_ATTRIBUTES 
+    )
+    
+    # ステップ3: linkifyコールバックを定義 (target="_blank" を追加)
+    def add_target_blank(attrs, new=False):
+        # (None, 'target'): '_blank' を attrs に追加
+        attrs[(None, 'target')] = '_blank'
+        return attrs
+
+    # ステップ4: bleach.linkify() でリンク化する
+    # ALLOWED_TAGS を skip_tags に指定し、消毒済みのタグが
+    # HTMLエスケープされるのを防ぐ
+    sanitized_and_linked_html = bleach.linkify(
+        sanitized_html,
+        callbacks=[add_target_blank], # <-- ステップ3で定義した関数を渡す
+        skip_tags=ALLOWED_TAGS        # <-- これが重要
     )
     
     return sanitized_and_linked_html
