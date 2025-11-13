@@ -49,7 +49,6 @@ def inject_common_vars():
     is_developer = False
     has_unread_kairanban = False # <-- まずFalseで初期化
 
-    # ▼▼▼ ★ 変更 ★ ▼▼▼
     # 認証済みユーザーの場合のみ、開発者チェックと回覧板チェックを行う
     if current_user.is_authenticated:
         if current_user.username == '二酸化ケイ素':
@@ -79,7 +78,7 @@ def inject_common_vars():
     return dict(
         search_form=search_form, 
         is_developer=is_developer,
-        has_unread_kairanban=has_unread_kairanban # <-- ★ これを追加
+        has_unread_kairanban=has_unread_kairanban 
     )
 
 # 1. アプリケーションで許可するHTMLタグを定義します
