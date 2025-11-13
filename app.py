@@ -108,13 +108,13 @@ def safe_markdown_filter(text):
     # ステップ1: まずMarkdownをHTMLに変換する
     html = md.convert(text)
     
-    # ステップ2: 消毒とリンク化を「同時に」行う
-    # (bleach.clean が消毒のメイン処理)
-    sanitized_and_linked_html = bleach.clean(
+    # ステップ2: bleach.linkify() を使い、消毒とリンク化を同時に行う
+    # (bleach.clean() ではなく、bleach.linkify() が正しい関数)
+    sanitized_and_linked_html = bleach.linkify(
         html,
-        tags=ALLOWED_TAGS,
-        attributes=ALLOWED_ATTRIBUTES,
-        filters=[linker] # <-- ★★★ 'callbacks' ではなく 'filters' が正しい引数 ★★★
+        callbacks=[linker], # <-- target="_blank" 用のLinker
+        tags=ALLOWED_TAGS,  # <-- <strong> などを許可
+        attributes=ALLOWED_ATTRIBUTES # <-- <span> の class などを許可
     )
     
     return sanitized_and_linked_html
