@@ -794,9 +794,14 @@ def kairanban_index():
     """
     回覧板ページ (表示と作成)
     """
+    
+    # ▼▼▼ ★ 1. タイムゾーンの定義を追加 ★ ▼▼▼
+    japan_tz = timezone('Asia/Tokyo')
+    
     is_developer = False
     if current_user.is_authenticated and current_user.username == '二酸化ケイ素':
         is_developer = True
+
     form = KairanbanForm()
     
     # --- POST (回覧板の新規作成) ---
@@ -811,11 +816,13 @@ def kairanban_index():
                 expires_at=expires_at_datetime
             )
             
+            # ▼▼▼ ★ 2. SAWarning解消のため、addを先に実行 ★ ▼▼▼
+            db.session.add(new_kairanban) 
+            
             # タグの処理
             new_kairanban.tags = get_or_create_tags_from_string(form.tags.data)
             
-            db.session.add(new_kairanban)
-            db.session.commit()
+            db.session.commit() # addは移動したので、ここではcommitのみ
             flash('回覧板を送信しました。')
             return redirect(url_for('kairanban_index'))
             
@@ -862,7 +869,8 @@ def kairanban_index():
         kairanbans.sort(key=lambda k: k.id in checked_ids)
 
     
-    return render_template('kairanban.html', form=form, kairanbans=kairanbans, checked_ids=checked_ids)
+    # ▼▼▼ ★ 1. タイムゾーン変数をテンプレートに渡す ★ ▼▼▼
+    return render_template('kairanban.html', form=form, kairanbans=kairanbans, checked_ids=checked_ids,japan_tz=japan_tz,utc=utc)
 
 @app.route('/mailbox')
 @login_required
