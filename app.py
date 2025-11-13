@@ -104,40 +104,36 @@ linker = Linker(callbacks=[
 def safe_markdown_filter(text):
     if not text:
         return ""
-    
+
     # ステップ1: まずMarkdownをHTMLに変換する
     html = md.convert(text)
-    
-    # ▼▼▼ ▼▼▼ [修正] エラーの出る clean() (line 115) を削除し、
-    # 2段階処理に書き換えます ▼▼▼
+
+    # ▼▼▼ ▼▼▼ このコードになっているか確認 ▼▼▼ ▼▼▼
 
     # ステップ2: bleach.clean() で先に消毒する (tags と attributes を使う)
     # (filters=[linker] はエラーになるため使わない)
     sanitized_html = bleach.clean(
         html,
-        tags=ALLOWED_TAGS,        
-        attributes=ALLOWED_ATTRIBUTES 
+        tags=ALLOWED_TAGS,       
+        attributes=ALLOWED_ATTRIBUTES
     )
-    
+
     # ステップ3: linkifyコールバックを定義 (target="_blank" を追加)
     def add_target_blank(attrs, new=False):
-        # (None, 'target'): '_blank' を attrs に追加
         attrs[(None, 'target')] = '_blank'
         return attrs
 
     # ステップ4: bleach.linkify() でリンク化する
-    # ALLOWED_TAGS を skip_tags に指定し、消毒済みのタグが
-    # HTMLエスケープされるのを防ぐ
     sanitized_and_linked_html = bleach.linkify(
         sanitized_html,
-        callbacks=[add_target_blank], # <-- ステップ3で定義した関数を渡す
-        skip_tags=ALLOWED_TAGS        # <-- これが重要
+        callbacks=[add_target_blank],
+        skip_tags=ALLOWED_TAGS       
     )
-    
-    return sanitized_and_linked_html
-    # ▲▲▲ ▲▲▲ ここまでが置き換え後のコード ▲▲▲ ▲▲▲
 
-# ▼▼▼ [追加] タグ処理ヘルパー関数 ▼▼▼
+    return sanitized_and_linked_html
+
+
+# ▼▼▼タグ処理ヘルパー関数 ▼▼▼
 def get_or_create_tags_from_string(tag_string):
     """
     "tag1,tag2, tag3" のようなカンマ区切りの文字列をパースし、
