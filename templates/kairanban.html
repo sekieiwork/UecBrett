@@ -74,10 +74,20 @@
                         <small>掲示期限: <span style="color: #dc3545;">{{ k.expires_at.replace(tzinfo=utc).astimezone(japan_tz).strftime('%Y-%m-%d %H:%M') }} まで</span></small>
                     </div>
 
-                    <div class="kairanban-check-container" style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                        <input type="checkbox" class="kairanban-check-toggle" data-kairanban-id="{{ k.id }}" id="check-{{ k.id }}"
-                            {% if k.id in checked_ids %}checked{% endif %}>
-                        <label for="check-{{ k.id }}" style="font-size: 0.9em; color: #555; cursor: pointer;">確認済み</label>
+                    <div class="kairanban-actions" style="display: flex; align-items: center; gap: 10px;">
+                        
+                        <div class="kairanban-check-container" style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" class="kairanban-check-toggle" data-kairanban-id="{{ k.id }}" id="check-{{ k.id }}"
+                                {% if k.id in checked_ids %}checked{% endif %}>
+                            <label for="check-{{ k.id }}" style="font-size: 0.9em; color: #555; cursor: pointer;">確認済み</label>
+                        </div>
+                        
+                        {% if current_user.is_authenticated and (k.author == current_user or current_user.is_admin) %}
+                        <form method="POST" action="{{ url_for('delete_kairanban', kairanban_id=k.id) }}" style="margin-bottom: 0;">
+                            <input type="submit" value="撤回" onclick="return confirm('本当にこの回覧板を撤回しますか？');" class="delete-button" style="font-size: 0.8em; padding: 2px 6px;">
+                        </form>
+                        {% endif %}
+
                     </div>
                 </div>
             </div>

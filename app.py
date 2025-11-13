@@ -906,6 +906,20 @@ def check_kairanban(kairanban_id):
     db.session.commit()
     return jsonify({'status': 'success', 'is_checked': is_checked})
 
+@app.route('/kairanban/delete/<int:kairanban_id>', methods=['POST'])
+@login_required
+def delete_kairanban(kairanban_id):
+    kairanban = Kairanban.query.get_or_404(kairanban_id)
+    
+    # 差出人本人 または 管理者 のみ削除可能
+    if kairanban.author != current_user and not current_user.is_admin:
+        abort(403) # 権限がありません
+    
+    db.session.delete(kairanban)
+    db.session.commit()
+    flash('回覧板を撤回しました。')
+    return redirect(url_for('kairanban_index'))
+
 if __name__ == '__main__':
     app.run(debug=True)
 
