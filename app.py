@@ -794,6 +794,9 @@ def kairanban_index():
     """
     回覧板ページ (表示と作成)
     """
+    is_developer = False
+    if current_user.is_authenticated and current_user.username == '二酸化ケイ素':
+        is_developer = True
     form = KairanbanForm()
     
     # --- POST (回覧板の新規作成) ---
