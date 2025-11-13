@@ -47,28 +47,40 @@ def inject_common_vars():
     """
     search_form = SearchForm()
     is_developer = False
-    has_unread_kairanban = False
-    if current_user.is_authenticated and current_user.username == '二酸化ケイ素':
-        is_developer = True
-    # 1. 期限切れでない回覧板
-    base_query = Kairanban.query.filter(Kairanban.expires_at > datetime.utcnow())
+    has_unread_kairanban = False # <-- まずFalseで初期化
+
+    # ▼▼▼ ★ 変更 ★ ▼▼▼
+    # 認証済みユーザーの場合のみ、開発者チェックと回覧板チェックを行う
+    if current_user.is_authenticated:
+        if current_user.username == '二酸化ケイ素':
+            is_developer = True
         
-    # 2. 自分のタグに一致する回覧板 (開発者と「すべて表示」を除く)
-    user_tag_ids = {tag.id for tag in current_user.tags}
-    if user_tag_ids:
-        target_kairanbans_query = base_query.join(kairanban_tags).filter(kairanban_tags.c.tag_id.in_(user_tag_ids))
+        # --- (ここからインデントして 'if' の中に入れる) ---
+        # 1. 期限切れでない回覧板
+        base_query = Kairanban.query.filter(Kairanban.expires_at > datetime.utcnow())
             
-        # 3. チェック済みのIDを取得
-        checked_ids = {c.kairanban_id for c in KairanbanCheck.query.filter_by(user_id=current_user.id)}
-            
-        # 4. 1件ずつチェック (効率化のため .limit(5) などでも良いが、確実性を優先)
-        target_kairanbans = target_kairanbans_query.all()
-        for k in target_kairanbans:
-            if k.id not in checked_ids:
-                has_unread_kairanban = True
-                break # 1件でも未チェックがあればループ終了
-    
-    return dict(search_form=search_form, is_developer=is_developer)
+        # 2. 自分のタグに一致する回覧板
+        user_tag_ids = {tag.id for tag in current_user.tags} # <-- これで安全にアクセスできる
+        
+        if user_tag_ids:
+            target_kairanbans_query = base_query.join(kairanban_tags).filter(kairanban_tags.c.tag_id.in_(user_tag_ids))
+                
+            # 3. チェック済みのIDを取得
+            checked_ids = {c.kairanban_id for c in KairanbanCheck.query.filter_by(user_id=current_user.id)}
+                
+            # 4. 1件ずつチェック
+            target_kairanbans = target_kairanbans_query.all()
+            for k in target_kairanbans:
+                if k.id not in checked_ids:
+                    has_unread_kairanban = True
+                    break # 1件でも未チェックがあればループ終了
+        # --- (ここまでインデント) ---
+
+    return dict(
+        search_form=search_form, 
+        is_developer=is_developer,
+        has_unread_kairanban=has_unread_kairanban # <-- ★ これを追加
+    )
 
 # 1. アプリケーションで許可するHTMLタグを定義します
 # (Markdownが生成するもの + UECreviewで使うspan)
