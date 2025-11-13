@@ -899,7 +899,7 @@ def kairanban_index():
 
     
     # ▼▼▼ ★ 1. タイムゾーン変数をテンプレートに渡す ★ ▼▼▼
-    return render_template('kairanban.html', form=form, kairanbans=kairanbans, checked_ids=checked_ids,japan_tz=japan_tz,utc=utc)
+    return render_template('kairanban.html', form=form, kairanbans=kairanbans, checked_ids=checked_ids,japan_tz=japan_tz,utc=utc, show_all=show_all)
 
 @app.route('/mailbox')
 @login_required

@@ -8,7 +8,11 @@
         
         <div style="display: flex; align-items: baseline; gap: 10px;">
             <h2>回覧板</h2>
-            <a href="{{ url_for('kairanban_index', show_all=1) }}" style="font-size: 0.8em;">(すべてを表示)</a>
+            {% if show_all %}
+            <a href="{{ url_for('kairanban_index') }}" style="font-size: 0.8em;">(タグ絞り込みに戻る)</a>
+            {% else %}
+                <a href="{{ url_for('kairanban_index', show_all=1) }}" style="font-size: 0.8em;">(すべてを表示)</a>
+            {% endif %}<a href="{{ url_for('kairanban_index', show_all=1) }}" style="font-size: 0.8em;">(すべてを表示)</a>
         </div>
         
         <div style="display: flex; align-items: center; gap: 15px;">
