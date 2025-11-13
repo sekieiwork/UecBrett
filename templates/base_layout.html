@@ -790,7 +790,7 @@ a.tag-box:hover {
                         {% if has_unread_kairanban %}
                             <img src="{{ url_for('static', filename='icons/note_new.png') }}" alt="回覧板 (未読あり)">
                         {% else %}
-                            <img src="{{ url_for('static', filename='icons/note.png') }}" alt="回覧板">
+                            <img src="{{ url_for('static', filename='icons/note_new.png?v=2') }}" alt="回覧板 (未読あり)">
                         {% endif %}
                         </a>
                 </li>
@@ -820,7 +820,7 @@ a.tag-box:hover {
                 <li>
                     <a href="{{ url_for('kairanban_index') }}">
                         {% if has_unread_kairanban %}
-                            <img src="{{ url_for('static', filename='icons/note_new.png') }}" alt="回覧板 (未読あり)">
+                            <img src="{{ url_for('static', filename='icons/note_new.png?v=2') }}" alt="回覧板 (未読あり)">
                         {% else %}
                             <img src="{{ url_for('static', filename='icons/note.png') }}" alt="回覧板">
                         {% endif %}
