@@ -108,7 +108,8 @@ def safe_markdown_filter(text):
     # ステップ1: まずMarkdownをHTMLに変換する
     html = md.convert(text)
     
-    # ▼▼▼ ▼▼▼ [修正] filters=[linker] (line 115) を含むブロックを削除します ▼▼▼ ▼▼▼
+    # ▼▼▼ ▼▼▼ [修正] エラーの出る clean() (line 115) を削除し、
+    # 2段階処理に書き換えます ▼▼▼
 
     # ステップ2: bleach.clean() で先に消毒する (tags と attributes を使う)
     # (filters=[linker] はエラーになるため使わない)
@@ -134,6 +135,7 @@ def safe_markdown_filter(text):
     )
     
     return sanitized_and_linked_html
+    # ▲▲▲ ▲▲▲ ここまでが置き換え後のコード ▲▲▲ ▲▲▲
 
 # ▼▼▼ [追加] タグ処理ヘルパー関数 ▼▼▼
 def get_or_create_tags_from_string(tag_string):
