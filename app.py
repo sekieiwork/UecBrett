@@ -730,6 +730,11 @@ def edit_profile(username):
         user.category = form.category.data
         user.user_class = form.user_class.data
         user.program = form.program.data
+
+        if user.grade == '大学院生':
+            user.major = form.major.data
+        else:
+            user.major = None # 大学院生でなければ専攻はクリア
         
         user.tags.clear()
         user.tags = get_or_create_tags_from_string(form.tags.data)

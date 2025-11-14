@@ -48,6 +48,11 @@
                 {{ form.program(id="form-select-program") }}
             </div>
 
+            <div class="form-field" id="form-field-major" style="display: none;">
+                {{ form.major.label }}<br>
+                {{ form.major(id="form-select-major") }}
+            </div>
+
         <div id="tag-form-container" class="form-field hidden" style="position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em;">
                 <label for="tags-input-field">タグ (カンマ区切りで入力)</label>

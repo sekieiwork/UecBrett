@@ -1427,7 +1427,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         });
     });
 
-    // ▼▼▼ [修正] 「8. プロフィール編集フォーム」の全コードを置き換え ▼▼▼
+    // ▼▼▼ 「8. プロフィール編集フォーム」の全コードを置き換え ▼▼▼
     const gradeSelect = document.getElementById('form-select-grade');
     
     if (gradeSelect) {
@@ -1435,14 +1435,16 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         const categoryDiv = document.getElementById('form-field-category');
         const classDiv = document.getElementById('form-field-class');
         const programDiv = document.getElementById('form-field-program');
+        const majorDiv = document.getElementById('form-field-major'); // <-- ★専攻DIVを追加
 
         // 制御対象の「<SELECT> タグ」を取得
         const categorySelect = document.getElementById('form-select-category');
         const classSelect = document.getElementById('form-select-class');
         const programSelect = document.getElementById('form-select-program');
+        const majorSelect = document.getElementById('form-select-major'); // <-- ★専攻SELECTを追加
         
         // ( filterOptions, getClassGroup, filterProgramOptions, getProgramGroup ... )
-        // ( ... 前回のヘルパー関数群（4つ）は変更なし ... )
+        // ( ... 4つのヘルパー関数群は変更なし ... )
         const filterOptions = (selectElement, allowedGroups) => {
             Array.from(selectElement.options).forEach(option => {
                 const optionValue = option.value;
@@ -1480,6 +1482,26 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             if (programs_III.includes(value)) return 'III類';
             return 'other';
         };
+        
+        // ▼▼▼ ★専攻(Major)のフィルタ関数を追加 ▼▼▼
+        const filterMajorOptions = (selectElement, allowedGroups) => {
+             Array.from(selectElement.options).forEach(option => {
+                const optionValue = option.value;
+                if (optionValue === '') { option.style.display = 'block'; return; }
+                
+                let show = false;
+                for (const group of allowedGroups) {
+                    if (getMajorGroup(optionValue) === group) { show = true; break; }
+                }
+                option.style.display = show ? 'block' : 'none';
+            });
+        };
+        const getMajorGroup = (value) => {
+            if (value === '情報学専攻') return 'I類';
+            if (value === '情報・ネットワーク工学専攻') return 'II類';
+            if (['機械知能システム学専攻', '基盤理工学専攻'].includes(value)) return 'III類';
+            return 'other';
+        };
 
         // メインの表示切替ロジック
         const updateFormVisibility = () => {
@@ -1490,10 +1512,11 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             categoryDiv.style.display = 'none';
             classDiv.style.display = 'none';
             programDiv.style.display = 'none';
+            majorDiv.style.display = 'none'; // <-- ★専攻も隠す
 
             if (gradeVal === '1年') {
                 classDiv.style.display = 'block';
-                filterOptions(classSelect, ['1_year']); // 1年クラスのみ表示
+                filterOptions(classSelect, ['1_year']);
             } 
             else if (gradeVal === '2年') {
                 categoryDiv.style.display = 'block';
@@ -1501,46 +1524,57 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 
                 if (categoryVal === 'I類') {
                     classDiv.style.display = 'block';
-                    filterOptions(classSelect, ['2_year_I']); // I類クラスのみ
-                    filterProgramOptions(programSelect, ['I類']); // I類プログラムのみ
+                    filterOptions(classSelect, ['2_year_I']);
+                    filterProgramOptions(programSelect, ['I類']);
                 } else if (categoryVal === 'II類') {
                     classDiv.style.display = 'block';
-                    filterOptions(classSelect, ['2_year_II']); // II類クラスのみ
-                    filterProgramOptions(programSelect, ['II類']); // II類プログラムのみ
+                    filterOptions(classSelect, ['2_year_II']);
+                    filterProgramOptions(programSelect, ['II類']);
                 } else if (categoryVal === 'III類') {
-                    // classDiv は 'none' のまま
-                    filterProgramOptions(programSelect, ['III類']); // III類プログラムのみ
+                    filterProgramOptions(programSelect, ['III類']);
                 } else {
-                    // 類が未選択
                     filterProgramOptions(programSelect, ['I類', 'II類', 'III類']);
                 }
             }
             else if (gradeVal === '3年' || gradeVal === '4年') {
                 categoryDiv.style.display = 'block';
                 programDiv.style.display = 'block';
-                // classDiv は 'none' のまま
                 
                 if (categoryVal === 'I類') filterProgramOptions(programSelect, ['I類']);
                 else if (categoryVal === 'II類') filterProgramOptions(programSelect, ['II類']);
                 else if (categoryVal === 'III類') filterProgramOptions(programSelect, ['III類']);
                 else filterProgramOptions(programSelect, ['I類', 'II類', 'III類']);
             }
+            // ▼▼▼ ★大学院生のロジックを追加 ▼▼▼
+            else if (gradeVal === '大学院生') {
+                categoryDiv.style.display = 'block'; // 類(I/II/III)
+                majorDiv.style.display = 'block'; // 専攻
+                
+                // 類に応じて専攻をフィルタリング（画像の矢印対応）
+                if (categoryVal === 'I類') filterMajorOptions(majorSelect, ['I類']);
+                else if (categoryVal === 'II類') filterMajorOptions(majorSelect, ['II類']);
+                else if (categoryVal === 'III類') filterMajorOptions(majorSelect, ['III類']);
+                else filterMajorOptions(majorSelect, ['I類', 'II類', 'III類']); // 全て表示
+            }
+            // '教職員', 'その他', '' は何も表示しない
         };
 
-        // --- イベントリスナーを登録 (★リセット処理を追加★) ---
+        // --- イベントリスナーを登録 (★リセット処理を強化★) ---
         gradeSelect.addEventListener('change', () => {
-            // ▼▼▼ [修正] 学年が変更されたら、全ての子をリセット ▼▼▼
+            // 学年が変更されたら、全ての子をリセット
             categorySelect.value = '';
             classSelect.value = '';
             programSelect.value = '';
-            updateFormVisibility(); // その後に表示を更新
+            majorSelect.value = ''; // <-- ★専攻もリセット
+            updateFormVisibility();
         });
         
         categorySelect.addEventListener('change', () => {
-            // ▼▼▼ [修正] 類が変更されたら、クラスとプログラムをリセット ▼▼▼
+            // 類が変更されたら、それ以下の子をリセット
             classSelect.value = '';
             programSelect.value = '';
-            updateFormVisibility(); // その後に表示を更新
+            majorSelect.value = ''; // <-- ★専攻もリセット
+            updateFormVisibility();
         });
 
         // --- ページ読み込み時に1回実行 ---

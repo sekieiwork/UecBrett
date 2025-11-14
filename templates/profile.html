@@ -44,6 +44,11 @@
                     {{ user.program }}
                 </span>
                 {% endif %}
+                {% if user.major %}
+                <span class="tag-box" style="background-color: #17a2b8; color: white; border-color: #17a2b8; cursor: default;">
+                    {{ user.major }}
+                </span>
+                {% endif %}
             </div>
             {% endif %}
 

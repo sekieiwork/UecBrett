@@ -91,6 +91,14 @@ PROGRAM_CHOICES = [
     ('化学生命工学プログラム', '化学生命工学プログラム (III類)')
 ]
 
+MAJOR_CHOICES = [
+    ('', '--- 専攻を選択 ---'),
+    ('情報学専攻', '情報学専攻 (I類から)'),
+    ('情報・ネットワーク工学専攻', '情報・ネットワーク工学専攻 (II類から)'),
+    ('機械知能システム学専攻', '機械知能システム学専攻 (III類から)'),
+    ('基盤理工学専攻', '基盤理工学専攻 (III類から)')
+]
+
 class ProfileForm(FlaskForm):
     username = StringField('ユーザー名', validators=[DataRequired(), Length(min=2, max=20)])
     bio = TextAreaField('自己紹介')
@@ -100,6 +108,7 @@ class ProfileForm(FlaskForm):
     category = SelectField('類', choices=CATEGORY_CHOICES, default='')
     user_class = SelectField('クラス', choices=CLASS_CHOICES, default='')
     program = SelectField('プログラム', choices=PROGRAM_CHOICES, default='')
+    major = SelectField('専攻（大学院）', choices=MAJOR_CHOICES, default='')
     submit = SubmitField('更新')
 
     def validate_username(self, username):
