@@ -108,7 +108,7 @@ class ProfileForm(FlaskForm):
     category = SelectField('類', choices=CATEGORY_CHOICES, default='')
     user_class = SelectField('クラス', choices=CLASS_CHOICES, default='')
     program = SelectField('プログラム', choices=PROGRAM_CHOICES, default='')
-    major = SelectField('専攻（大学院）', choices=MAJOR_CHOICES, default='')　
+    major = SelectField('専攻（大学院）', choices=MAJOR_CHOICES, default='')
     submit = SubmitField('更新')
 
     def validate_username(self, username):
