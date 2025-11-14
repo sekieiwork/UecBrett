@@ -1505,16 +1505,14 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             return 'other';
         };
 
-        // ▼▼▼ [修正] III類クラス (2_year_III) を追加 ▼▼▼
-        const getClassGroup = (value) => {
+       const getClassGroup = (value) => {
             if (['1クラス', '2クラス', '3クラス', '4クラス', '5クラス', '6クラス', '7クラス', '8クラス', '9クラス', '10クラス', '11クラス', '12クラス'].includes(value)) return '1_year';
             if (['Aクラス', 'Bクラス', 'Cクラス'].includes(value)) return '2_year_I';
             if (['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'Mエリア'].includes(value)) return '2_year_II';
-            // ★III類クラスを追加
-            if (['1クラス(III類)', '2クラス(III類)', '3クラス(III類)', '4クラス(III類)'].includes(value)) return '2_year_III';
+            // ★ v1, line 1189 を修正
+            if (['III類1クラス', 'III類2クラス', 'III類3クラス', 'III類4クラス'].includes(value)) return '2_year_III';
             return 'other';
         };
-        // ▲▲▲ ここまで修正 ▲▲▲
 
 
         // メインの表示切替ロジック
@@ -1594,6 +1592,36 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         updateFormVisibility();
     }
 // ▲▲▲ 「8. プロフィール編集フォーム」ここまで ▲▲▲
+    const editForm = document.getElementById('profile-edit-form');
+    const usernameInput = document.getElementById('username-input');
+    const iconInput = document.getElementById('icon-input-field');
+    const filenameDisplay = document.getElementById('icon-filename-display');
+    
+    // アイコンファイル名表示
+    if (iconInput && filenameDisplay) {
+        iconInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                filenameDisplay.textContent = file.name;
+            } else {
+                filenameDisplay.textContent = '';
+            }
+        });
+    }
+    
+    // ユーザー名変更確認
+    if (editForm && usernameInput) {
+        editForm.addEventListener('submit', function(event) {
+            const newUsername = usernameInput.value.trim();
+            const originalUsername = usernameInput.dataset.originalUsername;
+            if (newUsername !== originalUsername) {
+                const message = `ユーザー名が変更されています ( ${originalUsername} → ${newUsername} )。\n\n更新後は自動的にログアウトします。\nよろしいですか？`;
+                if (!confirm(message)) {
+                    event.preventDefault(); 
+                }
+            }
+        });
+    }
     
 }); // <-- ★★★ DOMContentLoaded はここで閉じる ★★★
 
