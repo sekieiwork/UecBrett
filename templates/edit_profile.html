@@ -26,25 +26,27 @@
             {{ form.bio(cols=40, rows=5) }}
         </div>
 
-        <div class="form-field" id="form-field-grade">
-            {{ form.grade.label }}<br>
-            {{ form.grade(id="form-select-grade") }}
-        </div>
-
-        <div class="form-field" id="form-field-category" style="display: none;">
-            {{ form.category.label }}<br>
-            {{ form.category(id="form-select-category") }}
-        </div>
-
-        <div class="form-field" id="form-field-class" style="display: none;">
-            {{ form.user_class.label }}<br>
-            {{ form.user_class(id="form-select-class") }}
-        </div>
+        <div class="affiliation-form-container">
         
-        <div class="form-field" id="form-field-program" style="display: none;">
-            {{ form.program.label }}<br>
-            {{ form.program(id="form-select-program") }}
-        </div>
+            <div class="form-field" id="form-field-grade">
+                {{ form.grade.label }}<br>
+                {{ form.grade(id="form-select-grade") }}
+            </div>
+
+            <div class="form-field" id="form-field-category" style="display: none;">
+                {{ form.category.label }}<br>
+                {{ form.category(id="form-select-category") }}
+            </div>
+
+            <div class="form-field" id="form-field-class" style="display: none;">
+                {{ form.user_class.label }}<br>
+                {{ form.user_class(id="form-select-class") }}
+            </div>
+            
+            <div class="form-field" id="form-field-program" style="display: none;">
+                {{ form.program.label }}<br>
+                {{ form.program(id="form-select-program") }}
+            </div>
 
         <div id="tag-form-container" class="form-field hidden" style="position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em;">
