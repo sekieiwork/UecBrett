@@ -50,7 +50,7 @@
     
                 {% if user.major %}
                 <a href="{{ url_for('search', search_query=user.major, active_tab='users') }}" class="tag-box" style="background-color: #17a2b8; color: white; border-color: #17a2b8;">
-                    {{ user.major }}
+                {{ user.major }}
                 </a>
                 {% endif %}
             </div>
@@ -60,7 +60,7 @@
             {% if user.tags %}
                 <div class="tag-container" style="margin-top: 0; margin-bottom: 10px;">
                     {% for tag in user.tags %}
-                        <a href="{{ url_for('search', search_query=user.major, active_tab='users') }}" class="tag-box" style="background-color: #ffc107; color: black; border-color: #ffc107;">
+                        <a href="{{ url_for('search', search_query=tag.name) }}" class="tag-box">{{ tag.name }}</a>
                     {% endfor %}
                 </div>
             {% endif %}
