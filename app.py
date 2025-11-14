@@ -308,6 +308,10 @@ class User(db.Model, UserMixin):
     bio = db.Column(db.Text, nullable=True)
     icon_url = db.Column(db.String(200), nullable=True)
     affiliation = db.Column(db.String(100), nullable=True)
+    grade = db.Column(db.String(50), nullable=True)      # 学年 (例: '1年', '大学院生')
+    category = db.Column(db.String(50), nullable=True)   # 類 (例: 'I類', 'II類')
+    user_class = db.Column(db.String(50), nullable=True) # クラス (例: '1クラス', 'Aクラス')
+    program = db.Column(db.String(100), nullable=True)   # プログラム (例: 'メディア情報学プログラム')
     posts = db.relationship('Post', backref='author', lazy=True, cascade="all, delete")
     comments = db.relationship('Comment', backref='commenter', lazy=True)
     bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic')
@@ -722,10 +726,10 @@ def edit_profile(username):
         user.username = new_username 
         user.bio = form.bio.data
 
-        if form.affiliation.data.startswith('---'):
-            user.affiliation = ''
-        else:
-            user.affiliation = form.affiliation.data
+        user.grade = form.grade.data
+        user.category = form.category.data
+        user.user_class = form.user_class.data
+        user.program = form.program.data
         
         user.tags.clear()
         user.tags = get_or_create_tags_from_string(form.tags.data)

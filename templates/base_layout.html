@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icons/android-chrome-192x192.png') }}">
-    
+
     {% if templates_for_js %}
     <script>
     const TEMPLATES_DATA = {{ templates_for_js | safe }};
@@ -1355,7 +1355,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         }
     });
 
-document.querySelectorAll('.kairanban-check-toggle').forEach(checkbox => {
+    document.querySelectorAll('.kairanban-check-toggle').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const kairanbanId = this.dataset.kairanbanId;
             const url = `/kairanban/check/${kairanbanId}`;
@@ -1402,6 +1402,133 @@ document.querySelectorAll('.kairanban-check-toggle').forEach(checkbox => {
             .catch(error => console.error('Error:', error));
         });
     });
+
+    const gradeSelect = document.getElementById('form-select-grade');
+    
+    if (gradeSelect) {
+        // 制御対象の「フォームの <DIV>」を取得
+        const categoryDiv = document.getElementById('form-field-category');
+        const classDiv = document.getElementById('form-field-class');
+        const programDiv = document.getElementById('form-field-program');
+
+        // 制御対象の「<SELECT> タグ」を取得
+        const categorySelect = document.getElementById('form-select-category');
+        const classSelect = document.getElementById('form-select-class');
+        const programSelect = document.getElementById('form-select-program');
+        
+        // 選択肢をフィルタリングする関数
+        const filterOptions = (selectElement, allowedGroups) => {
+            // allowedGroups は ['1_year', '2_year_I'] のような配列
+            Array.from(selectElement.options).forEach(option => {
+                const optionValue = option.value;
+                if (optionValue === '') { // 「--- 選択 ---」は常に表示
+                    option.style.display = 'block';
+                    return;
+                }
+                
+                let show = false;
+                for (const group of allowedGroups) {
+                    // (例: '1クラス' が '1_year' グループか？)
+                    if (getClassGroup(optionValue) === group) {
+                        show = true;
+                        break;
+                    }
+                }
+                option.style.display = show ? 'block' : 'none';
+            });
+        };
+        
+        // プログラムの選択肢をフィルタリングする関数
+        const filterProgramOptions = (selectElement, allowedGroups) => {
+             Array.from(selectElement.options).forEach(option => {
+                const optionValue = option.value;
+                if (optionValue === '' || optionValue === '未決定') {
+                    option.style.display = 'block';
+                    return;
+                }
+                
+                let show = false;
+                for (const group of allowedGroups) {
+                    if (getProgramGroup(optionValue) === group) {
+                        show = true;
+                        break;
+                    }
+                }
+                option.style.display = show ? 'block' : 'none';
+            });
+        };
+
+        // optionの値から、それがどのグループに属するかを判定する
+        const getClassGroup = (value) => {
+            if (['1クラス', '2クラス', '3クラス', '4クラス', '5クラス', '6クラス', '7クラス', '8クラス', '9クラス', '10クラス', '11クラス', '12クラス'].includes(value)) return '1_year';
+            if (['Aクラス', 'Bクラス', 'Cクラス'].includes(value)) return '2_year_I';
+            if (['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'Mエリア'].includes(value)) return '2_year_II';
+            return 'other';
+        };
+
+        const getProgramGroup = (value) => {
+            const programs_I = ['メディア情報学プログラム', '経営・社会情報学プログラム', '情報数理工学プログラム', 'コンピュータサイエンスプログラム', 'デザイン思考・データサイエンスプログラム'];
+            const programs_II = ['セキュリティ情報学プログラム', '情報通信工学プログラム', '電子情報学プログラム', '計測・制御システムプログラム', '先端ロボティクスプログラム'];
+            const programs_III = ['機械システムプログラム', '電子工学プログラム', '光工学プログラム', '物理工学プログラム', '化学生命工学プログラム'];
+            
+            if (programs_I.includes(value)) return 'I類';
+            if (programs_II.includes(value)) return 'II類';
+            if (programs_III.includes(value)) return 'III類';
+            return 'other';
+        };
+
+        // メインの表示切替ロジック
+        const updateFormVisibility = () => {
+            const gradeVal = gradeSelect.value;
+            const categoryVal = categorySelect.value;
+
+            // まずすべて非表示に
+            categoryDiv.style.display = 'none';
+            classDiv.style.display = 'none';
+            programDiv.style.display = 'none';
+
+            if (gradeVal === '1年') {
+                classDiv.style.display = 'block';
+                filterOptions(classSelect, ['1_year']); // 1年クラスのみ表示
+            } 
+            else if (gradeVal === '2年') {
+                categoryDiv.style.display = 'block';
+                programDiv.style.display = 'block';
+                
+                if (categoryVal === 'I類') {
+                    classDiv.style.display = 'block';
+                    filterOptions(classSelect, ['2_year_I']); // I類クラスのみ
+                    filterProgramOptions(programSelect, ['I類']); // I類プログラムのみ
+                } else if (categoryVal === 'II類') {
+                    classDiv.style.display = 'block';
+                    filterOptions(classSelect, ['2_year_II']); // II類クラスのみ
+                    filterProgramOptions(programSelect, ['II類']); // II類プログラムのみ
+                } else if (categoryVal === 'III類') {
+                    classDiv.style.display = 'none'; // III類はクラス指定なし
+                    filterProgramOptions(programSelect, ['III類']); // III類プログラムのみ
+                }
+            }
+            else if (gradeVal === '3年' || gradeVal === '4年') {
+                categoryDiv.style.display = 'block';
+                programDiv.style.display = 'block';
+                // 3/4年はクラス選択なし（ご要望通り）
+                
+                // 類に応じてプログラムをフィルタ
+                if (categoryVal === 'I類') filterProgramOptions(programSelect, ['I類']);
+                else if (categoryVal === 'II類') filterProgramOptions(programSelect, ['II類']);
+                else if (categoryVal === 'III類') filterProgramOptions(programSelect, ['III類']);
+            }
+            // '大学院生', '教職員', 'その他', '' は何も表示しない
+        };
+
+        // --- イベントリスナーを登録 ---
+        gradeSelect.addEventListener('change', updateFormVisibility);
+        categorySelect.addEventListener('change', updateFormVisibility);
+
+        // --- ページ読み込み時に1回実行 ---
+        // (保存された値に基づいて、フォームの表示状態を初期化するため)
+        updateFormVisibility();
+    }
     
 }); // <-- ★★★ DOMContentLoaded はここで閉じる ★★★
 

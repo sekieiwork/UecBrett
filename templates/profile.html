@@ -20,15 +20,30 @@
         {% endif %}
     </div>
 
-    {% if user.bio or user.tags or user.affiliation %} 
-    <div class="bio post-form">
+    {% if user.bio or user.tags or user.grade %} 
+        <div class="bio post-form">
             <h3>自己紹介</h3>
             
-            {% if user.affiliation %}
-            <div class="tag-container" style="margin-top: 0; margin-bottom: 10px;">
+            {% if user.grade %}
+            <div class="tag-container" style="margin-top: 0; margin-bottom: 10px; gap: 10px;">
                 <span class="tag-box" style="background-color: #007bff; color: white; border-color: #007bff; cursor: default;">
-                    {{ user.affiliation }}
+                    {{ user.grade }}
                 </span>
+                {% if user.category %}
+                <span class="tag-box" style="background-color: #6c757d; color: white; border-color: #6c757d; cursor: default;">
+                    {{ user.category }}
+                </span>
+                {% endif %}
+                {% if user.user_class %}
+                <span class="tag-box" style="background-color: #6c757d; color: white; border-color: #6c757d; cursor: default;">
+                    {{ user.user_class }}
+                </span>
+                {% endif %}
+                {% if user.program %}
+                <span class="tag-box" style="background-color: #28a745; color: white; border-color: #28a745; cursor: default;">
+                    {{ user.program }}
+                </span>
+                {% endif %}
             </div>
             {% endif %}
 
