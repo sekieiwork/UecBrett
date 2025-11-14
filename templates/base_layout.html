@@ -1592,7 +1592,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         updateFormVisibility();
     }
 // ▲▲▲ 「8. プロフィール編集フォーム」ここまで ▲▲▲
-    const editForm = document.getElementById('profile-edit-form');
+    const profileEditForm = document.getElementById('profile-edit-form');
     const usernameInput = document.getElementById('username-input');
     const iconInput = document.getElementById('icon-input-field');
     const filenameDisplay = document.getElementById('icon-filename-display');
@@ -1610,7 +1610,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
     }
     
     // ユーザー名変更確認
-    if (editForm && usernameInput) {
+    if (profileEditForm && usernameInput) {
         editForm.addEventListener('submit', function(event) {
             const newUsername = usernameInput.value.trim();
             const originalUsername = usernameInput.dataset.originalUsername;
