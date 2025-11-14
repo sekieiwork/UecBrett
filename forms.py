@@ -60,11 +60,11 @@ CLASS_CHOICES = [
     ('7クラス', '7クラス'), ('8クラス', '8クラス'), ('9クラス', '9クラス'),
     ('10クラス', '10クラス'), ('11クラス', '11クラス'), ('12クラス', '12クラス'),
     # 2年生 I類用
-    ('Aクラス', 'Aクラス '), ('Bクラス', 'Bクラス '), ('Cクラス', 'Cクラス '),
+    ('Aクラス', 'Aクラス (I類)'), ('Bクラス', 'Bクラス (I類)'), ('Cクラス', 'Cクラス (I類)'),
     # 2年生 II類用
-    ('I1', 'I1 '), ('I2', 'I2 '), ('I3', 'I3 '),
-    ('I4', 'I4 '), ('I5', 'I5 '), ('I6', 'I6 '),
-    ('Mエリア', 'Mエリア ')
+    ('I1', 'I1 (II類)'), ('I2', 'I2 (II類)'), ('I3', 'I3 (II類)'),
+    ('I4', 'I4 (II類)'), ('I5', 'I5 (II類)'), ('I6', 'I6 (II類)'),
+    ('Mエリア', 'Mエリア (II類)')
 ]
 
 # [cite_start]画像 [cite: 1] から読み取ったプログラムリスト
@@ -102,13 +102,13 @@ MAJOR_CHOICES = [
 class ProfileForm(FlaskForm):
     username = StringField('ユーザー名', validators=[DataRequired(), Length(min=2, max=20)])
     bio = TextAreaField('自己紹介')
-    icon = FileField('新しいアイコン', validators=[FileAllowed(['jpg', 'png', 'gif','heic', 'heif'], '画像ファイルのみ')])
+    icon = FileField('アイコンを選択', validators=[FileAllowed(['jpg', 'png', 'gif','heic', 'heif'], '画像ファイルのみ')])
     tags = StringField('タグ')
     grade = SelectField('学年', choices=GRADE_CHOICES, default='')
     category = SelectField('類', choices=CATEGORY_CHOICES, default='')
     user_class = SelectField('クラス', choices=CLASS_CHOICES, default='')
     program = SelectField('プログラム', choices=PROGRAM_CHOICES, default='')
-    major = SelectField('専攻（大学院）', choices=MAJOR_CHOICES, default='')
+    major = SelectField('専攻（大学院）', choices=MAJOR_CHOICES, default='')　
     submit = SubmitField('更新')
 
     def validate_username(self, username):
