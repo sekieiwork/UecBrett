@@ -26,6 +26,11 @@
             {{ form.bio(cols=40, rows=5) }}
         </div>
 
+        <div class="form-field">
+            {{ form.affiliation.label }}<br>
+            {{ form.affiliation() }}
+        </div>
+
         <div id="tag-form-container" class="form-field hidden" style="position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em;">
                 <label for="tags-input-field">タグ (カンマ区切りで入力)</label>
@@ -37,7 +42,7 @@
                 </div>
             {{ form.tags(id="tags-input-field", placeholder="例: nクラス, review, B2") }}
         </div>
-        
+
         <div class="form-field">
             {{ form.icon(accept="image/jpeg, image/png, image/gif") }}
         </div>

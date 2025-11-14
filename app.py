@@ -307,6 +307,7 @@ class User(db.Model, UserMixin):
     is_admin = db.Column(db.Boolean, default=False)
     bio = db.Column(db.Text, nullable=True)
     icon_url = db.Column(db.String(200), nullable=True)
+    affiliation = db.Column(db.String(100), nullable=True)
     posts = db.relationship('Post', backref='author', lazy=True, cascade="all, delete")
     comments = db.relationship('Comment', backref='commenter', lazy=True)
     bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic')
@@ -720,6 +721,11 @@ def edit_profile(username):
         
         user.username = new_username 
         user.bio = form.bio.data
+
+        if form.affiliation.data.startswith('---'):
+            user.affiliation = ''
+        else:
+            user.affiliation = form.affiliation.data
         
         user.tags.clear()
         user.tags = get_or_create_tags_from_string(form.tags.data)

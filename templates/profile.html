@@ -20,9 +20,18 @@
         {% endif %}
     </div>
 
-    {% if user.bio or user.tags %} <div class="bio post-form">
+    {% if user.bio or user.tags or user.affiliation %} 
+    <div class="bio post-form">
             <h3>自己紹介</h3>
             
+            {% if user.affiliation %}
+            <div class="tag-container" style="margin-top: 0; margin-bottom: 10px;">
+                <span class="tag-box" style="background-color: #007bff; color: white; border-color: #007bff; cursor: default;">
+                    {{ user.affiliation }}
+                </span>
+            </div>
+            {% endif %}
+
             {% if user.tags %}
                 <div class="tag-container" style="margin-top: 0; margin-bottom: 10px;">
                     {% for tag in user.tags %}
