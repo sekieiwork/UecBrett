@@ -312,6 +312,7 @@ class User(db.Model, UserMixin):
     category = db.Column(db.String(50), nullable=True)   # 類 (例: 'I類', 'II類')
     user_class = db.Column(db.String(50), nullable=True) # クラス (例: '1クラス', 'Aクラス')
     program = db.Column(db.String(100), nullable=True)   # プログラム (例: 'メディア情報学プログラム')
+    major = db.Column(db.String(100), nullable=True)
     posts = db.relationship('Post', backref='author', lazy=True, cascade="all, delete")
     comments = db.relationship('Comment', backref='commenter', lazy=True)
     bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic')
