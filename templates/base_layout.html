@@ -1505,6 +1505,15 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             return 'other';
         };
 
+        const getCategoryForFirstYear = (classValue) => {
+            if (!classValue) return '';
+            const classNum = parseInt(classValue.replace('クラス', ''), 10);
+            if (classNum >= 1 && classNum <= 4) return 'I類';
+            if (classNum >= 5 && classNum <= 8) return 'II類';
+            if (classNum >= 9 && classNum <= 12) return 'III類';
+            return '';
+        };
+
        const getClassGroup = (value) => {
             if (['1クラス', '2クラス', '3クラス', '4クラス', '5クラス', '6クラス', '7クラス', '8クラス', '9クラス', '10クラス', '11クラス', '12クラス'].includes(value)) return '1_year';
             if (['Aクラス', 'Bクラス', 'Cクラス'].includes(value)) return '2_year_I';
@@ -1526,10 +1535,20 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             programDiv.style.display = 'none';
             majorDiv.style.display = 'none';
 
+            categorySelect.disabled = false
+
             if (gradeVal === '1年') {
+                // ▼▼▼ [修正] 1年でも類とクラスを表示 ▼▼▼
+                categoryDiv.style.display = 'block'; 
                 classDiv.style.display = 'block';
                 filterOptions(classSelect, ['1_year']);
-            } 
+                
+                // ★ ページ読み込み時などにクラスが選択済みの場合
+                const autoCategory = getCategoryForFirstYear(classVal);
+                if (autoCategory) {
+                    categorySelect.value = autoCategory;
+                    categorySelect.disabled = true; // 自動設定したら変更不可に
+                }
             else if (gradeVal === '2年') {
                 categoryDiv.style.display = 'block';
                 programDiv.style.display = 'block';
@@ -1578,6 +1597,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             classSelect.value = '';
             programSelect.value = '';
             majorSelect.value = '';
+            categorySelect.disabled = false;
             updateFormVisibility();
         });
         
@@ -1586,6 +1606,22 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             programSelect.value = '';
             majorSelect.value = '';
             updateFormVisibility();
+        });
+
+        classSelect.addEventListener('change', () => {
+            if (gradeSelect.value === '1年') {
+                // 1年生が選ばれている時だけ、類を自動設定
+                const autoCategory = getCategoryForFirstYear(classSelect.value);
+                if (autoCategory) {
+                    categorySelect.value = autoCategory;
+                    categorySelect.disabled = true;
+                } else {
+                    // (例: '---' が選ばれた場合)
+                    categorySelect.value = '';
+                    categorySelect.disabled = false; 
+                }
+            }
+            // 2年生以上の場合は、クラス->類 の連動は不要
         });
 
         // --- ページ読み込み時に1回実行 ---
