@@ -63,7 +63,6 @@
                 </div>
             {{ form.tags(id="tags-input-field", placeholder="例: nクラス, review, B2") }}
         </div>
-
         <div class="form-field">
             <label for="icon-input-field" class="file-upload-btn">{{ form.icon.label }}</label>
             {{ form.icon(id="icon-input-field", accept="image/jpeg, image/png, image/gif, image/heic, image/heif", style="display: none;") }}
@@ -75,40 +74,4 @@
 
 
 {% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const editForm = document.getElementById('profile-edit-form');
-    const usernameInput = document.getElementById('username-input');
-
-    const iconInput = document.getElementById('icon-input-field');
-    const filenameDisplay = document.getElementById('icon-filename-display');
-    
-    if (iconInput && filenameDisplay) {
-        iconInput.addEventListener('change', function() {
-            const file = this.files[0];
-            if (file) {
-                filenameDisplay.textContent = file.name;
-            } else {
-                filenameDisplay.textContent = '';
-            }
-        });
-    }
-
-    // (既存のユーザー名変更確認JS)
-    if (editForm && usernameInput) {
-        editForm.addEventListener('submit', function(event) {
-            const newUsername = usernameInput.value.trim();
-            const originalUsername = usernameInput.dataset.originalUsername;
-            
-            if (newUsername !== originalUsername) {
-                const message = `ユーザー名が変更されています ( ${originalUsername} → ${newUsername} )。\n\n更新後は自動的にログアウトします。\nよろしいですか？`;
-                
-                if (!confirm(message)) {
-                    event.preventDefault(); 
-                }
-            }
-        });
-    }
-});
-</script>
 {% endblock %}
