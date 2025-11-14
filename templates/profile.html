@@ -24,33 +24,39 @@
         <div class="bio post-form">
             <h3>自己紹介</h3>
             
-            {% if user.grade %}
+        {% if user.grade %}
             <div class="tag-container" style="margin-top: 0; margin-bottom: 10px; gap: 10px;">
-                <span class="tag-box" style="background-color: #007bff; color: white; border-color: #007bff; cursor: default;">
+    
+                <a href="{{ url_for('search', search_query=user.grade) }}" class="tag-box" style="background-color: #007bff; color: white; border-color: #007bff;">
                     {{ user.grade }}
-                </span>
+                </a>
                 {% if user.category %}
-                <span class="tag-box" style="background-color: #6c757d; color: white; border-color: #6c757d; cursor: default;">
+                <a href="{{ url_for('search', search_query=user.category) }}" class="tag-box" style="background-color: #6c757d; color: white; border-color: #6c757d;">
                     {{ user.category }}
-                </span>
+                </a>
                 {% endif %}
+    
                 {% if user.user_class %}
-                <span class="tag-box" style="background-color: #6c757d; color: white; border-color: #6c757d; cursor: default;">
+                <a href="{{ url_for('search', search_query=user.user_class) }}" class="tag-box" style="background-color: #6c757d; color: white; border-color: #6c757d;">
                     {{ user.user_class }}
-                </span>
+                </a>
                 {% endif %}
+    
                 {% if user.program %}
-                <span class="tag-box" style="background-color: #28a745; color: white; border-color: #28a745; cursor: default;">
+                <a href="{{ url_for('search', search_query=user.program) }}" class="tag-box" style="background-color: #28a745; color: white; border-color: #28a745;">
                     {{ user.program }}
-                </span>
+                </a>
                 {% endif %}
+    
                 {% if user.major %}
-                <span class="tag-box" style="background-color: #17a2b8; color: white; border-color: #17a2b8; cursor: default;">
+                <a href="{{ url_for('search', search_query=user.major) }}" class="tag-box" style="background-color: #17a2b8; color: white; border-color: #17a2b8;">
                     {{ user.major }}
-                </span>
+                </a>
                 {% endif %}
             </div>
-            {% endif %}
+        {% endif %}
+        </div>
+    {% endif %}
 
             {% if user.tags %}
                 <div class="tag-container" style="margin-top: 0; margin-bottom: 10px;">
