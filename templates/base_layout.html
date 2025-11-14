@@ -1440,24 +1440,22 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         });
     });
 
-    // ▼▼▼ 「8. プロフィール編集フォーム」の全コードを置き換え ▼▼▼
+    // ▼▼▼ [修正] 「8. プロフィール編集フォーム」の全コードを置き換え ▼▼▼
     const gradeSelect = document.getElementById('form-select-grade');
     
     if (gradeSelect) {
-        // 制御対象の「フォームの <DIV>」を取得
+        // (div と select の取得は変更なし)
         const categoryDiv = document.getElementById('form-field-category');
         const classDiv = document.getElementById('form-field-class');
         const programDiv = document.getElementById('form-field-program');
-        const majorDiv = document.getElementById('form-field-major'); // <-- ★専攻DIVを追加
-
-        // 制御対象の「<SELECT> タグ」を取得
+        const majorDiv = document.getElementById('form-field-major');
         const categorySelect = document.getElementById('form-select-category');
         const classSelect = document.getElementById('form-select-class');
         const programSelect = document.getElementById('form-select-program');
-        const majorSelect = document.getElementById('form-select-major'); // <-- ★専攻SELECTを追加
+        const majorSelect = document.getElementById('form-select-major');
         
-        // ( filterOptions, getClassGroup, filterProgramOptions, getProgramGroup ... )
-        // ( ... 4つのヘルパー関数群は変更なし ... )
+        // (filterOptions, filterProgramOptions, getProgramGroup, filterMajorOptions, getMajorGroup は変更なし)
+        // (これらは v6 のまま、カッコなしの「値」を参照しているので、forms.pyの「表示名」変更の影響を受けません)
         const filterOptions = (selectElement, allowedGroups) => {
             Array.from(selectElement.options).forEach(option => {
                 const optionValue = option.value;
@@ -1480,12 +1478,6 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 option.style.display = show ? 'block' : 'none';
             });
         };
-        const getClassGroup = (value) => {
-            if (['1クラス', '2クラス', '3クラス', '4クラス', '5クラス', '6クラス', '7クラス', '8クラス', '9クラス', '10クラス', '11クラス', '12クラス'].includes(value)) return '1_year';
-            if (['Aクラス', 'Bクラス', 'Cクラス'].includes(value)) return '2_year_I';
-            if (['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'Mエリア'].includes(value)) return '2_year_II';
-            return 'other';
-        };
         const getProgramGroup = (value) => {
             const programs_I = ['メディア情報学プログラム', '経営・社会情報学プログラム', '情報数理工学プログラム', 'コンピュータサイエンスプログラム', 'デザイン思考・データサイエンスプログラム'];
             const programs_II = ['セキュリティ情報学プログラム', '情報通信工学プログラム', '電子情報学プログラム', '計測・制御システムプログラム', '先端ロボティクスプログラム'];
@@ -1495,13 +1487,10 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             if (programs_III.includes(value)) return 'III類';
             return 'other';
         };
-        
-        // ▼▼▼ ★専攻(Major)のフィルタ関数を追加 ▼▼▼
         const filterMajorOptions = (selectElement, allowedGroups) => {
              Array.from(selectElement.options).forEach(option => {
                 const optionValue = option.value;
                 if (optionValue === '') { option.style.display = 'block'; return; }
-                
                 let show = false;
                 for (const group of allowedGroups) {
                     if (getMajorGroup(optionValue) === group) { show = true; break; }
@@ -1516,6 +1505,18 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             return 'other';
         };
 
+        // ▼▼▼ [修正] III類クラス (2_year_III) を追加 ▼▼▼
+        const getClassGroup = (value) => {
+            if (['1クラス', '2クラス', '3クラス', '4クラス', '5クラス', '6クラス', '7クラス', '8クラス', '9クラス', '10クラス', '11クラス', '12クラス'].includes(value)) return '1_year';
+            if (['Aクラス', 'Bクラス', 'Cクラス'].includes(value)) return '2_year_I';
+            if (['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'Mエリア'].includes(value)) return '2_year_II';
+            // ★III類クラスを追加
+            if (['III類1クラス', 'III類2クラス', 'III類3クラス', 'III類4クラス'].includes(value)) return '2_year_III';
+            return 'other';
+        };
+        // ▲▲▲ ここまで修正 ▲▲▲
+
+
         // メインの表示切替ロジック
         const updateFormVisibility = () => {
             const gradeVal = gradeSelect.value;
@@ -1525,7 +1526,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             categoryDiv.style.display = 'none';
             classDiv.style.display = 'none';
             programDiv.style.display = 'none';
-            majorDiv.style.display = 'none'; // <-- ★専攻も隠す
+            majorDiv.style.display = 'none';
 
             if (gradeVal === '1年') {
                 classDiv.style.display = 'block';
@@ -1544,55 +1545,55 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                     filterOptions(classSelect, ['2_year_II']);
                     filterProgramOptions(programSelect, ['II類']);
                 } else if (categoryVal === 'III類') {
+                    // ▼▼▼ [修正] III類でもクラスを表示 ▼▼▼
+                    classDiv.style.display = 'block';
+                    filterOptions(classSelect, ['2_year_III']); // ★III類クラスのみ
                     filterProgramOptions(programSelect, ['III類']);
+                    // ▲▲▲ ここまで修正 ▲▲▲
                 } else {
                     filterProgramOptions(programSelect, ['I類', 'II類', 'III類']);
                 }
             }
             else if (gradeVal === '3年' || gradeVal === '4年') {
+                // (変更なし)
                 categoryDiv.style.display = 'block';
                 programDiv.style.display = 'block';
-                
                 if (categoryVal === 'I類') filterProgramOptions(programSelect, ['I類']);
                 else if (categoryVal === 'II類') filterProgramOptions(programSelect, ['II類']);
                 else if (categoryVal === 'III類') filterProgramOptions(programSelect, ['III類']);
                 else filterProgramOptions(programSelect, ['I類', 'II類', 'III類']);
             }
-            // ▼▼▼ ★大学院生のロジックを追加 ▼▼▼
             else if (gradeVal === '大学院生') {
-                categoryDiv.style.display = 'block'; // 類(I/II/III)
-                majorDiv.style.display = 'block'; // 専攻
-                
-                // 類に応じて専攻をフィルタリング（画像の矢印対応）
+                // (変更なし)
+                categoryDiv.style.display = 'block';
+                majorDiv.style.display = 'block';
                 if (categoryVal === 'I類') filterMajorOptions(majorSelect, ['I類']);
                 else if (categoryVal === 'II類') filterMajorOptions(majorSelect, ['II類']);
                 else if (categoryVal === 'III類') filterMajorOptions(majorSelect, ['III類']);
-                else filterMajorOptions(majorSelect, ['I類', 'II類', 'III類']); // 全て表示
+                else filterMajorOptions(majorSelect, ['I類', 'II類', 'III類']);
             }
-            // '教職員', 'その他', '' は何も表示しない
         };
 
-        // --- イベントリスナーを登録 (★リセット処理を強化★) ---
+        // (イベントリスナーは変更なし)
         gradeSelect.addEventListener('change', () => {
-            // 学年が変更されたら、全ての子をリセット
             categorySelect.value = '';
             classSelect.value = '';
             programSelect.value = '';
-            majorSelect.value = ''; // <-- ★専攻もリセット
+            majorSelect.value = '';
             updateFormVisibility();
         });
         
         categorySelect.addEventListener('change', () => {
-            // 類が変更されたら、それ以下の子をリセット
             classSelect.value = '';
             programSelect.value = '';
-            majorSelect.value = ''; // <-- ★専攻もリセット
+            majorSelect.value = '';
             updateFormVisibility();
         });
 
         // --- ページ読み込み時に1回実行 ---
         updateFormVisibility();
     }
+// ▲▲▲ 「8. プロフィール編集フォーム」ここまで ▲▲▲
     
 }); // <-- ★★★ DOMContentLoaded はここで閉じる ★★★
 

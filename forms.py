@@ -62,9 +62,12 @@ CLASS_CHOICES = [
     # 2年生 I類用
     ('Aクラス', 'Aクラス (I類)'), ('Bクラス', 'Bクラス (I類)'), ('Cクラス', 'Cクラス (I類)'),
     # 2年生 II類用
-    ('I1', 'I1 (II類)'), ('I2', 'I2 (II類)'), ('I3', 'I3 (II類)'),
-    ('I4', 'I4 (II類)'), ('I5', 'I5 (II類)'), ('I6', 'I6 (II類)'),
-    ('Mエリア', 'Mエリア (II類)')
+    ('I1', 'I1'), ('I2', 'I2'), ('I3', 'I3'),
+    ('I4', 'I4'), ('I5', 'I5'), ('I6', 'I6'),
+    ('Mエリア', 'Mエリア'),
+    # 2年III類用
+    ('1クラス', '1クラス'), ('2クラス', '2クラス'),
+    ('3クラス', '3クラス'), ('4クラス', '4クラス')
 ]
 
 # [cite_start]画像 [cite: 1] から読み取ったプログラムリスト
@@ -93,16 +96,16 @@ PROGRAM_CHOICES = [
 
 MAJOR_CHOICES = [
     ('', '--- 専攻を選択 ---'),
-    ('情報学専攻', '情報学専攻'),
-    ('情報・ネットワーク工学専攻', '情報・ネットワーク工学専攻'),
-    ('機械知能システム学専攻', '機械知能システム学専攻'),
-    ('基盤理工学専攻', '基盤理工学専攻')
+    ('情報学専攻', '情報学専攻 (I類から)'),
+    ('情報・ネットワーク工学専攻', '情報・ネットワーク工学専攻 (II類から)'),
+    ('機械知能システム学専攻', '機械知能システム学専攻 (III類から)'),
+    ('基盤理工学専攻', '基盤理工学専攻 (III類から)')
 ]
 
 class ProfileForm(FlaskForm):
     username = StringField('ユーザー名', validators=[DataRequired(), Length(min=2, max=20)])
     bio = TextAreaField('自己紹介')
-    icon = FileField('アイコンを選択', validators=[FileAllowed(['jpg', 'png', 'gif','heic', 'heif'], '画像ファイルのみ')])
+    icon = FileField('アイコンを選択', validators=[FileAllowed(['jpg', 'png', 'jpeg', 'gif','heic', 'heif'], '画像ファイルのみ')])
     tags = StringField('タグ')
     grade = SelectField('学年', choices=GRADE_CHOICES, default='')
     category = SelectField('類', choices=CATEGORY_CHOICES, default='')
