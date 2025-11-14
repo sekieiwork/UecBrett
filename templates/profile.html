@@ -27,29 +27,29 @@
         {% if user.grade %}
             <div class="tag-container" style="margin-top: 0; margin-bottom: 10px; gap: 10px;">
     
-                <a href="{{ url_for('search', search_query=user.grade) }}" class="tag-box" style="background-color: #007bff; color: white; border-color: #007bff;">
+                <a href="{{ url_for('search', search_query=user.grade, active_tab='users') }}" class="tag-box" style="background-color: #007bff; color: white; border-color: #007bff;">
                     {{ user.grade }}
                 </a>
                 {% if user.category %}
-                <a href="{{ url_for('search', search_query=user.category) }}" class="tag-box" style="background-color: #6c757d; color: white; border-color: #6c757d;">
+                <a href="{{ url_for('search', search_query=user.category, active_tab='users') }}" class="tag-box" style="background-color: #6c757d; color: white; border-color: #6c757d;">
                     {{ user.category }}
                 </a>
                 {% endif %}
     
                 {% if user.user_class %}
-                <a href="{{ url_for('search', search_query=user.user_class) }}" class="tag-box" style="background-color: #6c757d; color: white; border-color: #6c757d;">
+                <a href="{{ url_for('search', search_query=user.user_class, active_tab='users') }}" class="tag-box" style="background-color: #6c757d; color: white; border-color: #6c757d;">
                     {{ user.user_class }}
                 </a>
                 {% endif %}
     
                 {% if user.program %}
-                <a href="{{ url_for('search', search_query=user.program) }}" class="tag-box" style="background-color: #28a745; color: white; border-color: #28a745;">
+                <a href="{{ url_for('search', search_query=user.program, active_tab='users') }}" class="tag-box" style="background-color: #28a745; color: white; border-color: #28a745;">
                     {{ user.program }}
                 </a>
                 {% endif %}
     
                 {% if user.major %}
-                <a href="{{ url_for('search', search_query=user.major) }}" class="tag-box" style="background-color: #17a2b8; color: white; border-color: #17a2b8;">
+                <a href="{{ url_for('search', search_query=user.major, active_tab='users') }}" class="tag-box" style="background-color: #17a2b8; color: white; border-color: #17a2b8;">
                     {{ user.major }}
                 </a>
                 {% endif %}
