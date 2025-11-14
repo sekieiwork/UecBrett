@@ -1661,8 +1661,14 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 
                 // 4. 専攻が自動設定されたら、編集不可にする
                 if (getMajorByProgram(programVal)) {
-                    majorSelect.disabled = true;
+                    // ▼▼▼ disabled = true の代わりにCSSで操作不可にする ▼▼▼
+                    majorSelect.style.pointerEvents = 'none';
+                    majorSelect.style.backgroundColor = '#e9ecef'; // disabled風の背景色
+                    majorSelect.disabled = false; // 値が送信されるように false に変更
                 } else {
+                    // ▼▼▼スタイルを元に戻す ▼▼▼
+                    majorSelect.style.pointerEvents = 'auto';
+                    majorSelect.style.backgroundColor = '#fff';
                     majorSelect.disabled = false;
                 }
             }
@@ -1676,6 +1682,8 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             majorSelect.value = '';
             categorySelect.disabled = false;
             majorSelect.disabled = false;
+            majorSelect.style.pointerEvents = 'auto';
+            majorSelect.style.backgroundColor = '#fff';
             updateFormVisibility();
         });
         
@@ -1684,6 +1692,8 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             programSelect.value = '';
             majorSelect.value = '';
             majorSelect.disabled = false;
+            majorSelect.style.pointerEvents = 'auto';
+            majorSelect.style.backgroundColor = '#fff';
             updateFormVisibility();
         });
 
