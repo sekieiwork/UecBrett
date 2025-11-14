@@ -1514,6 +1514,35 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             return '';
         };
 
+        const getMajorByProgram = (programValue) => {
+            // I類
+            const i_programs = ['メディア情報学プログラム', '経営・社会情報学プログラム', '情報数理工学プログラム', 'コンピュータサイエンスプログラム', 'デザイン思考・データサイエンスプログラム'];
+            if (i_programs.includes(programValue)) return '情報学専攻';
+            // II類
+            const ii_programs = ['セキュリティ情報学プログラム', '情報通信工学プログラム', '電子情報学プログラム', '計測・制御システムプログラム', '先端ロボティクスプログラム'];
+            if (ii_programs.includes(programValue)) return '情報・ネットワーク工学専攻';
+            // III類 -> 機械知能
+            const iii_kikai_programs = ['機械システムプログラム', '電子工学プログラム'];
+            if (iii_kikai_programs.includes(programValue)) return '機械知能システム学専攻';
+            // III類 -> 基盤理工
+            const iii_kiban_programs = ['光工学プログラム', '物理工学プログラム', '化学生命工学プログラム'];
+            if (iii_kiban_programs.includes(programValue)) return '基盤理工学専攻';
+            return ''; // '未決定' or other
+        };
+
+        const filterMajorByProgram = (majorSelect, selectedProgram) => {
+            const targetMajor = getMajorByProgram(selectedProgram);
+            Array.from(majorSelect.options).forEach(option => {
+                const optionValue = option.value;
+                if (optionValue === '') { option.style.display = 'block'; return; }
+                option.style.display = (optionValue === targetMajor) ? 'block' : 'none';
+            });
+            // 専攻が特定されたら自動選択する
+            if (targetMajor) {
+                majorSelect.value = targetMajor;
+            }
+        };
+
        const getClassGroup = (value) => {
             if (['1クラス', '2クラス', '3クラス', '4クラス', '5クラス', '6クラス', '7クラス', '8クラス', '9クラス', '10クラス', '11クラス', '12クラス'].includes(value)) return '1_year';
             if (['Aクラス', 'Bクラス', 'Cクラス'].includes(value)) return '2_year_I';
@@ -1528,14 +1557,15 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         const updateFormVisibility = () => {
             const gradeVal = gradeSelect.value;
             const categoryVal = categorySelect.value;
+            const programVal = programSelect.value;
 
             // まずすべて非表示に
             categoryDiv.style.display = 'none';
             classDiv.style.display = 'none';
             programDiv.style.display = 'none';
             majorDiv.style.display = 'none';
-
             categorySelect.disabled = false
+            majorSelect.disabled = false;
 
             if (gradeVal === '1年') {
                 // ▼▼▼ [修正] 1年でも類とクラスを表示 ▼▼▼
@@ -1582,13 +1612,26 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 else filterProgramOptions(programSelect, ['I類', 'II類', 'III類']);
             }
             else if (gradeVal === '大学院生') {
-                // (変更なし)
+                // 1. 類、プログラム、専攻の「枠」をすべて表示
                 categoryDiv.style.display = 'block';
+                programDiv.style.display = 'block';
                 majorDiv.style.display = 'block';
-                if (categoryVal === 'I類') filterMajorOptions(majorSelect, ['I類']);
-                else if (categoryVal === 'II類') filterMajorOptions(majorSelect, ['II類']);
-                else if (categoryVal === 'III類') filterMajorOptions(majorSelect, ['III類']);
-                else filterMajorOptions(majorSelect, ['I類', 'II類', 'III類']);
+                
+                // 2. 「類」の選択に応じて「プログラム」の選択肢を絞り込む (3/4年と同じ)
+                if (categoryVal === 'I類') filterProgramOptions(programSelect, ['I類']);
+                else if (categoryVal === 'II類') filterProgramOptions(programSelect, ['II類']);
+                else if (categoryVal === 'III類') filterProgramOptions(programSelect, ['III類']);
+                else filterProgramOptions(programSelect, ['I類', 'II類', 'III類']); // '---' の場合は全部
+
+                // 3. 「プログラム」の選択に応じて「専攻」の選択肢を絞り込み、自動設定する
+                filterMajorByProgram(majorSelect, programVal);
+                
+                // 4. 専攻が自動設定されたら、編集不可にする
+                if (getMajorByProgram(programVal)) {
+                    majorSelect.disabled = true;
+                } else {
+                    majorSelect.disabled = false;
+                }
             }
         };
 
@@ -1599,6 +1642,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             programSelect.value = '';
             majorSelect.value = '';
             categorySelect.disabled = false;
+            majorSelect.disabled = false;
             updateFormVisibility();
         });
         
@@ -1606,6 +1650,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             classSelect.value = '';
             programSelect.value = '';
             majorSelect.value = '';
+            majorSelect.disabled = false;
             updateFormVisibility();
         });
 
@@ -1623,6 +1668,14 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 }
             }
             // 2年生以上の場合は、クラス->類 の連動は不要
+        });
+
+        programSelect.addEventListener('change', () => {
+            majorSelect.value = ''; // 専攻をリセット
+            // 大学院生の場合のみ、プログラム→専攻の連動を実行
+            if (gradeSelect.value === '大学院生') {
+                updateFormVisibility();
+            }
         });
 
         // --- ページ読み込み時に1回実行 ---
