@@ -1514,20 +1514,53 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             return '';
         };
 
-        const getMajorByProgram = (programValue) => {
-            // I類
-            const i_programs = ['メディア情報学プログラム', '経営・社会情報学プログラム', '情報数理工学プログラム', 'コンピュータサイエンスプログラム', 'デザイン思考・データサイエンスプログラム'];
-            if (i_programs.includes(programValue)) return '情報学専攻';
-            // II類
-            const ii_programs = ['セキュリティ情報学プログラム', '情報通信工学プログラム', '電子情報学プログラム', '計測・制御システムプログラム', '先端ロボティクスプログラム'];
-            if (ii_programs.includes(programValue)) return '情報・ネットワーク工学専攻';
-            // III類 -> 機械知能
-            const iii_kikai_programs = ['機械システムプログラム', '電子工学プログラム'];
-            if (iii_kikai_programs.includes(programValue)) return '機械知能システム学専攻';
-            // III類 -> 基盤理工
-            const iii_kiban_programs = ['光工学プログラム', '物理工学プログラム', '化学生命工学プログラム'];
-            if (iii_kiban_programs.includes(programValue)) return '基盤理工学専攻';
-            return ''; // '未決定' or other
+       const getMajorByProgram = (programValue) => {
+
+            // --- 1. 情報学専攻 (I類) になるプログラム ---
+            const major_JohoGaku = [
+                // (I類から)
+                'メディア情報学プログラム', 
+                '経営・社会情報学プログラム', 
+                'デザイン思考・データサイエンスプログラム',
+                // ★ 修正(II類から) ★
+                'セキュリティ情報学プログラム'
+            ];
+            if (major_JohoGaku.includes(programValue)) return '情報学専攻';
+
+            // --- 2. 情報・ネットワーク工学専攻 (II類) になるプログラム ---
+            const major_JohoNetwork = [
+                // (II類から)
+                '情報通信工学プログラム', 
+                '電子情報学プログラム',
+                // ★ 修正(I類から) ★
+                '情報数理工学プログラム', 
+                'コンピュータサイエンスプログラム'
+            ];
+            if (major_JohoNetwork.includes(programValue)) return '情報・ネットワーク工学専攻';
+
+            // --- 3. 機械知能システム学専攻 (III類) になるプログラム ---
+            const major_KikaiChino = [
+                // (III類から)
+                '機械システムプログラム',
+                // ★ 修正(II類から) ★
+                '計測・制御システムプログラム', 
+                '先端ロボティクスプログラム'
+            ];
+            if (major_KikaiChino.includes(programValue)) return '機械知能システム学専攻';
+
+            // --- 4. 基盤理工学専攻 (III類) になるプログラム ---
+            const major_KibanRiko = [
+                // (III類から)
+                '光工学プログラム', 
+                '物理工学プログラム', 
+                '化学生命工学プログラム',
+                // ★ 修正(III類から) ★
+                '電子工学プログラム'
+            ];
+            if (major_KibanRiko.includes(programValue)) return '基盤理工学専攻';
+            
+            // '未決定' または '---' の場合
+            return ''; 
         };
 
         const filterMajorByProgram = (majorSelect, selectedProgram) => {
