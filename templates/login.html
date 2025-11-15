@@ -9,11 +9,15 @@
         <div class="form-field">
     		{{ form.username.label }}<br>
     		{{ form.username() }}
-	</div>
-	<div class="form-field">
+	    </div>
+	    <div class="form-field">
     		{{ form.password.label }}<br>
     		{{ form.password() }}
-	</div>
+	    </div>
+        <div class="form-field" style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5em; background: none; border: none; box-shadow: none; padding: 0;">
+            {{ form.remember_me(style="width: auto; height: auto;") }}
+            {{ form.remember_me.label(style="margin: 0; font-weight: normal;") }}
+        </div>
         {{ form.submit }}
     </form>
     <p>アカウントをお持ちでないですか？ <a href="{{ url_for('register') }}">ユーザー登録</a></p>

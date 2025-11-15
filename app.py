@@ -623,7 +623,7 @@ def login():
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user and check_password_hash(user.password, form.password.data):
-            login_user(user)
+            login_user(user, remember=form.remember_me.data)
             return redirect(url_for('index'))
         else:
             flash('ユーザー名またはパスワードが正しくありません。')
