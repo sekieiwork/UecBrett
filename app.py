@@ -80,10 +80,7 @@ def inject_common_vars():
             target_kairanbans_query = base_query.join(kairanban_tags).join(Tag).filter(
                 Tag.name.in_(user_all_tag_names)
             )
-        
-        if user_tag_ids:
-            target_kairanbans_query = base_query.join(kairanban_tags).filter(kairanban_tags.c.tag_id.in_(user_tag_ids))
-                
+               
             # 3. チェック済みのIDを取得
             checked_ids = {c.kairanban_id for c in KairanbanCheck.query.filter_by(user_id=current_user.id)}
                 
