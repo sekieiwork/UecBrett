@@ -289,7 +289,8 @@ class Kairanban(db.Model):
     
     # どのユーザーがチェックしたか (KairanbanCheckモデルとの連携)
     checks = db.relationship('KairanbanCheck', backref='kairanban', lazy='dynamic', cascade="all, delete")
-
+    notifications = db.relationship('Notification', back_populates='kairanban', lazy='dynamic', cascade="all, delete")
+    
 # 6. Kairanban確認チェックモデル
 class KairanbanCheck(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -341,7 +342,7 @@ class Post(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
     comments = db.relationship('Comment', backref='post', lazy=True, cascade="all, delete")
     bookmarks = db.relationship('Bookmark', backref='post', lazy='dynamic', cascade="all, delete")
-    notifications = db.relationship('Notification', backref='post', lazy='dynamic', cascade="all, delete")
+    notifications = db.relationship('Notification', back_populates='post', lazy='dynamic', cascade="all, delete")
     
     # ▼▼▼ [追加] 'post_tags' を使う
     tags = db.relationship('Tag', secondary=post_tags, lazy='subquery',
@@ -375,10 +376,10 @@ class Notification(db.Model):
     kairanban_id = db.Column(db.Integer, db.ForeignKey('kairanban.id', ondelete="CASCADE"), nullable=True)
     
     # 3. Postモデルへのリレーションシップを修正 (nullable=Trueに対応)
-    post = db.relationship('Post', backref='notifications') # 元の行を変更
+    post = db.relationship('Post', back_populates='notifications') # 元の行を変更
 
     # 4. Kairanbanモデルへのリレーションシップを新しく追加
-    kairanban = db.relationship('Kairanban', backref='notifications')
+    kairanban = db.relationship('Kairanban', back_populates='notifications')
 
 # Routes
 @app.route('/', defaults={'page': 1}, methods=['GET', 'POST'])
