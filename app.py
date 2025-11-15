@@ -22,6 +22,7 @@ import cloudinary
 import cloudinary.uploader
 import bleach
 from bleach.linkifier import Linker
+from pywebpush import webpush, WebPushException
 
 
 
@@ -359,10 +360,15 @@ class Post(db.Model):
     bookmarks = db.relationship('Bookmark', backref='post', lazy='dynamic', cascade="all, delete")
     notifications = db.relationship('Notification', back_populates='post', lazy='dynamic', cascade="all, delete")
     
-    # ▼▼▼ [追加] 'post_tags' を使う
     tags = db.relationship('Tag', secondary=post_tags, lazy='subquery',
         backref=db.backref('posts', lazy=True), cascade="all, delete")
-    # ▲▲▲ [追加] ここまで ▲▲▲
+    
+class UserSubscription(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
+    subscription_json = db.Column(db.Text, nullable=False) # JSON文字列として保存
+    user = db.relationship('User', backref=db.backref('subscriptions', lazy='dynamic', cascade="all, delete"))
+    
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -455,11 +461,35 @@ def post_detail(post_id):
         if current_user != post.author:
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
             db.session.add(notification)
+            # ▼▼▼ [ここに追加] ▼▼▼
+            send_web_push(
+                post.author, 
+                'コメントが付きました', 
+                f'あなたの投稿「{post.title}」にコメントが付きました。',
+                url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}', _external=True)
+            )
         
         # この投稿に（このコメント以前に）コメントしたユーザーを重複なく取得
         previous_commenters = db.session.query(User).join(Comment).filter(
             Comment.post_id == post.id
         ).distinct().all()
+
+        for user in previous_commenters:
+            # ... (if user.id == current_user.id: ... の中略)
+            
+            notification = Notification(
+                recipient=user, 
+                post=post, 
+                message="あなたがコメントした投稿にコメントが付きました。"
+            )
+            db.session.add(notification)
+            # ▼▼▼ 追加 ▼▼▼
+            send_web_push(
+                user,
+                'コメントが付きました',
+                'あなたがコメントした投稿に新しいコメントが付きました。',
+                url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}', _external=True)
+            )
 
         for user in previous_commenters:
             # 1. 自分自身には通知しない
@@ -506,11 +536,18 @@ def bookmark_post(post_id):
         is_bookmarked = False
     else:
         new_bookmark = Bookmark(user_id=current_user.id, post_id=post.id)
-        db.session.add(new_bookmark)
         if current_user != post.author:
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」がブックマークされました。')
             db.session.add(notification)
+            # ▼▼▼ 追加 ▼▼▼
+            send_web_push(
+                post.author,
+                '投稿がブックマークされました',
+                f'あなたの投稿「{post.title}」がブックマークされました。',
+                url_for('post_detail', post_id=post.id, _external=True)
+            )
         is_bookmarked = True
+        db.session.add(new_bookmark)
     
     db.session.commit()
     return jsonify(is_bookmarked=is_bookmarked)
@@ -557,20 +594,21 @@ def edit_post(post_id):
             
         db.session.commit()
 
-        # この投稿をブックマークしているユーザーに通知
-        # (post.bookmarks は Bookmark モデルとのリレーション)
         for bookmark in post.bookmarks.all():
-            # 編集者（自分）には通知しない
             if bookmark.user_id != current_user.id:
                 notification = Notification(
-                    recipient=bookmark.user, # bookmark.user で User オブジェクトが取れます
+                    recipient=bookmark.user, 
                     post=post,
                     message="あなたがブックマークした投稿に変更がありました。"
                 )
                 db.session.add(notification)
-        
-        # 通知を追加したので、再度コミット
-        db.session.commit()
+                # ▼▼▼ 追加 ▼▼▼
+                send_web_push(
+                    bookmark.user,
+                    '投稿が編集されました',
+                    'あなたがブックマークした投稿に変更がありました。',
+                    url_for('post_detail', post_id=post.id, _external=True)
+                )
 
         return redirect(url_for('post_detail', post_id=post.id))
 
@@ -960,6 +998,7 @@ def kairanban_index():
             target_tag_names = {tag.name for tag in new_kairanban.tags}
 
             recipients = []
+
             if target_tag_names:
                 # 2a. カスタムタグ (user_tags) で一致するユーザーを検索
                 custom_tag_recipients_query = User.query.join(user_tags).join(Tag).filter(
@@ -990,6 +1029,12 @@ def kairanban_index():
                         message=f'回覧板「{new_kairanban.content[:20]}...」が届きました。'
                     )
                     db.session.add(notification)
+                    send_web_push(
+                        user,
+                        '新しい回覧板が届きました',
+                        f'回覧板「{new_kairanban.content[:20]}...」が届きました。',
+                        url_for('kairanban_index', _external=True)
+                    )
             # ▲▲▲ [ここまでが修正箇所です] ▲▲▲
             
             db.session.commit() # L1057
@@ -1117,8 +1162,101 @@ def delete_kairanban(kairanban_id):
     flash('回覧板を撤回しました。')
     return redirect(url_for('kairanban_index'))
 
-if __name__ == '__main__':
-    app.run(debug=True)
+
+# 2. Web Push 送信ヘルパー関数を追加
+def send_web_push(user, title, body, url=None):
+    """指定されたユーザーにWeb Push通知を送信する"""
+    
+    VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY')
+    VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL')
+    
+    if not VAPID_PRIVATE_KEY or not VAPID_CLAIM_EMAIL:
+        print("Web Push VAPIDキーが設定されていません。")
+        return
+
+    vapid_claims = {"sub": VAPID_CLAIM_EMAIL} # "mailto:" は不要になりました
+    
+    payload = {
+        'title': title,
+        'body': body,
+        # _external=True で完全なURLを生成
+        'icon': url_for('static', filename='icons/android-chrome-192x192.png', _external=True),
+        'data': {
+            'url': url or url_for('show_notifications', _external=True)
+        }
+    }
+    payload_json = json.dumps(payload)
+
+    subscriptions = user.subscriptions.all()
+    
+    for sub_model in subscriptions:
+        try:
+            subscription_info = json.loads(sub_model.subscription_json)
+            webpush(
+                subscription_info=subscription_info,
+                data=payload_json,
+                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_claims=vapid_claims
+            )
+        except WebPushException as ex:
+            print(f"Web Push送信エラー: {ex}")
+            # 購読が無効になっている場合 (例: 410 Gone, 404 Not Found)
+            if ex.response and (ex.response.status_code == 410 or ex.response.status_code == 404):
+                print(f"購読ID {sub_model.id} は無効なため削除します。")
+                db.session.delete(sub_model)
+        except Exception as e:
+            print(f"予期せぬエラー: {e}")
+    
+    db.session.commit() # 削除された購読情報をコミット
+
+# 3. sw.js と manifest.json を配信するルートを追加
+@app.route('/sw.js')
+def service_worker():
+    return app.send_static_file('sw.js')
+
+@app.route('/manifest.json')
+def manifest():
+    return app.send_static_file('manifest.json')
+
+# 4. APIエンドポイント (VAPIDキー取得、購読) を追加
+@app.route('/api/vapid_public_key')
+@login_required
+def get_vapid_public_key():
+    public_key = os.environ.get('VAPID_PUBLIC_KEY')
+    if not public_key:
+        return jsonify({'error': 'VAPID public key not configured'}), 500
+    return jsonify({'public_key': public_key})
+
+@app.route('/api/subscribe', methods=['POST'])
+@login_required
+def subscribe():
+    subscription_data = request.get_json()
+    if not subscription_data:
+        abort(400, 'No subscription data provided')
+
+    subscription_json = json.dumps(subscription_data)
+    
+    # 既に同じ購読情報がないか確認 (endpointで判定)
+    endpoint = subscription_data.get('endpoint')
+    existing_sub = UserSubscription.query.filter(
+        UserSubscription.subscription_json.like(f'%"{endpoint}"%')
+    ).first()
+
+    if existing_sub:
+        # 既に存在する場合、ユーザーIDが一致するか確認
+        if existing_sub.user_id == current_user.id:
+            return jsonify({'status': 'already_subscribed'}), 200
+        else:
+            # 別のユーザーが使っていた場合は削除
+            db.session.delete(existing_sub)
+            
+    new_sub = UserSubscription(user_id=current_user.id, subscription_json=subscription_json)
+    db.session.add(new_sub)
+    db.session.commit()
+    
+    return jsonify({'status': 'success'}), 201
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

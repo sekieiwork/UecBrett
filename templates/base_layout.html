@@ -14,6 +14,7 @@
     const TEMPLATES_DATA = {{ templates_for_js | safe }};
     </script>
     {% endif %}
+    <link rel="manifest" href="{{ url_for('manifest') }}">
     <style>
     /*----------------------------------*/
     /* 全体的な設定とリセット */
@@ -1800,6 +1801,119 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         });
     }
     
+    // ▼▼▼ 3. Service Worker と Push通知のロジックを追加 ▼▼▼
+    const pushButton = document.getElementById('enable-push-notifications');
+
+    if ('serviceWorker' in navigator && 'PushManager' in window && pushButton) {
+        
+        let swRegistration = null;
+
+        // Service Workerの登録
+        navigator.serviceWorker.register('{{ url_for("service_worker") }}')
+        .then(function(swReg) {
+            console.log('Service Worker 登録成功:', swReg);
+            swRegistration = swReg;
+            initializeUI(); // UIの初期化
+        })
+        .catch(function(error) {
+            console.error('Service Worker 登録失敗:', error);
+        });
+
+        function initializeUI() {
+            pushButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                // 通知が無効化されていたら、購読プロセスを開始
+                if (Notification.permission === 'denied') {
+                    alert('通知がブロックされています。ブラウザの設定で許可してください。');
+                    return;
+                }
+                subscribeUser();
+            });
+            
+            // 既に購読済みか確認
+            swRegistration.pushManager.getSubscription()
+            .then(function(subscription) {
+                if (subscription) {
+                    console.log('既に購読済みです。');
+                    pushButton.textContent = '通知は有効です';
+                    pushButton.style.color = '#6c757d'; // グレーアウト
+                    pushButton.style.pointerEvents = 'none';
+                }
+            });
+        }
+        
+        function subscribeUser() {
+            // 1. VAPID公開鍵をサーバーから取得
+            fetch('{{ url_for("get_vapid_public_key") }}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) throw new Error(data.error);
+                
+                const applicationServerKey = urlB64ToUint8Array(data.public_key);
+                
+                // 2. 購読（通知許可ダイアログが表示される）
+                return swRegistration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: applicationServerKey
+                });
+            })
+            .then(function(subscription) {
+                console.log('ユーザーは購読を許可しました:', subscription);
+                
+                // 3. 購読情報をサーバーに送信
+                return sendSubscriptionToServer(subscription);
+            })
+            .then(function() {
+                pushButton.textContent = '通知が有効になりました';
+                pushButton.style.color = '#28a745'; // 緑色
+                pushButton.style.pointerEvents = 'none';
+            })
+            .catch(function(err) {
+                console.error('購読に失敗しました: ', err);
+                if (Notification.permission === 'denied') {
+                    alert('通知がブロックされました。');
+                } else {
+                    alert('通知の有効化に失敗しました。');
+                }
+            });
+        }
+
+        function sendSubscriptionToServer(subscription) {
+            // CSRFトークンを取得 (もしWTF-CSRFを使っているなら)
+            // const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            return fetch('{{ url_for("subscribe") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // 'X-CSRFToken': csrfToken // 必要に応じてCSRFトークンを追加
+                },
+                body: JSON.stringify(subscription)
+            });
+        }
+
+        // Base64をUint8Arrayに変換するヘルパー関数
+        function urlB64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\-/g, '+')
+                .replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+    } else {
+        if (pushButton) {
+            console.warn('Push通知はこのブラウザではサポートされていません。');
+            pushButton.textContent = '通知はサポートされていません';
+            pushButton.style.display = 'none'; // ボタンを非表示に
+        }
+    }
+
 }); // <-- ★★★ DOMContentLoaded はここで閉じる ★★★
 
 </script>
