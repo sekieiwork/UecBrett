@@ -1871,6 +1871,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 pushButton.style.pointerEvents = 'none';
             })
             .catch(function(err) {
+                alert('購読に失敗しました:\n' + err.toString());
                 console.error('購読に失敗しました: ', err);
                 if (Notification.permission === 'denied') {
                     alert('通知がブロックされました。');
