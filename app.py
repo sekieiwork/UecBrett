@@ -1018,12 +1018,31 @@ def kairanban_index():
 
     else:
         # 3. 通常のログインユーザー (タグが一致するもののみ表示)
-        user_tag_ids = {tag.id for tag in current_user.tags}
-        if user_tag_ids:
-            kairanbans_query = base_query.join(kairanban_tags).filter(kairanban_tags.c.tag_id.in_(user_tag_ids))
+        # ▼▼▼ [修正] このブロック(L1046-L1050)を丸ごと置き換え ▼▼▼
+        
+        # 3a. 自分の「ステータスタグ」をセットで取得
+        user_status_tags = {
+            current_user.grade, 
+            current_user.category, 
+            current_user.user_class, 
+            current_user.program, 
+            current_user.major
+        }
+        # 3b. 自分の「カスタムタグ」をセットで取得
+        user_custom_tags = {tag.name for tag in current_user.tags}
+        
+        # 3c. 結合 (Noneや空文字を除外)
+        user_all_tag_names = {tag for tag in user_status_tags.union(user_custom_tags) if tag}
+        
+        if user_all_tag_names:
+            # 3d. タグ名(Tag.name)でKairanbanを検索
+            kairanbans_query = base_query.join(kairanban_tags).join(Tag).filter(
+                Tag.name.in_(user_all_tag_names)
+            )
         else:
-            # ユーザーがタグを持っていない場合、何も表示しない
+            # ユーザーがタグを持っていない
             kairanbans_query = base_query.filter(Kairanban.id < 0) # (空の結果を返す)
+        # ▲▲▲ ここまで修正 ▲▲▲
 
     
     kairanbans = kairanbans_query.order_by(Kairanban.created_at.desc()).all() if kairanbans_query else []
