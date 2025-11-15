@@ -458,10 +458,10 @@ def post_detail(post_id):
         comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
         db.session.add(comment)
         
+        # 1. 投稿者に通知 (自分自身が投稿者でない場合)
         if current_user != post.author:
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
             db.session.add(notification)
-            # ▼▼▼ [ここに追加] ▼▼▼
             send_web_push(
                 post.author, 
                 'コメントが付きました', 
@@ -469,43 +469,36 @@ def post_detail(post_id):
                 url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}', _external=True)
             )
         
+        # 2. 他のコメント投稿者に通知
         # この投稿に（このコメント以前に）コメントしたユーザーを重複なく取得
         previous_commenters = db.session.query(User).join(Comment).filter(
             Comment.post_id == post.id
         ).distinct().all()
 
+        # ▼▼▼ [修正] 通知ロジックをここに集約 ▼▼▼
         for user in previous_commenters:
-            # ... (if user.id == current_user.id: ... の中略)
+            # 2a. 自分自身には通知しない
+            if user.id == current_user.id:
+                continue
+            # 2b. 投稿者には（上記のロジックで）通知済みなのでスキップ
+            if user.id == post.author.id:
+                continue
             
+            # 2c. それ以外のコメント済みユーザーに通知
             notification = Notification(
                 recipient=user, 
                 post=post, 
                 message="あなたがコメントした投稿にコメントが付きました。"
             )
             db.session.add(notification)
-            # ▼▼▼ 追加 ▼▼▼
+            # ▼▼▼ Web Push もここに追加 ▼▼▼
             send_web_push(
                 user,
                 'コメントが付きました',
                 'あなたがコメントした投稿に新しいコメントが付きました。',
                 url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}', _external=True)
             )
-
-        for user in previous_commenters:
-            # 1. 自分自身には通知しない
-            if user.id == current_user.id:
-                continue
-            # 2. 投稿者には（上記のロジックで）通知済みなのでスキップ
-            if user.id == post.author.id:
-                continue
-            
-            # 3. それ以外のコメント済みユーザーに通知
-            notification = Notification(
-                recipient=user, 
-                post=post, 
-                message="あなたがコメントした投稿にコメントが付きました。"
-            )
-            db.session.add(notification)
+        # ▲▲▲ [修正] ここまで ▲▲▲
         
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
@@ -592,23 +585,28 @@ def edit_post(post_id):
             image_url_str = save_picture(form.image.data)
             post.image_url = image_url_str
             
-        db.session.commit()
+        db.session.commit() # 投稿内容の変更をコミット
 
+        # ▼▼▼ [修正] 通知ロジックをここに追加 ▼▼▼
+        # この投稿をブックマークしているユーザーに通知
         for bookmark in post.bookmarks.all():
+            # 編集者（自分）には通知しない
             if bookmark.user_id != current_user.id:
                 notification = Notification(
-                    recipient=bookmark.user, 
+                    recipient=bookmark.user,
                     post=post,
                     message="あなたがブックマークした投稿に変更がありました。"
                 )
                 db.session.add(notification)
-                # ▼▼▼ 追加 ▼▼▼
                 send_web_push(
                     bookmark.user,
                     '投稿が編集されました',
                     'あなたがブックマークした投稿に変更がありました。',
                     url_for('post_detail', post_id=post.id, _external=True)
                 )
+        
+        db.session.commit() # 通知の追加をコミット
+        # ▲▲▲ [修正] ここまで ▲▲▲
 
         return redirect(url_for('post_detail', post_id=post.id))
 
@@ -630,7 +628,6 @@ def edit_post(post_id):
     if uec_review_data:
         uec_review_data_json = json.dumps(uec_review_data)
     
-    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
     return render_template('edit.html', form=form, post=post, md=md, templates=templates, templates_for_js=json.dumps(templates), uec_review_data_json=uec_review_data_json)
 
 @app.route('/post/<int:post_id>/delete', methods=['POST'])
