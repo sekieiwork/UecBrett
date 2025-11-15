@@ -60,8 +60,26 @@ def inject_common_vars():
         # 1. 期限切れでない回覧板
         base_query = Kairanban.query.filter(Kairanban.expires_at > datetime.utcnow())
             
-        # 2. 自分のタグに一致する回覧板
-        user_tag_ids = {tag.id for tag in current_user.tags} # <-- これで安全にアクセスできる
+        # 2a. 自分の「ステータスタグ」をセットで取得
+        user_status_tags = {
+            current_user.grade, 
+            current_user.category, 
+            current_user.user_class, 
+            current_user.program, 
+            current_user.major
+        }
+        # 2b. 自分の「カスタムタグ」をセットで取得
+        user_custom_tags = {tag.name for tag in current_user.tags} #
+        
+        # 2c. 結合 (Noneや空文字を除外)
+        user_all_tag_names = {tag for tag in user_status_tags.union(user_custom_tags) if tag}
+
+        target_kairanbans_query = base_query.filter(Kairanban.id < 0) # デフォルトは空
+        if user_all_tag_names:
+            # 2d. タグ名(Tag.name)でKairanbanを検索
+            target_kairanbans_query = base_query.join(kairanban_tags).join(Tag).filter(
+                Tag.name.in_(user_all_tag_names)
+            )
         
         if user_tag_ids:
             target_kairanbans_query = base_query.join(kairanban_tags).filter(kairanban_tags.c.tag_id.in_(user_tag_ids))
@@ -290,7 +308,7 @@ class Kairanban(db.Model):
     # どのユーザーがチェックしたか (KairanbanCheckモデルとの連携)
     checks = db.relationship('KairanbanCheck', backref='kairanban', lazy='dynamic', cascade="all, delete")
     notifications = db.relationship('Notification', back_populates='kairanban', lazy='dynamic', cascade="all, delete")
-    
+
 # 6. Kairanban確認チェックモデル
 class KairanbanCheck(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -919,7 +937,7 @@ def kairanban_index():
     form = KairanbanForm()
     
     # --- POST (回覧板の新規作成) ---
-    if form.validate_on_submit(): # 全ユーザー作成可能
+    if form.validate_on_submit(): # L997
         try:
             days = int(form.expires_in_days.data)
             expires_at_datetime = datetime.utcnow() + timedelta(days=days)
@@ -930,36 +948,54 @@ def kairanban_index():
                 expires_at=expires_at_datetime
             )
             
-            # ▼▼▼ ★ 2. SAWarning解消のため、addを先に実行 ★ ▼▼▼
-            db.session.add(new_kairanban) 
+            db.session.add(new_kairanban) # L1010
             
             # タグの処理
-            new_kairanban.tags = get_or_create_tags_from_string(form.tags.data)
+            new_kairanban.tags = get_or_create_tags_from_string(form.tags.data) # L1013
+            
             db.session.flush() # new_kairanban.id を確定させる
-            auto_check = KairanbanCheck(user_id=current_user.id, kairanban_id=new_kairanban.id)
-            db.session.add(auto_check)
-            # 1. この回覧板に付けられたタグのIDリストを取得
-            target_tag_ids = [tag.id for tag in new_kairanban.tags]
+            auto_check = KairanbanCheck(user_id=current_user.id, kairanban_id=new_kairanban.id) # L1017
+            db.session.add(auto_check) # L1018
 
-            if target_tag_ids:
-                # 2. これらのタグのいずれかを持っているユーザーを取得
-                recipients = User.query.join(
-                    user_tags, (User.id == user_tags.c.user_id)
-                ).filter(
-                    user_tags.c.tag_id.in_(target_tag_ids)
-                ).distinct().all() # distinct() で重複ユーザーを除外
+            # ▼▼▼ [ここからが修正箇所です] ▼▼▼
+            
+            # 1. この回覧板に付けられたタグの「名前」リストを取得 (e.g. {'I類', 'B4'})
+            target_tag_names = {tag.name for tag in new_kairanban.tags}
 
-                # 3. 通知を作成 (作成者本人を除く)
-                for user in recipients:
-                    if user.id != current_user.id:
-                        notification = Notification(
-                            recipient=user,
-                            kairanban=new_kairanban, # リレーションシップ経由で設定
-                            message=f'回覧板「{new_kairanban.content[:20]}...」が届きました。'
-                        )
-                        db.session.add(notification)
-            # ▲▲▲ 通知ロジック終了 ▲▲▲
-            db.session.commit() # addは移動したので、ここではcommitのみ
+            recipients = []
+            if target_tag_names:
+                # 2a. カスタムタグ (user_tags) で一致するユーザーを検索
+                custom_tag_recipients_query = User.query.join(user_tags).join(Tag).filter(
+                    Tag.name.in_(target_tag_names)
+                )
+                
+                # 2b. ステータスタグ (User.gradeなど) で一致するユーザーを検索
+                status_tag_conditions = []
+                for tag_name in target_tag_names:
+                    status_tag_conditions.append(User.grade == tag_name)
+                    status_tag_conditions.append(User.category == tag_name)
+                    status_tag_conditions.append(User.user_class == tag_name)
+                    status_tag_conditions.append(User.program == tag_name)
+                    status_tag_conditions.append(User.major == tag_name)
+                
+                # or_ を使って、いずれかのステータスタグが一致するユーザーを検索
+                status_tag_recipients_query = User.query.filter(or_(*status_tag_conditions))
+                
+                # 2c. クエリを結合(union)して重複を除外
+                recipients = custom_tag_recipients_query.union(status_tag_recipients_query).distinct().all()
+
+            # 3. 通知を作成 (作成者本人を除く)
+            for user in recipients:
+                if user.id != current_user.id:
+                    notification = Notification(
+                        recipient=user,
+                        kairanban=new_kairanban, # リレーションシップ経由で設定
+                        message=f'回覧板「{new_kairanban.content[:20]}...」が届きました。'
+                    )
+                    db.session.add(notification)
+            # ▲▲▲ [ここまでが修正箇所です] ▲▲▲
+            
+            db.session.commit() # L1057
             flash('回覧板を送信しました。')
             return redirect(url_for('kairanban_index'))
             
