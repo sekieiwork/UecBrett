@@ -1617,6 +1617,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         const updateFormVisibility = () => {
             const gradeVal = gradeSelect.value;
             const categoryVal = categorySelect.value;
+            const classVal = classSelect.value;
             const programVal = programSelect.value;
 
             // まずすべて非表示に
@@ -1626,6 +1627,11 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             majorDiv.style.display = 'none';
             categorySelect.disabled = false
             majorSelect.disabled = false;
+
+            if (categoryVal === 'K課程') {
+                categoryDiv.style.display = 'block'; // 「類」だけ表示
+                return; // 他の項目は非表示のまま終了
+            }
 
             if (gradeVal === '1年') {
                 categoryDiv.style.display = 'block'; 

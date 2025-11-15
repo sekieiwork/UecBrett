@@ -12,6 +12,8 @@ from pytz import timezone, utc
 import os
 from flask_wtf.file import FileField, FileAllowed
 from forms import PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm, KairanbanForm
+from forms import (PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm, KairanbanForm, 
+                   GRADE_CHOICES, CATEGORY_CHOICES, CLASS_CHOICES, PROGRAM_CHOICES, MAJOR_CHOICES)
 import markdown
 import re
 import json
@@ -850,7 +852,6 @@ def show_notifications():
         n.is_read = True
     db.session.commit()
     
-    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
     return render_template('notifications.html', notifications=notifications, md=md)
 
 
@@ -972,9 +973,17 @@ def kairanban_index():
         # 2. チェック済み(True)が下に、未チェック(False)が上に来るようにソート
         kairanbans.sort(key=lambda k: k.id in checked_ids)
 
+    status_tags = {
+        'grade': {c[0] for c in GRADE_CHOICES if c[0]},
+        'category': {c[0] for c in CATEGORY_CHOICES if c[0]},
+        'class': {c[0] for c in CLASS_CHOICES if c[0]},
+        'program': {c[0] for c in PROGRAM_CHOICES if c[0]},
+        'major': {c[0] for c in MAJOR_CHOICES if c[0]},
+    }
+
     
     # ▼▼▼ ★ 1. タイムゾーン変数をテンプレートに渡す ★ ▼▼▼
-    return render_template('kairanban.html', form=form, kairanbans=kairanbans, checked_ids=checked_ids,japan_tz=japan_tz,utc=utc, show_all=show_all)
+    return render_template('kairanban.html', form=form, kairanbans=kairanbans, checked_ids=checked_ids,japan_tz=japan_tz,utc=utc, show_all=show_all,status_tags=status_tags)
 
 @app.route('/mailbox')
 @login_required

@@ -63,8 +63,19 @@
                 {% if k.tags %}
                     <div class="tag-container">
                         {% for tag in k.tags %}
-                            <a href="{{ url_for('search', search_query=tag.name) }}" class="tag-box">{{ tag.name }}</a>
-                        {% endfor %}
+                            {% set tag_name = tag.name %}
+                            {% if tag_name in status_tags.grade %}
+                                <a href="{{ url_for('search', search_query=tag_name, active_tab='users') }}" class="tag-box" style="background-color: #007bff; color: white; border-color: #007bff;">{{ tag_name }}</a>
+                            {% elif tag_name in status_tags.category or tag_name in status_tags.class %}
+                                <a href="{{ url_for('search', search_query=tag_name, active_tab='users') }}" class="tag-box" style="background-color: #6c757d; color: white; border-color: #6c757d;">{{ tag_name }}</a>
+                            {% elif tag_name in status_tags.program %}
+                                <a href="{{ url_for('search', search_query=tag_name, active_tab='users') }}" class="tag-box" style="background-color: #28a745; color: white; border-color: #28a745;">{{ tag_name }}</a>
+                            {% elif tag_name in status_tags.major %}
+                                <a href="{{ url_for('search', search_query=tag_name, active_tab='users') }}" class="tag-box" style="background-color: #ffc107; color: black; border-color: #ffc107;">{{ tag_name }}</a>
+                            {% else %}
+                                <a href="{{ url_for('search', search_query=tag_name) }}" class="tag-box">{{ tag_name }}</a>
+                            {% endif %}
+                            {% endfor %}
                     </div>
                 {% endif %}
 
