@@ -1576,6 +1576,33 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             }
         };
 
+        const filterFirstYearClasses = (categoryValue) => {
+            // どの類が選ばれているか (I類: 1-4, II類: 5-8, III類: 9-12)
+            const classNumMap = { 'I類': [1, 4], 'II類': [5, 8], 'III類': [9, 12] };
+            const allowedRange = classNumMap[categoryValue];
+
+            Array.from(classSelect.options).forEach(option => {
+                // '---' は常に表示
+                if (option.value === '') { option.style.display = 'block'; return; }
+                
+                // 1年生のクラス ('1_year') でないものは非表示
+                if (getClassGroup(option.value) !== '1_year') {
+                    option.style.display = 'none';
+                    return;
+                }
+                
+                // 類が未選択 ('---') の場合は、全ての1年クラスを表示
+                if (!allowedRange) {
+                    option.style.display = 'block';
+                    return;
+                }
+                
+                // 選択された類に応じてクラス番号を絞り込む
+                const classNum = parseInt(option.value.replace('クラス', ''), 10);
+                option.style.display = (classNum >= allowedRange[0] && classNum <= allowedRange[1]) ? 'block' : 'none';
+            });
+        };
+
        const getClassGroup = (value) => {
             if (['1クラス', '2クラス', '3クラス', '4クラス', '5クラス', '6クラス', '7クラス', '8クラス', '9クラス', '10クラス', '11クラス', '12クラス'].includes(value)) return '1_year';
             if (['Aクラス', 'Bクラス', 'Cクラス'].includes(value)) return '2_year_I';
@@ -1601,16 +1628,31 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             majorSelect.disabled = false;
 
             if (gradeVal === '1年') {
-                // ▼▼▼ [修正] 1年でも類とクラスを表示 ▼▼▼
                 categoryDiv.style.display = 'block'; 
                 classDiv.style.display = 'block';
-                filterOptions(classSelect, ['1_year']);
                 
-                // ★ ページ読み込み時などにクラスが選択済みの場合
+                // 1. まず「クラス」が選択されているか確認 (DBからの読み込み時など)
                 const autoCategory = getCategoryForFirstYear(classVal);
+
                 if (autoCategory) {
+                    // (例: 5クラスが選択中)
+                    // 2a. 「類」を自動設定し、CSSで操作不可に (ご要望①)
                     categorySelect.value = autoCategory;
-                    categorySelect.disabled = true; // 自動設定したら変更不可に
+                    categorySelect.style.pointerEvents = 'none';
+                    categorySelect.style.backgroundColor = '#e9ecef';
+                    categorySelect.disabled = false; // 値は送信する
+                    
+                    // 2b. 「クラス」は、その類のものだけを表示 (ご要望②)
+                    filterFirstYearClasses(autoCategory);
+                } else {
+                    // (例: クラスが '---' の場合)
+                    // 2c. 「類」の操作を許可
+                    categorySelect.style.pointerEvents = 'auto';
+                    categorySelect.style.backgroundColor = '#fff';
+                    categorySelect.disabled = false;
+                    
+                    // 2d. 手動で選択された「類」に応じて「クラス」を絞り込む (ご要望②)
+                    filterFirstYearClasses(categoryVal);
                 }
             }
             else if (gradeVal === '2年') {
@@ -1681,9 +1723,11 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             programSelect.value = '';
             majorSelect.value = '';
             categorySelect.disabled = false;
-            majorSelect.disabled = false;
+            categorySelect.style.pointerEvents = 'auto';
+            categorySelect.style.backgroundColor = '#fff';
             majorSelect.style.pointerEvents = 'auto';
             majorSelect.style.backgroundColor = '#fff';
+            majorSelect.disabled = false;
             updateFormVisibility();
         });
         
@@ -1694,21 +1738,15 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             majorSelect.disabled = false;
             majorSelect.style.pointerEvents = 'auto';
             majorSelect.style.backgroundColor = '#fff';
+            categorySelect.style.pointerEvents = 'auto';
+            categorySelect.style.backgroundColor = '#fff';
             updateFormVisibility();
         });
 
         classSelect.addEventListener('change', () => {
+            // 1年生の場合、類を自動設定するためにメイン関数を呼び出す
             if (gradeSelect.value === '1年') {
-                // 1年生が選ばれている時だけ、類を自動設定
-                const autoCategory = getCategoryForFirstYear(classSelect.value);
-                if (autoCategory) {
-                    categorySelect.value = autoCategory;
-                    categorySelect.disabled = true;
-                } else {
-                    // (例: '---' が選ばれた場合)
-                    categorySelect.value = '';
-                    categorySelect.disabled = false; 
-                }
+                updateFormVisibility();
             }
             // 2年生以上の場合は、クラス->類 の連動は不要
         });

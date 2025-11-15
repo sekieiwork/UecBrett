@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from flask_migrate import Migrate, upgrade
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, TextAreaField, SubmitField
@@ -664,10 +664,16 @@ def search():
         posts_query_builder = Post.query.filter(
             (Post.title.like(like_query)) | (Post.content.like(like_query))
         )
-        
-        # 3. ユーザー(User)の検索クエリを構築 (ベース)
+        # ▼▼▼ [修正] 3. ユーザー(User)の検索クエリを修正
         users_query_builder = User.query.filter(
-            User.username.like(like_query)
+            or_(
+                User.username.like(like_query), # 従来のユーザー名検索
+                User.grade == search_query,       # ステータスタグ (完全一致)
+                User.category == search_query,  # 
+                User.user_class == search_query, # 
+                User.program == search_query,    # 
+                User.major == search_query       # 
+            )
         )
 
         # 4. もし「タグ」が見つかったら、検索クエリに追加する
@@ -917,7 +923,9 @@ def kairanban_index():
             
             # タグの処理
             new_kairanban.tags = get_or_create_tags_from_string(form.tags.data)
-            
+            db.session.flush() # new_kairanban.id を確定させる
+            auto_check = KairanbanCheck(user_id=current_user.id, kairanban_id=new_kairanban.id)
+            db.session.add(auto_check)
             db.session.commit() # addは移動したので、ここではcommitのみ
             flash('回覧板を送信しました。')
             return redirect(url_for('kairanban_index'))
