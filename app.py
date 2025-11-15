@@ -368,7 +368,17 @@ class Notification(db.Model):
     is_read = db.Column(db.Boolean, default=False)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('post.id', ondelete="CASCADE"), nullable=False)
+    # 1. post_id を「必須ではない」に変更
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id', ondelete="CASCADE"), nullable=True)
+    
+    # 2. kairanban_id を新しく追加 
+    kairanban_id = db.Column(db.Integer, db.ForeignKey('kairanban.id', ondelete="CASCADE"), nullable=True)
+    
+    # 3. Postモデルへのリレーションシップを修正 (nullable=Trueに対応)
+    post = db.relationship('Post', backref='notifications') # 元の行を変更
+
+    # 4. Kairanbanモデルへのリレーションシップを新しく追加
+    kairanban = db.relationship('Kairanban', backref='notifications')
 
 # Routes
 @app.route('/', defaults={'page': 1}, methods=['GET', 'POST'])
@@ -927,6 +937,27 @@ def kairanban_index():
             db.session.flush() # new_kairanban.id を確定させる
             auto_check = KairanbanCheck(user_id=current_user.id, kairanban_id=new_kairanban.id)
             db.session.add(auto_check)
+            # 1. この回覧板に付けられたタグのIDリストを取得
+            target_tag_ids = [tag.id for tag in new_kairanban.tags]
+
+            if target_tag_ids:
+                # 2. これらのタグのいずれかを持っているユーザーを取得
+                recipients = User.query.join(
+                    user_tags, (User.id == user_tags.c.user_id)
+                ).filter(
+                    user_tags.c.tag_id.in_(target_tag_ids)
+                ).distinct().all() # distinct() で重複ユーザーを除外
+
+                # 3. 通知を作成 (作成者本人を除く)
+                for user in recipients:
+                    if user.id != current_user.id:
+                        notification = Notification(
+                            recipient=user,
+                            kairanban=new_kairanban, # リレーションシップ経由で設定
+                            message=f'回覧板「{new_kairanban.content[:20]}...」が届きました。'
+                        )
+                        db.session.add(notification)
+            # ▲▲▲ 通知ロジック終了 ▲▲▲
             db.session.commit() # addは移動したので、ここではcommitのみ
             flash('回覧板を送信しました。')
             return redirect(url_for('kairanban_index'))
