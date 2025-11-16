@@ -13,7 +13,8 @@ import os
 from flask_wtf.file import FileField, FileAllowed
 from forms import PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm, KairanbanForm
 from forms import (PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm, KairanbanForm, 
-                   GRADE_CHOICES, CATEGORY_CHOICES, CLASS_CHOICES, PROGRAM_CHOICES, MAJOR_CHOICES)
+                   GRADE_CHOICES, CATEGORY_CHOICES, CLASS_CHOICES, PROGRAM_CHOICES, MAJOR_CHOICES,
+                   BooleanField)
 import markdown
 import re
 import json
@@ -23,6 +24,7 @@ import cloudinary.uploader
 import bleach
 from bleach.linkifier import Linker
 from pywebpush import webpush, WebPushException
+from forms import NotificationSettingsForm
 
 
 
@@ -332,6 +334,7 @@ class User(db.Model, UserMixin):
     user_class = db.Column(db.String(50), nullable=True) # クラス (例: '1クラス', 'Aクラス')
     program = db.Column(db.String(100), nullable=True)   # プログラム (例: 'メディア情報学プログラム')
     major = db.Column(db.String(100), nullable=True)
+    push_notifications_enabled = db.Column(db.Boolean, default=False)
     posts = db.relationship('Post', backref='author', lazy=True, cascade="all, delete")
     comments = db.relationship('Comment', backref='commenter', lazy=True)
     bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic')
@@ -484,21 +487,20 @@ def post_detail(post_id):
             if user.id == post.author.id:
                 continue
             
-            # 2c. それ以外のコメント済みユーザーに通知
-            notification = Notification(
-                recipient=user, 
-                post=post, 
-                message="あなたがコメントした投稿にコメントが付きました。"
-            )
-            db.session.add(notification)
-            # ▼▼▼ Web Push もここに追加 ▼▼▼
-            send_web_push(
-                user,
-                'コメントが付きました',
-                'あなたがコメントした投稿に新しいコメントが付きました。',
-                url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}', _external=True)
-            )
-        # ▲▲▲ [修正] ここまで ▲▲▲
+            # 2c. 新しいコメントの投稿者が「記事の投稿者」である場合のみ通知
+            if comment.commenter == post.author:
+                notification = Notification(
+                    recipient=user, 
+                    post=post, 
+                    message="あなたがコメントした投稿に投稿者がコメントしました。" # メッセージを少し変更
+                )
+                db.session.add(notification)
+                send_web_push(
+                    user,
+                    '投稿者がコメントしました', # タイトルも変更
+                    'あなたがコメントした投稿に記事の投稿者がコメントしました。',
+                    url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}', _external=True)
+                )
         
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
@@ -532,13 +534,6 @@ def bookmark_post(post_id):
         if current_user != post.author:
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」がブックマークされました。')
             db.session.add(notification)
-            # ▼▼▼ 追加 ▼▼▼
-            send_web_push(
-                post.author,
-                '投稿がブックマークされました',
-                f'あなたの投稿「{post.title}」がブックマークされました。',
-                url_for('post_detail', post_id=post.id, _external=True)
-            )
         is_bookmarked = True
         db.session.add(new_bookmark)
     
@@ -1098,6 +1093,8 @@ def kairanban_index():
         kairanbans.sort(key=lambda k: k.created_at, reverse=True)
         # 2. チェック済み(True)が下に、未チェック(False)が上に来るようにソート
         kairanbans.sort(key=lambda k: k.id in checked_ids)
+    for k in kairanbans:
+        k.check_count = k.checks.count()
 
     status_tags = {
         'grade': {c[0] for c in GRADE_CHOICES if c[0]},
@@ -1143,7 +1140,8 @@ def check_kairanban(kairanban_id):
         is_checked = True
 
     db.session.commit()
-    return jsonify({'status': 'success', 'is_checked': is_checked})
+    new_count = kairanban.checks.count()
+    return jsonify({'status': 'success', 'is_checked': is_checked, 'new_count': new_count})
 
 @app.route('/kairanban/delete/<int:kairanban_id>', methods=['POST'])
 @login_required
@@ -1163,6 +1161,10 @@ def delete_kairanban(kairanban_id):
 # 2. Web Push 送信ヘルパー関数を追加
 def send_web_push(user, title, body, url=None):
     """指定されたユーザーにWeb Push通知を送信する"""
+
+    if not user.push_notifications_enabled:
+        print(f"ユーザー {user.username} はプッシュ通知を無効にしています。")
+        return
     
     VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY')
     VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL')
@@ -1249,11 +1251,70 @@ def subscribe():
             
     new_sub = UserSubscription(user_id=current_user.id, subscription_json=subscription_json)
     db.session.add(new_sub)
+    current_user.push_notifications_enabled = True
     db.session.commit()
     
     return jsonify({'status': 'success'}), 201
 
+@app.route('/api/unsubscribe', methods=['POST'])
+@login_required
+def unsubscribe():
+    subscription_data = request.get_json()
+    if not subscription_data or 'endpoint' not in subscription_data:
+        abort(400, 'No endpoint data provided')
 
+    endpoint = subscription_data.get('endpoint')
+
+    # エンドポイントに一致する購読情報を検索
+    existing_sub = UserSubscription.query.filter(
+        UserSubscription.user_id == current_user.id,
+        UserSubscription.subscription_json.like(f'%"{endpoint}"%')
+    ).first()
+
+    if existing_sub:
+        db.session.delete(existing_sub)
+        print(f"購読ID {existing_sub.id} を削除しました。")
+        
+        # もし、このユーザーの他の購読情報が残っていなければ、
+        # マスター設定を「無効」にする
+        if current_user.subscriptions.count() == 0:
+            current_user.push_notifications_enabled = False
+            print(f"ユーザー {current_user.username} のプッシュ通知を無効化しました。")
+
+        db.session.commit()
+        return jsonify({'status': 'success (deleted)'}), 200
+    
+    # 既にDBにない場合も「成功」として扱う
+    current_user.push_notifications_enabled = False
+    db.session.commit()
+    return jsonify({'status': 'success (not found)'}), 200
+
+@app.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    form = NotificationSettingsForm()
+    
+    if form.validate_on_submit():
+        # (POSTリクエスト時)
+        # フォームのチェックボックスの状態をDBに保存
+        current_user.push_notifications_enabled = form.enable_push.data
+        db.session.commit()
+        
+        if not form.enable_push.data:
+            # もしチェックを外した場合、関連する購読情報をすべて削除する
+            UserSubscription.query.filter_by(user_id=current_user.id).delete()
+            db.session.commit()
+            flash('プッシュ通知を無効にし、すべての購読を解除しました。')
+        else:
+            flash('設定を更新しました。プッシュ通知を有効にするには、このページの機能でブラウザの許可設定を行ってください。')
+            
+        return redirect(url_for('settings'))
+
+    # (GETリクエスト時)
+    # DBの状態をフォームのデフォルト値に設定
+    form.enable_push.data = current_user.push_notifications_enabled
+    
+    return render_template('settings.html', form=form)
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -135,3 +135,8 @@ class KairanbanForm(FlaskForm):
 
     
     submit = SubmitField('送信')
+
+class NotificationSettingsForm(FlaskForm):
+    enable_push = BooleanField('プッシュ通知を有効にする')
+    # (ここに 将来的に「コメントの通知」「回覧板の通知」などの個別トグルを追加できます)
+    submit = SubmitField('設定を保存')

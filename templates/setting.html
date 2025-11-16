@@ -1,0 +1,214 @@
+{% extends "base_layout.html" %}
+{% block title %}設定{% endblock %}
+
+{% block content %}
+
+<div class="content-width-limiter">
+    
+    <div class="post">
+    <h2 style="margin-top:0;">設定</h2>
+        
+        <form method="POST">
+            {{ form.csrf_token }}
+            
+            <h3>プッシュ通知</h3>
+            <div class="form-field" style="display: flex; align-items: center; gap: 10px;">
+                {{ form.enable_push(id="push-toggle-checkbox") }}
+                {{ form.enable_push.label(for="push-toggle-checkbox") }}
+            </div>
+            
+            <p id="push-status-message" style="font-size: 0.9em; color: #6c757d;">
+                （ブラウザの通知許可設定が必要です）
+            </p>
+
+            <hr style="margin: 2em 0;">
+
+            {{ form.submit() }}
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // ▼▼▼ [base_layout.html から移動してきたJSブロック] ▼▼▼
+    
+    const pushCheckbox = document.getElementById('push-toggle-checkbox');
+    const statusMessage = document.getElementById('push-status-message');
+
+    // 1. ブラウザがPush通知に対応しているかチェック
+    if ('serviceWorker' in navigator && 'PushManager' in window && pushCheckbox) {
+        
+        let swRegistration = null;
+
+        // 2. Service Workerの登録
+        navigator.serviceWorker.register('{{ url_for("service_worker") }}')
+        .then(function(swReg) {
+            console.log('Service Worker 登録成功:', swReg);
+            swRegistration = swReg;
+            initializeUI(); // UIの初期化
+        })
+        .catch(function(error) {
+            console.error('Service Worker 登録失敗:', error);
+            statusMessage.textContent = 'Service Workerの登録に失敗しました。';
+        });
+
+        // 3. UIの初期化と同期
+        function initializeUI() {
+            // チェックボックスが変更された時のイベント
+            pushCheckbox.addEventListener('change', function(event) {
+                if (pushCheckbox.checked) {
+                    // チェックが入った -> 購読を開始
+                    subscribeUser();
+                } else {
+                    // チェックが外れた -> 購読を解除
+                    unsubscribeUser();
+                }
+            });
+            
+            // ページ読み込み時に、ブラウザの購読状態とチェックボックスの状態を同期する
+            swRegistration.pushManager.getSubscription()
+            .then(function(subscription) {
+                
+                const isPushEnabledOnServer = pushCheckbox.checked; // (サーバー(DB)の状態)
+                
+                if (subscription && isPushEnabledOnServer) {
+                    // 購読OK, サーバー設定OK
+                    statusMessage.textContent = 'プッシュ通知は有効です。';
+                    pushCheckbox.checked = true;
+                } 
+                else if (subscription && !isPushEnabledOnServer) {
+                    // 購読OK, サーバー設定NG (ズレてるので解除)
+                    statusMessage.textContent = 'サーバー設定と同期中...';
+                    unsubscribeUser(); // JS側から購読解除して同期
+                }
+                else if (!subscription && isPushEnabledOnServer) {
+                    // 購読NG, サーバー設定OK (ズレてるので解除)
+                    statusMessage.textContent = 'ブラウザの許可が必要です。チェックを入れ直してください。';
+                    // サーバー(DB)の設定をFalseに戻す
+                    document.getElementById('push-toggle-checkbox').click(); // 強制的にchangeイベントを発火
+                }
+                else {
+                    // 購読NG, サーバー設定NG
+                    statusMessage.textContent = 'プッシュ通知を有効にするには、チェックを入れてください。';
+                    pushCheckbox.checked = false;
+                }
+                
+                // OS側で通知がブロックされているかチェック
+                if (Notification.permission === 'denied') {
+                     statusMessage.textContent = '通知がブラウザの設定でブロックされています。';
+                     pushCheckbox.disabled = true;
+                }
+            });
+        }
+        
+        // 4. 購読プロセス (subscribe)
+        function subscribeUser() {
+            // 1. VAPID公開鍵をサーバーから取得
+            fetch('{{ url_for("get_vapid_public_key") }}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) throw new Error(data.error);
+                const applicationServerKey = urlB64ToUint8Array(data.public_key);
+                
+                // 2. 購読（通知許可ダイアログが表示される）
+                return swRegistration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: applicationServerKey
+                });
+            })
+            .then(function(subscription) {
+                // 3. 購読情報をサーバーに送信 (API /api/subscribe)
+                return sendSubscriptionToServer(subscription, '{{ url_for("subscribe") }}');
+            })
+            .then(function() {
+                statusMessage.textContent = 'プッシュ通知が有効になりました！';
+                pushCheckbox.checked = true;
+                // サーバー(DB)にも「有効」を保存
+                saveSettingToServer(true);
+            })
+            .catch(function(err) {
+                console.error('購読に失敗しました: ', err);
+                statusMessage.textContent = '購読に失敗しました: ' + err.toString();
+                pushCheckbox.checked = false; // 失敗したらチェックを戻す
+                if (Notification.permission === 'denied') {
+                    statusMessage.textContent = '通知がブロックされました。';
+                }
+            });
+        }
+        
+        // 5. 購読解除プロセス (unsubscribe)
+        function unsubscribeUser() {
+            swRegistration.pushManager.getSubscription()
+            .then(function(subscription) {
+                if (subscription) {
+                    // 3. 購読情報をサーバーに送信 (API /api/unsubscribe)
+                    sendSubscriptionToServer(subscription, '{{ url_for("unsubscribe") }}');
+                    return subscription.unsubscribe(); // ブラウザの購読を解除
+                }
+            })
+            .then(function() {
+                statusMessage.textContent = 'プッシュ通知を無効にしました。';
+                pushCheckbox.checked = false;
+                // サーバー(DB)にも「無効」を保存
+                saveSettingToServer(false);
+            })
+            .catch(function(err) {
+                console.error('購読解除に失敗しました: ', err);
+                statusMessage.textContent = '購読解除に失敗しました。';
+            });
+        }
+        
+        // 6. 購読情報をサーバーに送信する共通関数
+        function sendSubscriptionToServer(subscription, url) {
+            return fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(subscription)
+            });
+        }
+        
+        // 7. DBのマスター設定 (True/False) を保存する
+        // (フォームのサブミットでも保存されるが、JSからも保存して即時反映する)
+        function saveSettingToServer(isEnabled) {
+            const form = new FormData();
+            form.append('csrf_token', '{{ form.csrf_token._value() }}');
+            form.append('enable_push', isEnabled ? 'y' : ''); // BooleanFieldの送信形式に合わせる
+            
+             fetch('{{ url_for("settings") }}', {
+                method: 'POST',
+                body: form
+             });
+        }
+
+        // 8. Base64をUint8Arrayに変換するヘルパー関数
+        function urlB64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\-/g, '+')
+                .replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+    } else {
+        if (pushCheckbox) {
+            statusMessage.textContent = 'このブラウザはプッシュ通知をサポートしていません。';
+            pushCheckbox.disabled = true;
+        }
+    }
+    // --- Push通知JS ここまで ---
+
+});
+</script>
+{% endblock %}

@@ -125,7 +125,7 @@
         width: 100%;
         box-sizing: border-box;
         white-space: pre-wrap;
-        line-height: 1.0;
+        line-height: 1.5; /* <-- ▼▼▼ 1.0 から 1.5 に変更 (要望④) ▼▼▼ */
     }
 
      .comment-content {
@@ -138,7 +138,7 @@
         width: 100%;
         box-sizing: border-box;
         white-space: pre-wrap;
-        line-height: 0.7;
+        line-height: 1.0
      }
 
     /* 投稿された画像のスタイル */
@@ -570,7 +570,7 @@
             padding-bottom: 70px; /* ★ スマホナビの高さ分、余白を追加 ★ */
         }
         
-        /*  .container に padding を設定して余白を管理します  */
+        /* .container に padding を設定して余白を管理します  */
         .container {
             /* padding: 0; (元の設定を削除) */
             padding: 0 10px; /* 左右に10pxのパディングを追加 (この値で余白を調整できます) */
@@ -578,7 +578,7 @@
             box-sizing: border-box; /* paddingを含めて幅を計算 */
         }
         
-        /*  .post などの max-width を 100% に戻します */
+        /* .post などの max-width を 100% に戻します */
         /* (親の.containerにpaddingがあるので、子は100%でOK) */
         .post, .post-form, .post-detail, .comment-container, .comments, .comment-item, .form-field, .user-info, .content-width-limiter {
             max-width: 95%; /* 95% から 100% に変更 */
@@ -818,7 +818,7 @@ a.tag-box:hover {
                             {% endif %}
                             <a href="{{ url_for('logout') }}">ログアウト</a>
                             <hr style="margin: 5px 0;">
-                            <a href="#" id="enable-push-notifications" style="color: #007bff; padding: 10px 16px;">プッシュ通知を有効化</a>
+                            <a href="{{ url_for('settings') }}" style="padding: 10px 16px;">設定</a>
                         </div>
                     </div>
                 {% else %}
@@ -847,8 +847,7 @@ a.tag-box:hover {
         </div>
     </main>
 
-            <!-- --- 1. PC用 サイドナビ --- -->
-        <nav class="desktop-nav">
+            <nav class="desktop-nav">
             <ul>
                 <li>
                     <a href="{{ url_for('index') }}" title="ホーム">
@@ -870,7 +869,6 @@ a.tag-box:hover {
             </ul>
         </nav>
 
-        <!-- --- 2. スマホ用 フッターナビ --- -->
         <nav class="mobile-nav">
             <ul>
                 <li>
@@ -1419,6 +1417,11 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                         if (itemElement) itemElement.classList.remove('checked');
                     }
 
+                    // 閲覧数カウントのspanを取得してテキストを更新
+                    const countSpan = document.getElementById(`check-count-${kairanbanId}`);
+                    if (countSpan) {
+                        countSpan.textContent = `👀 ${data.new_count}`;
+                    }
                     // 2. 【リアルタイム更新】
                     //    ページ上の「チェックされていない回覧板」の数を数える
                     const unreadCount = document.querySelectorAll('.kairanban-item:not(.checked)').length;
@@ -1541,7 +1544,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             ];
             if (major_JohoNetwork.includes(programValue)) return '情報・ネットワーク工学専攻';
 
-            // --- 3. 機械知能システム学専攻 (III類) になるプログラム ---
+            // --- 3. 機械知능システム学専攻 (III類) になるプログラム ---
             const major_KikaiChino = [
                 // (III類から)
                 '機械システムプログラム',
@@ -1803,121 +1806,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         });
     }
     
-    // ▼▼▼ 3. Service Worker と Push通知のロジックを追加 ▼▼▼
-    const pushButton = document.getElementById('enable-push-notifications');
-
-    if ('serviceWorker' in navigator && 'PushManager' in window && pushButton) {
-        
-        let swRegistration = null;
-
-        // Service Workerの登録
-        navigator.serviceWorker.register('{{ url_for("service_worker") }}')
-        .then(function(swReg) {
-            console.log('Service Worker 登録成功:', swReg);
-            swRegistration = swReg;
-            initializeUI(); // UIの初期化
-        })
-        .catch(function(error) {
-            console.error('Service Worker 登録失敗:', error);
-        });
-
-        function initializeUI() {
-            pushButton.addEventListener('click', function(event) {
-                event.preventDefault();
-                // 通知が無効化されていたら、購読プロセスを開始
-                if (Notification.permission === 'denied') {
-                    alert('通知がブロックされています。ブラウザの設定で許可してください。');
-                    return;
-                }
-                subscribeUser();
-            });
-            
-            // 既に購読済みか確認
-            swRegistration.pushManager.getSubscription()
-            .then(function(subscription) {
-                if (subscription) {
-                    console.log('既に購読済みです。');
-                    pushButton.textContent = '通知は有効です';
-                    pushButton.style.color = '#6c757d'; // グレーアウト
-                    pushButton.style.pointerEvents = 'none';
-                }
-            });
-        }
-        
-        function subscribeUser() {
-            // 1. VAPID公開鍵をサーバーから取得
-            fetch('{{ url_for("get_vapid_public_key") }}')
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) throw new Error(data.error);
-                
-                const applicationServerKey = urlB64ToUint8Array(data.public_key);
-                
-                // 2. 購読（通知許可ダイアログが表示される）
-                return swRegistration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: applicationServerKey
-                });
-            })
-            .then(function(subscription) {
-                console.log('ユーザーは購読を許可しました:', subscription);
-                
-                // 3. 購読情報をサーバーに送信
-                return sendSubscriptionToServer(subscription);
-            })
-            .then(function() {
-                pushButton.textContent = '通知が有効になりました';
-                pushButton.style.color = '#28a745'; // 緑色
-                pushButton.style.pointerEvents = 'none';
-            })
-            .catch(function(err) {
-                alert('購読に失敗しました:\n' + err.toString());
-                console.error('購読に失敗しました: ', err);
-                if (Notification.permission === 'denied') {
-                    alert('通知がブロックされました。');
-                } else {
-                    alert('通知の有効化に失敗しました。');
-                }
-            });
-        }
-
-        function sendSubscriptionToServer(subscription) {
-            // CSRFトークンを取得 (もしWTF-CSRFを使っているなら)
-            // const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            
-            return fetch('{{ url_for("subscribe") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // 'X-CSRFToken': csrfToken // 必要に応じてCSRFトークンを追加
-                },
-                body: JSON.stringify(subscription)
-            });
-        }
-
-        // Base64をUint8Arrayに変換するヘルパー関数
-        function urlB64ToUint8Array(base64String) {
-            const padding = '='.repeat((4 - base64String.length % 4) % 4);
-            const base64 = (base64String + padding)
-                .replace(/\-/g, '+')
-                .replace(/_/g, '/');
-            const rawData = window.atob(base64);
-            const outputArray = new Uint8Array(rawData.length);
-            for (let i = 0; i < rawData.length; ++i) {
-                outputArray[i] = rawData.charCodeAt(i);
-            }
-            return outputArray;
-        }
-
-    } else {
-        if (pushButton) {
-            console.warn('Push通知はこのブラウザではサポートされていません。');
-            pushButton.textContent = '通知はサポートされていません';
-            pushButton.style.display = 'none'; // ボタンを非表示に
-        }
-    }
-
-}); // <-- ★★★ DOMContentLoaded はここで閉じる ★★★
+    }); // <-- ★★★ DOMContentLoaded はここで閉じる ★★★
 
 </script>
 {% block scripts %}{% endblock %}
