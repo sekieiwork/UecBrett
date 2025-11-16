@@ -42,7 +42,11 @@
                     </div>
                     <div id="recent-tags-list" class="recent-tags-dropdown hidden"></div>
                     {{ form.tags(id="tags-input-field", placeholder="例: 1クラス, B4, 学生課") }}
-                </div>
+                    
+                    {% for error in form.tags.errors %}
+                        <span style="color: red; font-size: 0.9em; display: block; margin-top: 5px;">[{{ error }}]</span>
+                    {% endfor %}
+                    </div>
 
                 <div class="form-field" style="display: flex; align-items: center; gap: 10px;">
                     <label for="expires_in_days" style="margin: 0; white-space: nowrap;">{{ form.expires_in_days.label }}</label>

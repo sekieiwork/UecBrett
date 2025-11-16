@@ -90,7 +90,7 @@ def inject_common_vars():
             # 4. 1件ずつチェック
             target_kairanbans = target_kairanbans_query.all()
             for k in target_kairanbans:
-                if k.id not in checked_ids:
+                if k.author_id != current_user.id and k.id not in checked_ids:
                     has_unread_kairanban = True
                     break # 1件でも未チェックがあればループ終了
         # --- (ここまでインデント) ---

@@ -122,7 +122,7 @@ class ProfileForm(FlaskForm):
 
 class KairanbanForm(FlaskForm):
     content = TextAreaField('本文', validators=[DataRequired()])
-    tags = StringField('対象タグ (カンマ区切り)')
+    tags = StringField('対象タグ (カンマ区切り)', validators=[DataRequired()])
     
     # 1日～31日の選択肢を生成
     days_choices = [(str(i), f'{i} 日間') for i in range(1, 32)]
