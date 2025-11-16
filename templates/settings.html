@@ -6,42 +6,47 @@
     <div class="post-form">
         <h2>設定</h2>
         
-        <h3 style="margin-top: 1.5em;">通知の基本設定</h3>
-        <p style="font-size: 0.9em; color: #555; margin-top: 0;">
-            サイト全体でプッシュ通知を受け取るかどうかを設定します。
-        </p>
-        <form method="POST">
-            {{ form.csrf_token }}
-            <div class="form-field" style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5em; background: none; border: none; box-shadow: none; padding: 0;">
-                {{ form.enable_push(style="width: auto; height: auto;") }}
-                {{ form.enable_push.label(style="margin: 0; font-weight: normal;") }}
-            </div>
-            
-            <p style="font-size: 0.8em; color: #6c757d; margin-top: -1em; margin-bottom: 1.5em;">
-                まずここで「有効」にしてから、下の「ブラウザ設定」で通知を許可してください。<br>
-                チェックを外して保存すると、すべてのデバイスでのプッシュ通知が停止されます。
-            </p>
-            {{ form.submit() }}
-        </form>
+        <div id="notification-settings-toggle" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 0.5em;">
+            <h3 style="margin-top: 0; margin-bottom: 0;">通知の基本設定</h3>
+            <span id="toggle-icon" style="font-size: 1.2em;">▽</span>
+        </div>
         
-        <hr style="margin: 2em 0;">
-        
-        <h3>プッシュ通知の管理 (このブラウザ)</h3>
+        <div id="notification-settings-content" class="hidden" style="margin-top: 1.5em;">
 
-        {% if not current_user.push_notifications_enabled %}
-            <p style="font-size: 0.9em; color: #dc3545;">
-                現在「プッシュ通知を有効にする」がオフのため、ブラウザを登録できません。
-            </p>
-        {% else %}
             <p style="font-size: 0.9em; color: #555; margin-top: 0;">
-                このブラウザでプッシュ通知を受け取るための設定です。
+                サイト全体でプッシュ通知を受け取るか
             </p>
-            <button id="push-subscription-btn" class="delete-button yellow" style="margin-right: 15px;" disabled>
-                設定を読み込み中...
-            </button>
-            <span id="push-status" style="font-size: 0.9em; color: #6c757d;"></span>
-        {% endif %}
-    </div>
+            <form method="POST">
+                {{ form.csrf_token }}
+                <div class="form-field" style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5em; background: none; border: none; box-shadow: none; padding: 0;">
+                    {{ form.enable_push(style="width: auto; height: auto;") }}
+                    {{ form.enable_push.label(style="margin: 0; font-weight: normal;") }}
+                </div>
+                
+                <p style="font-size: 0.8em; color: #6c757d; margin-top: -1em; margin-bottom: 1.5em;">
+                    チェックを外すと、すべてのデバイスでのプッシュ通知が停止
+                </p>
+                {{ form.submit() }}
+            </form>
+            
+            <hr style="margin: 2em 0;">
+            
+            <h3>プッシュ通知の管理 (このブラウザ)</h3>
+
+            {% if not current_user.push_notifications_enabled %}
+                <p style="font-size: 0.9em; color: #dc3545;">
+                    現在「プッシュ通知を有効にする」がオフのため、ブラウザを登録できません。
+                </p>
+            {% else %}
+                <p style="font-size: 0.9em; color: #555; margin-top: 0;">
+                    このブラウザでプッシュ通知を受け取るための設定
+                </p>
+                <button id="push-subscription-btn" class="delete-button yellow" style="margin-right: 15px;" disabled>
+                    設定を読み込み中...
+                </button>
+                <span id="push-status" style="font-size: 0.9em; color: #6c757d;"></span>
+            {% endif %}
+            </div> </div>
 {% endblock %}
 
 
@@ -50,17 +55,38 @@
 // このスクリプトは /settings ページでのみ動作します
 document.addEventListener('DOMContentLoaded', function() {
 
-    // ユーザーがマスター設定 (DB) を無効にしている場合は、JSを実行しない
+    // ▼▼▼ [修正点 3] 設定ページのトグル機能 ▼▼▼
+    const settingsToggle = document.getElementById('notification-settings-toggle');
+    const settingsContent = document.getElementById('notification-settings-content');
+    const toggleIcon = document.getElementById('toggle-icon');
+
+    if (settingsToggle && settingsContent && toggleIcon) {
+        settingsToggle.addEventListener('click', function() {
+            // 'hidden' クラスを付け外しし、現在の状態 (非表示か) を取得
+            const isHidden = settingsContent.classList.toggle('hidden');
+            
+            // アイコンを切り替え
+            if (isHidden) {
+                toggleIcon.textContent = '▽';
+            } else {
+                toggleIcon.textContent = '△';
+            }
+        });
+    }
+    // ▲▲▲ トグル機能ここまで ▲▲▲
+
+
+    // ユーザーがマスター設定 (DB) を無効にしている場合は、以下のJSを実行しない
     {% if not current_user.push_notifications_enabled %}
         return;
     {% endif %}
 
+    // --- 元からあったブラウザ通知設定のJS (変更なし) ---
     const pushButton = document.getElementById('push-subscription-btn');
     const pushStatus = document.getElementById('push-status');
     let isSubscribed = false;
     let swRegistration = null;
 
-    // VAPIDキーをBase64からUint8Arrayに変換するヘルパー関数
     function urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
         const base64 = (base64String + padding)
@@ -76,7 +102,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return outputArray;
     }
 
-    // 1. サービスワーカーが登録されているか確認
     if ('serviceWorker' in navigator && 'PushManager' in window) {
         navigator.serviceWorker.ready.then(function(registration) {
             swRegistration = registration;
@@ -89,7 +114,6 @@ document.addEventListener('DOMContentLoaded', function() {
         pushStatus.textContent = 'お使いのブラウザはプッシュ通知に対応していません。';
     }
 
-    // 2. 現在の購読状態を確認する関数
     function checkSubscriptionStatus() {
         swRegistration.pushManager.getSubscription()
             .then(function(subscription) {
@@ -103,21 +127,19 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // 3. UI（ボタンのテキストなど）を更新する関数
     function updateButtonUI() {
         if (isSubscribed) {
             pushButton.textContent = 'このブラウザの通知を停止する';
-            pushButton.classList.remove('yellow'); // 黄色を削除
-            pushButton.classList.add('delete-button'); // 赤色を追加
+            pushButton.classList.remove('yellow');
+            pushButton.classList.add('delete-button');
         } else {
             pushButton.textContent = 'このブラウザの通知を許可する';
-            pushButton.classList.remove('delete-button'); // 赤色を削除
-            pushButton.classList.add('yellow'); // 黄色を追加
+            pushButton.classList.remove('delete-button');
+            pushButton.classList.add('yellow');
         }
         pushButton.disabled = false;
     }
 
-    // 4. ボタンがクリックされた時の処理
     pushButton.addEventListener('click', function() {
         pushButton.disabled = true;
         if (isSubscribed) {
@@ -127,9 +149,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // 5. 購読を開始する (app.py の /api/subscribe を叩く)
     function subscribeUser() {
-        // まずサーバーから VAPID public key を取得
         fetch('{{ url_for("get_vapid_public_key") }}')
             .then(response => response.json())
             .then(data => {
@@ -137,14 +157,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(data.error);
                 }
                 const applicationServerKey = urlBase64ToUint8Array(data.public_key);
-                // ブラウザに購読を要求
                 return swRegistration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: applicationServerKey
                 });
             })
             .then(function(subscription) {
-                // 購読情報をサーバーに送信
                 return fetch('{{ url_for("subscribe") }}', {
                     method: 'POST',
                     body: JSON.stringify(subscription),
@@ -168,19 +186,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     pushStatus.textContent = '購読処理に失敗しました。';
                 }
-                isSubscribed = false; // 失敗したので状態を戻す
+                isSubscribed = false;
             })
             .finally(function() {
                 updateButtonUI();
             });
     }
 
-    // 6. 購読を解除する (app.py の /api/unsubscribe を叩く)
     function unsubscribeUser() {
         swRegistration.pushManager.getSubscription()
             .then(function(subscription) {
                 if (subscription) {
-                    // サーバーに解除を通知
                     fetch('{{ url_for("unsubscribe") }}', {
                         method: 'POST',
                         body: JSON.stringify({ endpoint: subscription.endpoint }),
@@ -188,7 +204,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             'Content-Type': 'application/json'
                         }
                     });
-                    // ブラウザの購読を解除
                     return subscription.unsubscribe();
                 }
             })

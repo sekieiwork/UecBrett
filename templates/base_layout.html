@@ -836,9 +836,13 @@ a.tag-box:hover {
 
             {% with messages = get_flashed_messages() %}
               {% if messages %}
-                <div class="post-form" style="background-color: #e6f7ff; border-color: #b3e0ff; margin-bottom: 1.5em;">
+                <div id="flash-message-container" class="post-form" style="background-color: #e6f7ff; border-color: #b3e0ff; margin-bottom: 1.5em; position: relative;">
+                  
+                  <button id="dismiss-flash-btn" type="button" style="position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 1.5em; cursor: pointer; color: #0056b3; padding: 0 5px; line-height: 1;">
+                    &times; </button>
+
                   {% for message in messages %}
-                    <p style="margin: 0;">{{ message }}</p>
+                    <p style="margin: 0; padding-right: 30px;">{{ message }}</p>
                   {% endfor %}
                 </div>
               {% endif %}
@@ -896,6 +900,20 @@ a.tag-box:hover {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    
+    // ▼▼▼ [修正] Flashメッセージを閉じる機能 ▼▼▼
+    const dismissFlashBtn = document.getElementById('dismiss-flash-btn');
+    const flashContainer = document.getElementById('flash-message-container');
+
+    if (dismissFlashBtn && flashContainer) {
+        dismissFlashBtn.addEventListener('click', function() {
+            // コンテナを非表示にする
+            flashContainer.style.display = 'none';
+        });
+    }
+    // ▲▲▲ 修正ここまで ▲▲▲
+
+
     // --- 1. ヘルパー関数と共通の要素を取得 ---
     const resizeTextarea = (textarea) => {
         if (!textarea) return;
