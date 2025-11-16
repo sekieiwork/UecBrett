@@ -1442,7 +1442,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                     }
                     // 2. 【リアルタイム更新】
                     //    ページ上の「チェックされていない回覧板」の数を数える
-                    const unreadCount = document.querySelectorAll('.kairanban-item:not(.checked)').length;
+                    const unreadCount = document.querySelectorAll('.kairanban-item:not(.checked) .kairanban-check-container').length;
 
                     // 3. ページ上の「すべての」回覧板アイコンコンテナを取得
                     const iconContainers = document.querySelectorAll('.kairanban-icon-container');
