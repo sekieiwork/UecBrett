@@ -8,11 +8,12 @@
         
         <div id="notification-settings-toggle" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 0.5em;">
             <h3 style="margin-top: 0; margin-bottom: 0;">通知の基本設定</h3>
-            <span id="toggle-icon" style="font-size: 1.2em;">▽</span>
+            <span id="toggle-icon" style="font-size: 1.2em;">
+                {% if settings_open %}△{% else %}▽{% endif %}
+            </span>
         </div>
         
-        <div id="notification-settings-content" class="hidden" style="margin-top: 1.5em;">
-
+        <div id="notification-settings-content" class="{% if not settings_open %}hidden{% endif %}" style="margin-top: 1.5em;">
             <p style="font-size: 0.9em; color: #555; margin-top: 0;">
                 サイト全体でプッシュ通知を受け取るか
             </p>

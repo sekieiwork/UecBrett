@@ -981,10 +981,6 @@ def kairanban_index():
             new_kairanban.tags = get_or_create_tags_from_string(form.tags.data) # L1013
             
             db.session.flush() # new_kairanban.id を確定させる
-            auto_check = KairanbanCheck(user_id=current_user.id, kairanban_id=new_kairanban.id) # L1017
-            db.session.add(auto_check) # L1018
-
-            # ▼▼▼ [ここからが修正箇所です] ▼▼▼
             
             # 1. この回覧板に付けられたタグの「名前」リストを取得 (e.g. {'I類', 'B4'})
             target_tag_names = {tag.name for tag in new_kairanban.tags}
@@ -1293,9 +1289,12 @@ def unsubscribe():
 @login_required
 def settings():
     form = NotificationSettingsForm()
+    settings_open = False # デフォルトは閉
     
     if form.validate_on_submit():
         # (POSTリクエスト時)
+        settings_open = True # POST時は開いたままにする
+        
         # フォームのチェックボックスの状態をDBに保存
         current_user.push_notifications_enabled = form.enable_push.data
         db.session.commit()
@@ -1307,14 +1306,18 @@ def settings():
             flash('プッシュ通知を無効にし、すべての購読を解除しました。')
         else:
             flash('設定を更新しました。プッシュ通知を有効にするには、このページの機能でブラウザの許可設定を行ってください。')
-            
-        return redirect(url_for('settings'))
+        
+        # ▼▼▼ [修正] redirectを削除し、render_templateに変更 ▼▼▼
+        # return redirect(url_for('settings'))
+        return render_template('settings.html', form=form, settings_open=settings_open)
+        # ▲▲▲ 修正ここまで ▲▲▲
 
     # (GETリクエスト時)
     # DBの状態をフォームのデフォルト値に設定
     form.enable_push.data = current_user.push_notifications_enabled
     
-    return render_template('settings.html', form=form)
+    # ▼▼▼ [修正] settings_open を渡す ▼▼▼
+    return render_template('settings.html', form=form, settings_open=settings_open)
 
 if __name__ == '__main__':
     app.run(debug=True)

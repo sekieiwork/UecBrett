@@ -87,14 +87,20 @@
 
                     <div class="kairanban-actions" style="display: flex; align-items: center; gap: 10px;">
                         
-                        <div class="kairanban-check-container" style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                            <input type="checkbox" class="kairanban-check-toggle" data-kairanban-id="{{ k.id }}" id="check-{{ k.id }}"
-                                {% if k.id in checked_ids %}checked{% endif %}>
-                            <label for="check-{{ k.id }}" style="font-size: 0.9em; color: #555; cursor: pointer;">確認済み</label>
+                        {% if k.author == current_user %}
                             <span id="check-count-{{ k.id }}" style="font-size: 0.9em; color: #555; margin-left: 5px;">
                             👀 {{ k.check_count }}
                             </span>
-                        </div>
+                        {% else %}
+                            <div class="kairanban-check-container" style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                                <input type="checkbox" class="kairanban-check-toggle" data-kairanban-id="{{ k.id }}" id="check-{{ k.id }}"
+                                    {% if k.id in checked_ids %}checked{% endif %}>
+                                <label for="check-{{ k.id }}" style="font-size: 0.9em; color: #555; cursor: pointer;">確認済み</label>
+                                <span id="check-count-{{ k.id }}" style="font-size: 0.9em; color: #555; margin-left: 5px;">
+                                👀 {{ k.check_count }}
+                                </span>
+                            </div>
+                        {% endif %}
                         
                         {% if current_user.is_authenticated and (k.author == current_user or current_user.is_admin) %}
                         <form method="POST" action="{{ url_for('delete_kairanban', kairanban_id=k.id) }}" style="margin-bottom: 0;">
