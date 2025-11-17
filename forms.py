@@ -27,7 +27,7 @@ class RegisterForm(FlaskForm):
 class LoginForm(FlaskForm):
     username = StringField('ユーザー名', validators=[DataRequired()])
     password = PasswordField('パスワード', validators=[DataRequired()])
-    remember_me = BooleanField('ログイン状態を記憶する')
+    remember_me = BooleanField('ログイン状態を記憶する', default=True)
     submit = SubmitField('ログイン')
 
 class SearchForm(FlaskForm):

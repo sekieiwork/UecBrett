@@ -60,6 +60,9 @@
             </div>
             <hr>
 
+            </div> 
+        </div> 
+        
             <div class="content-width-limiter" style="margin-bottom: 1em;">
                 <button id="toggle-comment-form-btn">
                     コメントをする <i class="fas fa-plus"></i>
@@ -86,9 +89,9 @@
                     {% endif %}
                 </div>
             </div>
-        </div> </div> <div class="content-width-limiter">
-        <h3 id="comment-count-header">コメント ({{ post.comments|length }})</h3>
-    </div>
+            <div class="content-width-limiter">
+                <h3 id="comment-count-header">コメント ({{ post.comments|length }})</h3>
+            </div>
 
     {% for comment in post.comments %}
     <div class="content-width-limiter">

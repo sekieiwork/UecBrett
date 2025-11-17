@@ -7,6 +7,9 @@ services:
       - FLASK_APP=app.py
       - FLASK_ENV=development
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
+      - VAPID_PUBLIC_KEY=BDRp...BLioE6vsXY8VGMAiwONreMA0ZjMAZLM-YeQNLEUEGo_4hGbCQuSVGUZk24zlr_HlNjBIVtSew3Hk5cLAc0X0rt8...A
+      - VAPID_PRIVATE_KEY=a8...FF92IhT-t91c_yJHh-Dda2MbeTojVKQYNxvGRx9aMrY...k
+      - VAPID_CLAIM_EMAIL=mailto:kazuki.uec25@gmail.com
     volumes:
       - .:/app
     depends_on:
