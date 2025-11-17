@@ -6,7 +6,7 @@
     <div class="post-form">
         <h2>設定</h2>
         
-        <div id="notification-settings-toggle" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5em;">
+        <div id="notification-settings-toggle" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 0.5em;">
             <h3 style="margin-top: 0; margin-bottom: 0;">通知の基本設定</h3>
             <span id="toggle-icon" style="font-size: 1.2em;">
                 {% if settings_open %}△{% else %}▽{% endif %}
@@ -15,7 +15,7 @@
         
         <div id="notification-settings-content" class="{% if not settings_open %}hidden{% endif %}" style="margin-top: 1.5em;">
 
-            <p style="font-size: 0.9em; color: var(--text-muted); margin-top: 0;">
+            <p style="font-size: 0.9em; color: #555; margin-top: 0;">
                 サイト全体でプッシュ通知を受け取るか
             </p>
             <form method="POST">
@@ -25,17 +25,12 @@
                     {{ form.enable_push.label(style="margin: 0; font-weight: normal;") }}
                 </div>
                 
-                <p style="font-size: 0.8em; color: var(--text-muted); margin-top: -1em; margin-bottom: 1.5em;">
+                <p style="font-size: 0.8em; color: #6c757d; margin-top: -1em; margin-bottom: 1.5em;">
                     チェックを外すと、すべてのデバイスでのプッシュ通知が停止
                 </p>
                 {{ form.submit() }}
             </form>
-
-            <div class="form-field" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5em; background: none; border: none; box-shadow: none; padding: 0;">
-                <label for="dark-mode-toggle" style="margin: 0; font-weight: normal;">ダークモード</label>
-                <input type="checkbox" id="dark-mode-toggle" style="width: auto; height: auto;"
-                    {% if current_user.is_authenticated and current_user.dark_mode %}checked{% endif %}>
-            </div>
+            
             <hr style="margin: 2em 0;">
             
             <h3>プッシュ通知の管理 (このブラウザ)</h3>
@@ -45,13 +40,13 @@
                     現在「プッシュ通知を有効にする」がオフのため、ブラウザを登録できません。
                 </p>
             {% else %}
-                <p style="font-size: 0.9em; color: var(--text-muted); margin-top: 0;">
+                <p style="font-size: 0.9em; color: #555; margin-top: 0;">
                     このブラウザでプッシュ通知を受け取るための設定
                 </p>
                 <button id="push-subscription-btn" class="delete-button yellow" style="margin-right: 15px;" disabled>
                     設定を読み込み中...
                 </button>
-                <span id="push-status" style="font-size: 0.9em; color: var(--text-muted);"></span>
+                <span id="push-status" style="font-size: 0.9em; color: #6c757d;"></span>
             {% endif %}
         
         </div>
@@ -74,32 +69,6 @@ document.addEventListener('DOMContentLoaded', function() {
             toggleIcon.textContent = isHidden ? '▽' : '△';
         });
     }
-
-    // ▼▼▼ [追加] ダークモード トグル機能 ▼▼▼
-    const darkModeToggle = document.getElementById('dark-mode-toggle');
-    if (darkModeToggle) {
-        darkModeToggle.addEventListener('change', function() {
-            const isChecked = this.checked;
-            
-            // 1. 即座にテーマを切り替え
-            if (isChecked) {
-                document.documentElement.setAttribute('data-theme', 'dark');
-            } else {
-                document.documentElement.removeAttribute('data-theme');
-            }
-
-            // 2. サーバーに設定を保存
-            fetch('{{ url_for("toggle_dark_mode") }}', {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Content-Type': 'application/json'
-                }
-            }).catch(err => console.error('ダークモードの保存に失敗:', err));
-        });
-    }
-    // ▲▲▲ 追加ここまで ▲▲▲
-
 
     // --- プッシュ通知のJS (マスター設定が無効なら実行しない) ---
     {% if not current_user.push_notifications_enabled %}
