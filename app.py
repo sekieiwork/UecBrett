@@ -1289,7 +1289,7 @@ def unsubscribe():
 @login_required
 def settings():
     form = NotificationSettingsForm()
-    settings_open = False # デフォルトは閉
+    settings_open = request.args.get('settings_open') == '1'
     
     if form.validate_on_submit():
         # (POSTリクエスト時)
@@ -1307,10 +1307,9 @@ def settings():
         else:
             flash('設定を更新しました。プッシュ通知を有効にするには、このページの機能でブラウザの許可設定を行ってください。')
         
-        # ▼▼▼ [修正] redirectを削除し、render_templateに変更 ▼▼▼
-        # return redirect(url_for('settings'))
-        return render_template('settings.html', form=form, settings_open=settings_open)
-        # ▲▲▲ 修正ここまで ▲▲▲
+        # ▼▼▼PRGパターンに戻し、トグル状態をクエリパラメータで渡す ▼▼▼
+        return redirect(url_for('settings', settings_open=1))
+       
 
     # (GETリクエスト時)
     # DBの状態をフォームのデフォルト値に設定
