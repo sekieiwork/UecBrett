@@ -2,7 +2,7 @@
 
 # データベースのマイグレーション（テーブル作成）を実行する
 echo "Running database migrations..."
-flask db upgrade
+# flask db upgrade
 
 # Webサーバー（Gunicorn）を起動する
 echo "Starting Gunicorn server..."
