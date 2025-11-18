@@ -336,7 +336,6 @@ class User(db.Model, UserMixin):
     major = db.Column(db.String(100), nullable=True)
     #dark_mode = db.Column(db.Boolean, default=False)
     push_notifications_enabled = db.Column(db.Boolean, default=False)
-    push_notifications_enabled = db.Column(db.Boolean, default=False)
     posts = db.relationship('Post', backref='author', lazy=True, cascade="all, delete")
     comments = db.relationship('Comment', backref='commenter', lazy=True)
     bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic')
@@ -1329,7 +1328,7 @@ def toggle_dark_mode():
         return jsonify({'status': 'success', 'dark_mode': current_user.dark_mode}), 200
     except Exception as e:
         db.session.rollback()
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        return jsonify({'status': 'error', 'message': str(e)}), 500"""
 
 if __name__ == '__main__':
-    app.run(debug=True)"""
+    app.run(debug=True)
