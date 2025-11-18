@@ -31,12 +31,12 @@
                 {{ form.submit() }}
             </form>
 
-            <!--
+           
             <div class="form-field" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5em; background: none; border: none; box-shadow: none; padding: 0;">
                 <label for="dark-mode-toggle" style="margin: 0; font-weight: normal;">ダークモード</label>
                 <input type="checkbox" id="dark-mode-toggle" style="width: auto; height: auto;"
                     {% if current_user.is_authenticated and current_user.dark_mode %}checked{% endif %}>
-            </div>-->
+            </div>
             <hr style="margin: 2em 0;">
             
             <h3>プッシュ通知の管理 (このブラウザ)</h3>
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ▼▼▼ [追加] ダークモード トグル機能 ▼▼▼
-    /*
+    
     const darkModeToggle = document.getElementById('dark-mode-toggle');
     if (darkModeToggle) {
         darkModeToggle.addEventListener('change', function() {
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }).catch(err => console.error('ダークモードの保存に失敗:', err));
         });
     }
-    */
+    
     // ▲▲▲ 追加ここまで ▲▲▲
 
     // --- プッシュ通知のJS (マスター設定が無効なら実行しない) ---
