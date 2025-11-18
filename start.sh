@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# データベースの履歴を「dark_modeのない」最初の状態(21d...)にスタンプする
-echo "Stamping database to revision 21dbbc274d99..."
-flask db stamp 21dbbc274d99
+# データベースのマイグレーション（テーブル作成）を実行する
+echo "Running database migrations..."
+flask db upgrade
 
 # Webサーバー（Gunicorn）を起動する
 echo "Starting Gunicorn server..."
