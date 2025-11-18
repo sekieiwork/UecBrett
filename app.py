@@ -334,7 +334,7 @@ class User(db.Model, UserMixin):
     user_class = db.Column(db.String(50), nullable=True) # クラス (例: '1クラス', 'Aクラス')
     program = db.Column(db.String(100), nullable=True)   # プログラム (例: 'メディア情報学プログラム')
     major = db.Column(db.String(100), nullable=True)
-    dark_mode = db.Column(db.Boolean, default=False)
+    #dark_mode = db.Column(db.Boolean, default=False)
     push_notifications_enabled = db.Column(db.Boolean, default=False)
     push_notifications_enabled = db.Column(db.Boolean, default=False)
     posts = db.relationship('Post', backref='author', lazy=True, cascade="all, delete")
@@ -1320,7 +1320,7 @@ def settings():
     # ▼▼▼ [修正] settings_open を渡す ▼▼▼
     return render_template('settings.html', form=form, settings_open=settings_open)
 
-@app.route('/api/toggle_dark_mode', methods=['POST'])
+"""@app.route('/api/toggle_dark_mode', methods=['POST'])
 @login_required
 def toggle_dark_mode():
     try:
@@ -1332,4 +1332,4 @@ def toggle_dark_mode():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True)"""
