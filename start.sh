@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# データベースの履歴を強制的に最新版(abf...)にスタンプする
-echo "Stamping database to revision abf7081a2a16..."
-flask db stamp abf7081a2a16
+# データベースの履歴を「dark_modeのない」最初の状態(21d...)にスタンプする
+echo "Stamping database to revision 21dbbc274d99..."
+flask db stamp 21dbbc274d99
 
 # Webサーバー（Gunicorn）を起動する
 echo "Starting Gunicorn server..."

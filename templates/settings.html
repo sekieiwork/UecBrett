@@ -32,11 +32,7 @@
             </form>
 
            
-            <div class="form-field" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5em; background: none; border: none; box-shadow: none; padding: 0;">
-                <label for="dark-mode-toggle" style="margin: 0; font-weight: normal;">ダークモード</label>
-                <input type="checkbox" id="dark-mode-toggle" style="width: auto; height: auto;"
-                    {% if current_user.is_authenticated and current_user.dark_mode %}checked{% endif %}>
-            </div>
+            
             <hr style="margin: 2em 0;">
             
             <h3>プッシュ通知の管理 (このブラウザ)</h3>
@@ -75,33 +71,6 @@ document.addEventListener('DOMContentLoaded', function() {
             toggleIcon.textContent = isHidden ? '▽' : '△';
         });
     }
-
-    // ▼▼▼ [追加] ダークモード トグル機能 ▼▼▼
-    
-    const darkModeToggle = document.getElementById('dark-mode-toggle');
-    if (darkModeToggle) {
-        darkModeToggle.addEventListener('change', function() {
-            const isChecked = this.checked;
-            
-            // 1. 即座にテーマを切り替え
-            if (isChecked) {
-                document.documentElement.setAttribute('data-theme', 'dark');
-            } else {
-                document.documentElement.removeAttribute('data-theme');
-            }
-
-            // 2. サーバーに設定を保存
-            fetch('{{ url_for("toggle_dark_mode") }}', {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Content-Type': 'application/json'
-                }
-            }).catch(err => console.error('ダークモードの保存に失敗:', err));
-        });
-    }
-    
-    // ▲▲▲ 追加ここまで ▲▲▲
 
     // --- プッシュ通知のJS (マスター設定が無効なら実行しない) ---
     {% if not current_user.push_notifications_enabled %}
