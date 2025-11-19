@@ -26,3 +26,4 @@ gunicorn
 psycopg2
 Pillow
 cloudinary
+requests

@@ -12,6 +12,12 @@
             await OneSignal.init({
             appId: "b623f8fd-69e9-4d6a-b999-2dcb87b7c086",
             });
+
+            // ログイン中のユーザーIDをOneSignalに登録 ▼▼▼
+            {% if current_user.is_authenticated %}
+                // ユーザーIDを文字列として登録
+                await OneSignal.login("{{ current_user.id }}");
+            {% endif %}
     });
 </script>
 

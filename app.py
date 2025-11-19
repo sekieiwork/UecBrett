@@ -24,6 +24,7 @@ import cloudinary.uploader
 import bleach
 from bleach.linkifier import Linker
 from forms import NotificationSettingsForm
+import requests
 
 cloudinary.config(
     cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
@@ -347,6 +348,41 @@ class Notification(db.Model):
     post = db.relationship('Post', back_populates='notifications')
     kairanban = db.relationship('Kairanban', back_populates='notifications')
 
+def send_onesignal_notification(user_ids, title, content, url=None):
+    """OneSignal経由でプッシュ通知を送信"""
+    try:
+        api_key = os.environ.get('ONESIGNAL_API_KEY')
+        app_id = os.environ.get('ONESIGNAL_APP_ID')
+        
+        if not api_key or not app_id:
+            print("OneSignal API Key or App ID is missing.")
+            return
+
+        header = {
+            "Content-Type": "application/json; charset=utf-8",
+            "Authorization": f"Basic {api_key}"
+        }
+
+        # user_ids はリスト形式 (例: ['5', '12'])
+        target_ids = [str(uid) for uid in user_ids]
+
+        payload = {
+            "app_id": app_id,
+            "headings": {"en": title},
+            "contents": {"en": content},
+            "include_aliases": {"external_id": target_ids}, # ステップ1で登録したID宛に送る
+            "target_channel": "push",
+        }
+        
+        if url:
+            payload["url"] = url
+
+        req = requests.post("https://onesignal.com/api/v1/notifications", headers=header, data=json.dumps(payload))
+        print(f"OneSignal Response: {req.status_code} {req.text}")
+
+    except Exception as e:
+        print(f"OneSignal Error: {e}")
+
 # Routes
 @app.route('/', defaults={'page': 1}, methods=['GET', 'POST'])
 @app.route('/page/<int:page>', methods=['GET', 'POST'])
@@ -406,6 +442,12 @@ def post_detail(post_id):
         if current_user != post.author:
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
             db.session.add(notification)
+
+            send_onesignal_notification(
+                user_ids=[post.author.id],
+                title="新しいコメント",
+                content=f"あなたの投稿「{post.title}」にコメントが付きました。",
+                url=url_for('post_detail', post_id=post.id, _external=True)
         
         previous_commenters = db.session.query(User).join(Comment).filter(
             Comment.post_id == post.id
@@ -424,6 +466,12 @@ def post_detail(post_id):
                     message="あなたがコメントした投稿に投稿者がコメントしました。" 
                 )
                 db.session.add(notification)
+                send_onesignal_notification(
+                    user_ids=[user.id],
+                    title="コメントの返信",
+                    content="あなたがコメントした投稿に投稿者がコメントしました。",
+                    url=url_for('post_detail', post_id=post.id, _external=True)
+                )
         
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
