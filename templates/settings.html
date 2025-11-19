@@ -145,61 +145,43 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
 function subscribeUser() {
-    // 10秒のタイムアウトを設定
-    const TIMEOUT_MS = 10000;
-    
-    // タイムアウトを発生させるPromise
-    const timeout = new Promise((_, reject) => {
-        setTimeout(() => {
-            // タイムアウトメッセージを reject する
-            reject(new Error('購読処理がタイムアウトしました。iOSで購読に失敗する場合、ブラウザを再起動してホーム画面からお試しください。'));
-        }, TIMEOUT_MS);
-    });
-
-    // 実際の購読処理のPromise
-    const subscribePromise = swRegistration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: applicationServerPublicKey
-    })
-    .then(function(subscription) {
-        // 成功時の処理（サーバーに購読情報を送信）
-        return fetch('{{ url_for("subscribe") }}', {
-            method: 'POST',
-            body: JSON.stringify(subscription),
-            headers: {
-                'Content-Type': 'application/json'
-            }
+        swRegistration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: applicationServerPublicKey
         })
-        .then(function(response) {
-            if (!response.ok) {
-                // サーバー側でエラーが発生した場合の失敗処理
-                throw new Error('サーバーへの購読情報送信に失敗しました。');
-            }
-            return response.json();
+        .then(function(subscription) {
+            // サーバーに購読情報を送信
+            return fetch('{{ url_for("subscribe") }}', {
+                method: 'POST',
+                body: JSON.stringify(subscription),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('サーバーへの購読情報送信に失敗しました。');
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                pushStatus.textContent = '通知購読に成功しました。';
+                isSubscribed = true;
+            });
         })
-        .then(function(data) {
-            pushStatus.textContent = '通知購読に成功しました。';
-            isSubscribed = true;
-        });
-    });
-
-    // タイムアウトと購読処理を競合させる
-    Promise.race([subscribePromise, timeout])
         .catch(function(err) {
             console.error('購読に失敗しました:', err);
             if (Notification.permission === 'denied') {
                 pushStatus.textContent = 'ブラウザの設定で通知がブロックされています。';
             } else {
-                // タイムアウトメッセージを表示
-                pushStatus.textContent = err.message || '購読処理に失敗しました。';
+                pushStatus.textContent = '購読処理に失敗しました。';
             }
             isSubscribed = false;
         })
         .finally(function() {
-            // 固まってもタイムアウトで必ずこれが実行される
             updateButtonUI();
         });
-}
+    }
 
     function unsubscribeUser() {
         swRegistration.pushManager.getSubscription()
