@@ -448,6 +448,7 @@ def post_detail(post_id):
                 title="新しいコメント",
                 content=f"あなたの投稿「{post.title}」にコメントが付きました。",
                 url=url_for('post_detail', post_id=post.id, _external=True)
+            )
         
         previous_commenters = db.session.query(User).join(Comment).filter(
             Comment.post_id == post.id
