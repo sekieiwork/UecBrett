@@ -81,55 +81,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const pushStatus = document.getElementById('push-status');
     let isSubscribed = false;
     let swRegistration = null;
-    
-    // ★★★ [追加] 公開鍵を格納する変数 ★★★
     let applicationServerPublicKey = null;
 
     function urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
-        const base64 = (base64String + padding)
-            .replace(/-/g, '+')
-            .replace(/_/g, '/');
-
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
         const rawData = window.atob(base64);
         const outputArray = new Uint8Array(rawData.length);
-
         for (let i = 0; i < rawData.length; ++i) {
             outputArray[i] = rawData.charCodeAt(i);
         }
         return outputArray;
     }
 
-    // ★★★ [追加] サーバーからVAPID公開鍵を取得する処理 ★★★
+    // 1. 公開鍵を取得
     fetch('{{ url_for("get_vapid_public_key") }}')
         .then(response => response.json())
         .then(data => {
             if (data.public_key) {
-                // 公開鍵をUint8Arrayに変換して保存
                 applicationServerPublicKey = urlBase64ToUint8Array(data.public_key);
-                
-                // 公開鍵が取れてから Service Worker の準備をする
+                // 公開鍵取得後にSWを準備
                 if ('serviceWorker' in navigator && 'PushManager' in window) {
                     navigator.serviceWorker.ready.then(function(registration) {
                         swRegistration = registration;
                         checkSubscriptionStatus();
-                    }).catch(function(error) {
-                        console.error('Service Worker の準備に失敗:', error);
-                        pushStatus.textContent = 'プッシュ通知の準備に失敗しました。';
                     });
                 } else {
-                    pushStatus.textContent = 'お使いのブラウザはプッシュ通知に対応していません。';
+                    pushStatus.textContent = 'このブラウザは対応していません。';
                 }
-            } else {
-                console.error('VAPID公開鍵の取得に失敗しました');
-                pushStatus.textContent = 'サーバー設定エラー: 公開鍵が取得できません。';
             }
         })
         .catch(err => {
-            console.error('VAPID公開鍵の取得エラー:', err);
-            pushStatus.textContent = '通信エラー: 公開鍵を取得できませんでした。';
+            console.error('公開鍵取得エラー:', err);
+            pushStatus.textContent = '通信エラーが発生しました。';
         });
-
 
     function checkSubscriptionStatus() {
         swRegistration.pushManager.getSubscription()
@@ -139,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (isSubscribed) {
                     pushStatus.textContent = 'このブラウザは通知を受け取れます。';
                 } else {
-                    pushStatus.textContent = 'このブラウザは現在通知オフです。';
+                    pushStatus.textContent = '通知は現在オフです。';
                 }
             });
     }
@@ -154,14 +139,13 @@ document.addEventListener('DOMContentLoaded', function() {
             pushButton.classList.remove('delete-button');
             pushButton.classList.add('yellow');
         }
-        // 公開鍵のロードが終わるまでボタンは無効化しておく
         if (applicationServerPublicKey) {
             pushButton.disabled = false;
         }
     }
 
     pushButton.addEventListener('click', function() {
-        pushButton.disabled = true;
+        pushButton.disabled = true; // ボタン連打防止
         if (isSubscribed) {
             unsubscribeUser();
         } else {
@@ -169,70 +153,81 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // ▼▼▼ ここが修正の核心（タイムアウト付き購読処理） ▼▼▼
     function subscribeUser() {
-        // ★ここでの applicationServerPublicKey が未定義だったのが原因でした
         if (!applicationServerPublicKey) {
-            pushStatus.textContent = 'エラー: 公開鍵がロードされていません。リロードしてください。';
+            pushStatus.textContent = 'エラー: ページをリロードしてください。';
+            updateButtonUI();
             return;
         }
 
-        swRegistration.pushManager.subscribe({
+        // 1. タイムアウト用Promise (10秒)
+        const timeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('タイムアウト')), 10000)
+        );
+
+        // 2. 実際の購読処理
+        const subscribeProcess = swRegistration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: applicationServerPublicKey
         })
         .then(function(subscription) {
+            // サーバーへ送信
             return fetch('{{ url_for("subscribe") }}', {
                 method: 'POST',
                 body: JSON.stringify(subscription),
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(function(response) {
-                if (!response.ok) {
-                    throw new Error('サーバーへの購読情報送信に失敗しました。');
-                }
-                return response.json();
-            })
-            .then(function(data) {
-                pushStatus.textContent = '通知購読に成功しました。';
-                isSubscribed = true;
+                headers: { 'Content-Type': 'application/json' }
             });
         })
-        .catch(function(err) {
-            console.error('購読に失敗しました:', err);
-            if (Notification.permission === 'denied') {
-                pushStatus.textContent = 'ブラウザの設定で通知がブロックされています。';
-            } else {
-                pushStatus.textContent = '購読処理に失敗しました: ' + err.message;
-            }
-            isSubscribed = false;
+        .then(function(response) {
+            if (!response.ok) throw new Error('Server Error');
+            return response.json();
         })
-        .finally(function() {
-            updateButtonUI();
+        .then(function(data) {
+            pushStatus.textContent = '通知購読に成功しました。';
+            isSubscribed = true;
         });
+
+        // 3. 競走させる (処理 vs タイムアウト)
+        Promise.race([subscribeProcess, timeout])
+            .catch(function(err) {
+                console.error('購読エラー:', err);
+                if (err.message === 'タイムアウト') {
+                    pushStatus.textContent = '処理がタイムアウトしました。再試行してください。';
+                } else if (Notification.permission === 'denied') {
+                    pushStatus.textContent = 'ブラウザ設定で通知がブロックされています。';
+                } else {
+                    pushStatus.textContent = '購読に失敗しました。';
+                }
+                isSubscribed = false;
+            })
+            .finally(function() {
+                // ★どんな場合でも必ずボタンを復活させる
+                updateButtonUI();
+            });
     }
+    // ▲▲▲ 修正ここまで ▲▲▲
 
     function unsubscribeUser() {
         swRegistration.pushManager.getSubscription()
             .then(function(subscription) {
                 if (subscription) {
+                    // サーバーから削除
                     fetch('{{ url_for("unsubscribe") }}', {
                         method: 'POST',
                         body: JSON.stringify({ endpoint: subscription.endpoint }),
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
+                        headers: { 'Content-Type': 'application/json' }
                     });
                     return subscription.unsubscribe();
                 }
             })
             .then(function() {
-                pushStatus.textContent = 'このブラウザでの通知を停止しました。';
+                pushStatus.textContent = '通知を停止しました。';
                 isSubscribed = false;
             })
             .catch(function(err) {
-                console.error('購読解除に失敗しました:', err);
+                console.error('解除エラー:', err);
+                pushStatus.textContent = '解除に失敗しました。';
             })
             .finally(function() {
                 updateButtonUI();
