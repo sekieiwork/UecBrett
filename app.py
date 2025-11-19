@@ -1158,6 +1158,8 @@ def delete_kairanban(kairanban_id):
 def send_web_push(user, title, body, url=None):
     """指定されたユーザーにWeb Push通知を送信する"""
 
+    print(f"DEBUG: send_web_push called for user {user.username}. Enabled: {user.push_notifications_enabled}")
+
     if not user.push_notifications_enabled:
         print(f"ユーザー {user.username} はプッシュ通知を無効にしています。")
         return
