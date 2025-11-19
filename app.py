@@ -356,7 +356,7 @@ def send_onesignal_notification(user_ids, title, content, url=None):
         # api_key = os.environ.get('ONESIGNAL_API_KEY')
         # app_id = os.environ.get('ONESIGNAL_APP_ID')
         
-        api_key = "os_v2_app_wyr7r7lj5fgwvomzfxfypn6aqye44i6c3xnecl5vuopnsukmq7j6a4mkgqiubw5sp7jxuf75mwpgafw5ffqq4fga5wwzke55fdlujmq"  # あなたのREST API KEY
+        api_key = "os_v2_app_wyr7r7lj5fgwvomzfxfypn6aqydenfv5ibeudjvhlscalnmt4uleqg6kbordnkn67nhoiwjovjnss2wtwxxujpcpdsekpcu3qo2zlxa"  # あなたのREST API KEY
         app_id = "b623f8fd-69e9-4d6a-b999-2dcb87b7c086"  # あなたのAPP ID
         # ▲▲▲ ここまで ▲▲▲
         
