@@ -461,6 +461,8 @@ def post_detail(post_id):
         print(f"DEBUG: Form validation passed, user {current_user.username} is authenticated.")
         comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
         db.session.add(comment)
+
+        print(f"DEBUG: NOTIFICATION LOGIC START. Current User ID: {current_user.id}, Post Author ID: {post.author.id}")
         
         # 1. 投稿者に通知 (自分自身が投稿者でない場合)
         if current_user != post.author:
