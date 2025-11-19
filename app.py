@@ -458,11 +458,8 @@ def post_detail(post_id):
     comment_form = CommentForm()
 
     if comment_form.validate_on_submit() and current_user.is_authenticated:
-        print(f"DEBUG: Form validation passed, user {current_user.username} is authenticated.")
         comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
         db.session.add(comment)
-
-        print(f"DEBUG: NOTIFICATION LOGIC START. Current User ID: {current_user.id}, Post Author ID: {post.author.id}")
         
         # 1. 投稿者に通知 (自分自身が投稿者でない場合)
         if current_user != post.author:
@@ -596,7 +593,6 @@ def edit_post(post_id):
                     message="あなたがブックマークした投稿に変更がありました。"
                 )
                 db.session.add(notification)
-                print(f"DEBUG: Attempting to send notification for post {post.id} to user {post.author.username}")
                 send_web_push(
                     bookmark.user,
                     '投稿が編集されました',
