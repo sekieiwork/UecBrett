@@ -1000,9 +1000,6 @@ def delete_kairanban(kairanban_id):
     return redirect(url_for('kairanban_index'))
 
 
-@app.route('/sw.js')
-def service_worker():
-    return app.send_static_file('sw.js')
 
 @app.route('/manifest.json')
 def manifest():
@@ -1032,6 +1029,10 @@ def settings():
     
     return render_template('settings.html', form=form, settings_open=settings_open)
 
+# ▼▼▼ OneSignal用のService Workerを配信するルート ▼▼▼
+@app.route('/OneSignalSDKWorker.js')
+def onesignal_sdk_worker():
+    return app.send_static_file('OneSignalSDKWorker.js')
 
 if __name__ == '__main__':
     app.run(debug=True)
