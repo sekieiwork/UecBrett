@@ -26,4 +26,3 @@ gunicorn
 psycopg2
 Pillow
 cloudinary
-pywebpush

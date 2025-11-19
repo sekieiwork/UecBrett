@@ -23,10 +23,7 @@ import cloudinary
 import cloudinary.uploader
 import bleach
 from bleach.linkifier import Linker
-from pywebpush import webpush, WebPushException
 from forms import NotificationSettingsForm
-
-
 
 cloudinary.config(
     cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
@@ -52,14 +49,13 @@ def inject_common_vars():
     """
     search_form = SearchForm()
     is_developer = False
-    has_unread_kairanban = False # <-- まずFalseで初期化
+    has_unread_kairanban = False 
 
     # 認証済みユーザーの場合のみ、開発者チェックと回覧板チェックを行う
     if current_user.is_authenticated:
         if current_user.username == '二酸化ケイ素':
             is_developer = True
         
-        # --- (ここからインデントして 'if' の中に入れる) ---
         # 1. 期限切れでない回覧板
         base_query = Kairanban.query.filter(Kairanban.expires_at > datetime.utcnow())
             
@@ -72,7 +68,7 @@ def inject_common_vars():
             current_user.major
         }
         # 2b. 自分の「カスタムタグ」をセットで取得
-        user_custom_tags = {tag.name for tag in current_user.tags} #
+        user_custom_tags = {tag.name for tag in current_user.tags} 
         
         # 2c. 結合 (Noneや空文字を除外)
         user_all_tag_names = {tag for tag in user_status_tags.union(user_custom_tags) if tag}
@@ -92,8 +88,7 @@ def inject_common_vars():
             for k in target_kairanbans:
                 if k.author_id != current_user.id and k.id not in checked_ids:
                     has_unread_kairanban = True
-                    break # 1件でも未チェックがあればループ終了
-        # --- (ここまでインデント) ---
+                    break 
 
     return dict(
         search_form=search_form, 
@@ -102,7 +97,6 @@ def inject_common_vars():
     )
 
 # 1. アプリケーションで許可するHTMLタグを定義します
-# (Markdownが生成するもの + UECreviewで使うspan)
 ALLOWED_TAGS = [
     'p', 'br', 'strong', 'em', 'ol', 'ul', 'li', 'a', 'span', 'hr',
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'code', 'blockquote',
@@ -110,11 +104,11 @@ ALLOWED_TAGS = [
 
 # 2. 許可するタグに付随する属性を定義します
 ALLOWED_ATTRIBUTES = {
-    'a': ['href', 'target'], # リンク
-    'span': ['class']        # UECreviewの <span class="text-red"> 用
+    'a': ['href', 'target'], 
+    'span': ['class']        
 }
 
-# 3. BleachのLinkerを設定（自動でリンクに target="_blank" を追加）
+# 3. BleachのLinkerを設定
 linker = Linker(callbacks=[
     lambda attrs, new: attrs.update({(None, 'target'): '_blank'})
 ])
@@ -128,24 +122,19 @@ def safe_markdown_filter(text):
     # ステップ1: まずMarkdownをHTMLに変換する
     html = md.convert(text)
 
-    # ▼▼▼ ▼▼▼ [修正] 処理の順序を入れ替えます ▼▼▼ ▼▼▼
-
-    # ステップ2: linkifyコールバックを定義 (target="_blank" を追加)
+    # ステップ2: linkifyコールバックを定義
     def add_target_blank(attrs, new=False):
-        # (None, 'target'): '_blank' を attrs に追加
         attrs[(None, 'target')] = '_blank'
         return attrs
 
     # ステップ3: bleach.linkify() で先にリンク化する
-    # (リンク化をスキップするのは 'a', 'pre', 'code' タグの中だけ)
     linked_html = bleach.linkify(
         html,
         callbacks=[add_target_blank],
-        skip_tags=['a', 'pre', 'code'] # <-- ALLOWED_TAGS から変更
+        skip_tags=['a', 'pre', 'code'] 
     )
 
     # ステップ4: bleach.clean() で最後に全体を消毒する
-    # (ALLOWED_TAGS と ALLOWED_ATTRIBUTES を使う)
     sanitized_html = bleach.clean(
         linked_html,
         tags=ALLOWED_TAGS,       
@@ -154,61 +143,40 @@ def safe_markdown_filter(text):
 
     return sanitized_html
 
-
-
-# ▼▼▼タグ処理ヘルパー関数 ▼▼▼
+# タグ処理ヘルパー関数
 def get_or_create_tags_from_string(tag_string):
-    """
-    "tag1,tag2, tag3" のようなカンマ区切りの文字列をパースし、
-    Tagオブジェクトのリストを返す。
-    新しいタグはDBに作成し、last_usedを更新する。
-    """
     tag_objects = []
     if not tag_string:
         return tag_objects
 
-    # "tag1, tag2 , tag3" -> ["tag1", "tag2", "tag3"]
     tag_names = [name.strip() for name in tag_string.split(',') if name.strip()]
     
     for name in tag_names:
         tag = Tag.query.filter_by(name=name).first()
         if not tag:
-            # 新しいタグを作成
             tag = Tag(name=name, last_used=datetime.utcnow())
             db.session.add(tag)
         else:
-            # 既存タグの last_used を更新
             tag.last_used = datetime.utcnow()
         
         tag_objects.append(tag)
         
-    db.session.commit() # このセッションで追加されたタグをコミット
+    db.session.commit()
     return tag_objects
-# ▲▲▲ [追加] ここまで ▲▲▲
-
 
 def parse_review_for_editing(content):
-    """
-    保存されたHTML/Markdown形式のUECreview本文をパースし、
-    編集フォーム用の辞書のリストに変換する。
-    """
-    
-    # UECreview形式かの簡易判定
     if not content.strip().startswith('<span class="text-large">**'):
-        return None # UECreview形式ではない
+        return None 
 
     subjects = []
-    # 投稿を "---" (ハイフン3つ) で分割（科目ごとのレビューに分ける）
     reviews = re.split(r'\n\s*---\s*\n', content.strip())
     
-    # パース用の正規表現パターン
-    # (科目名), (成績), (担当教員), (本文) をキャプチャする
     pattern = re.compile(
         r'<span class="text-large">\*\*(.*?)\*\*</span>\s*'
         r'成績:<span class="text-red text-large">\*\*(.*?)\*\*</span>\s*'
         r'担当教員:(.*?)\n'
-        r'(.*?)(?=\Z)', # \Z は文字列の絶対的な末尾
-        re.DOTALL # DOTALLで '.' が改行にもマッチするようにする
+        r'(.*?)(?=\Z)', 
+        re.DOTALL 
     )
 
     placeholders = ['ここに科目名を入力', 'ここに担当教員名を入力', '本文を入力']
@@ -218,7 +186,6 @@ def parse_review_for_editing(content):
         if match:
             subject, grade, teacher, body = match.groups()
             
-            # プレースホルダーだったら空文字列 '' に変換
             subject = '' if subject == placeholders[0] else subject
             teacher = '' if teacher == placeholders[1] else teacher
             body = '' if body == placeholders[2] else body
@@ -233,71 +200,57 @@ def parse_review_for_editing(content):
     return subjects if subjects else None
 
 def save_picture(form_picture):
-    # Cloudinaryに画像をアップロード
     upload_result = cloudinary.uploader.upload(form_picture, folder="post_images", width=500, height=500, crop="limit")
-    # アップロードされた画像の安全なURLを返す
     return upload_result.get('secure_url')
 
 def save_icon(form_icon):
-    # Cloudinaryにアイコンをアップロード（150x150の正方形に顔を認識してクロップ）
     upload_result = cloudinary.uploader.upload(form_icon, 
                                                folder="profile_icons", 
                                                width=150, 
                                                height=150, 
                                                crop="fill", 
                                                gravity="face")
-    # アップロードされた画像の安全なURLを返す
     return upload_result.get('secure_url')
 
 def delete_from_cloudinary(image_url):
     if not image_url:
-        return # URLがなければ何もしない
+        return 
     try:
-        # URLからpublic_idを抽出します (例: .../upload/v123/folder/file.jpg -> folder/file)
         public_id_with_ext = '/'.join(image_url.split('/')[-2:])
         public_id = os.path.splitext(public_id_with_ext)[0]
-        # Cloudinaryに削除を命令
         cloudinary.uploader.destroy(public_id)
     except Exception as e:
-        # エラーが起きてもプログラムは止めないように、ログだけ表示（任意）
         print(f"Error deleting image from Cloudinary: {e}")
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# ▼▼▼ [修正] タグモデル定義を User/Post クラスの「前」に移動 ▼▼▼
-# 1. Post と Tag の中間テーブル (多対多)
+# Models
 post_tags = db.Table('post_tags',
     db.Column('post_id', db.Integer, db.ForeignKey('post.id', ondelete="CASCADE"), primary_key=True),
     db.Column('tag_id', db.Integer, db.ForeignKey('tag.id', ondelete="CASCADE"), primary_key=True)
 )
 
-# 2. User と Tag の中間テーブル (多対多)
 user_tags = db.Table('user_tags',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), primary_key=True),
     db.Column('tag_id', db.Integer, db.ForeignKey('tag.id', ondelete="CASCADE"), primary_key=True)
 )
 
-# 3. Tagモデル
 class Tag(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
-    # 最後に使われた日時 (「最近使用したタグ」機能のため)
     last_used = db.Column(db.DateTime, default=datetime.utcnow)
 
-# 4. Kairanban と Tag の中間テーブル (多対多)
 kairanban_tags = db.Table('kairanban_tags',
     db.Column('kairanban_id', db.Integer, db.ForeignKey('kairanban.id', ondelete="CASCADE"), primary_key=True),
     db.Column('tag_id', db.Integer, db.ForeignKey('tag.id', ondelete="CASCADE"), primary_key=True)
 )
 
-# 5. Kairanbanモデル
 class Kairanban(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    # 投稿時に created_at + N日 で設定する
     expires_at = db.Column(db.DateTime, nullable=False) 
     author_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
     
@@ -305,11 +258,9 @@ class Kairanban(db.Model):
     tags = db.relationship('Tag', secondary=kairanban_tags, lazy='subquery',
         backref=db.backref('kairanbans', lazy=True), cascade="all, delete")
     
-    # どのユーザーがチェックしたか (KairanbanCheckモデルとの連携)
     checks = db.relationship('KairanbanCheck', backref='kairanban', lazy='dynamic', cascade="all, delete")
     notifications = db.relationship('Notification', back_populates='kairanban', lazy='dynamic', cascade="all, delete")
 
-# 6. Kairanban確認チェックモデル
 class KairanbanCheck(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -320,7 +271,6 @@ class KairanbanCheck(db.Model):
     __table_args__ = (db.UniqueConstraint('user_id', 'kairanban_id', name='_user_kairanban_uc'),)
 
 
-# Database Models
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
@@ -329,10 +279,10 @@ class User(db.Model, UserMixin):
     bio = db.Column(db.Text, nullable=True)
     icon_url = db.Column(db.String(200), nullable=True)
     affiliation = db.Column(db.String(100), nullable=True)
-    grade = db.Column(db.String(50), nullable=True)      # 学年 (例: '1年', '大学院生')
-    category = db.Column(db.String(50), nullable=True)   # 類 (例: 'I類', 'II類')
-    user_class = db.Column(db.String(50), nullable=True) # クラス (例: '1クラス', 'Aクラス')
-    program = db.Column(db.String(100), nullable=True)   # プログラム (例: 'メディア情報学プログラム')
+    grade = db.Column(db.String(50), nullable=True)
+    category = db.Column(db.String(50), nullable=True)
+    user_class = db.Column(db.String(50), nullable=True)
+    program = db.Column(db.String(100), nullable=True)
     major = db.Column(db.String(100), nullable=True)
     push_notifications_enabled = db.Column(db.Boolean, default=False)
     posts = db.relationship('Post', backref='author', lazy=True, cascade="all, delete")
@@ -340,10 +290,8 @@ class User(db.Model, UserMixin):
     bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic')
     notifications = db.relationship('Notification', backref='recipient', lazy='dynamic')
     
-    # ▼▼▼ [修正] 'user_tags' を使うように
     tags = db.relationship('Tag', secondary=user_tags, lazy='subquery',
         backref=db.backref('users', lazy=True), cascade="all, delete")
-    # ▲▲▲ [修正] ここまで ▲▲▲
     
     def get_username_class(self):
         return 'admin-username' if self.is_admin else ''
@@ -369,7 +317,7 @@ class Post(db.Model):
 class UserSubscription(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
-    subscription_json = db.Column(db.Text, nullable=False) # JSON文字列として保存
+    subscription_json = db.Column(db.Text, nullable=False)
     user = db.relationship('User', backref=db.backref('subscriptions', lazy='dynamic', cascade="all, delete"))
     
 
@@ -393,16 +341,10 @@ class Notification(db.Model):
     is_read = db.Column(db.Boolean, default=False)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    # 1. post_id を「必須ではない」に変更
     post_id = db.Column(db.Integer, db.ForeignKey('post.id', ondelete="CASCADE"), nullable=True)
-    
-    # 2. kairanban_id を新しく追加 
     kairanban_id = db.Column(db.Integer, db.ForeignKey('kairanban.id', ondelete="CASCADE"), nullable=True)
     
-    # 3. Postモデルへのリレーションシップを修正 (nullable=Trueに対応)
-    post = db.relationship('Post', back_populates='notifications') # 元の行を変更
-
-    # 4. Kairanbanモデルへのリレーションシップを新しく追加
+    post = db.relationship('Post', back_populates='notifications')
     kairanban = db.relationship('Kairanban', back_populates='notifications')
 
 # Routes
@@ -411,7 +353,7 @@ class Notification(db.Model):
 def index(page):
     form = PostForm()
     if form.validate_on_submit() and current_user.is_authenticated:
-        image_url_str = None # 変数名を変更
+        image_url_str = None 
         if form.image.data:
             image_url_str = save_picture(form.image.data)
 
@@ -449,7 +391,6 @@ def index(page):
             }
         ]
     
-    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
     return render_template('index.html', form=form, posts=posts,  md=md, templates=templates, templates_for_js=json.dumps(templates))
 
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
@@ -461,46 +402,28 @@ def post_detail(post_id):
         comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
         db.session.add(comment)
         
-        # 1. 投稿者に通知 (自分自身が投稿者でない場合)
+        # サイト内通知の作成のみ (Web Push送信は削除)
         if current_user != post.author:
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
             db.session.add(notification)
-            send_web_push(
-                post.author, 
-                'コメントが付きました', 
-                f'あなたの投稿「{post.title}」にコメントが付きました。',
-                url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}', _external=True)
-            )
         
-        # 2. 他のコメント投稿者に通知
-        # この投稿に（このコメント以前に）コメントしたユーザーを重複なく取得
         previous_commenters = db.session.query(User).join(Comment).filter(
             Comment.post_id == post.id
         ).distinct().all()
 
-        # ▼▼▼ [修正] 通知ロジックをここに集約 ▼▼▼
         for user in previous_commenters:
-            # 2a. 自分自身には通知しない
             if user.id == current_user.id:
                 continue
-            # 2b. 投稿者には（上記のロジックで）通知済みなのでスキップ
             if user.id == post.author.id:
                 continue
             
-            # 2c. 新しいコメントの投稿者が「記事の投稿者」である場合のみ通知
             if comment.commenter == post.author:
                 notification = Notification(
                     recipient=user, 
                     post=post, 
-                    message="あなたがコメントした投稿に投稿者がコメントしました。" # メッセージを少し変更
+                    message="あなたがコメントした投稿に投稿者がコメントしました。" 
                 )
                 db.session.add(notification)
-                send_web_push(
-                    user,
-                    '投稿者がコメントしました', # タイトルも変更
-                    'あなたがコメントした投稿に記事の投稿者がコメントしました。',
-                    url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}', _external=True)
-                )
         
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
@@ -517,7 +440,6 @@ def post_detail(post_id):
     
     post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
     
-    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
     return render_template('detail.html', post=post, comment_form=comment_form,  md=md)
 
 @app.route('/bookmark_post/<int:post_id>', methods=['POST'])
@@ -532,6 +454,7 @@ def bookmark_post(post_id):
     else:
         new_bookmark = Bookmark(user_id=current_user.id, post_id=post.id)
         if current_user != post.author:
+            # サイト内通知の作成のみ
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」がブックマークされました。')
             db.session.add(notification)
         is_bookmarked = True
@@ -555,7 +478,6 @@ def show_bookmarks():
             post.updated_at_jst = None
         post.is_bookmarked = True
 
-    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
     return render_template('bookmarks.html', posts=bookmarked_posts, md=md)
 
 @app.route('/post/<int:post_id>/edit', methods=['GET', 'POST'])
@@ -565,7 +487,7 @@ def edit_post(post_id):
     if post.author != current_user:
         abort(403)
 
-    form = PostForm() # まず空のフォームを作成
+    form = PostForm()
 
     if form.validate_on_submit():
         post.title = form.title.data
@@ -580,12 +502,10 @@ def edit_post(post_id):
             image_url_str = save_picture(form.image.data)
             post.image_url = image_url_str
             
-        db.session.commit() # 投稿内容の変更をコミット
+        db.session.commit() 
 
-        # ▼▼▼ [修正] 通知ロジックをここに追加 ▼▼▼
-        # この投稿をブックマークしているユーザーに通知
+        # サイト内通知の作成のみ (Web Push送信は削除)
         for bookmark in post.bookmarks.all():
-            # 編集者（自分）には通知しない
             if bookmark.user_id != current_user.id:
                 notification = Notification(
                     recipient=bookmark.user,
@@ -593,19 +513,12 @@ def edit_post(post_id):
                     message="あなたがブックマークした投稿に変更がありました。"
                 )
                 db.session.add(notification)
-                send_web_push(
-                    bookmark.user,
-                    '投稿が編集されました',
-                    'あなたがブックマークした投稿に変更がありました。',
-                    url_for('post_detail', post_id=post.id, _external=True)
-                )
         
-        db.session.commit() # 通知の追加をコミット
-        # ▲▲▲ [修正] ここまで ▲▲▲
+        db.session.commit() 
 
         return redirect(url_for('post_detail', post_id=post.id))
 
-    elif request.method == 'GET': # GETリクエスト（ページを最初に開いた時）
+    elif request.method == 'GET': 
         form.title.data = post.title
         form.content.data = post.content
         form.tags.data = ','.join([tag.name for tag in post.tags])
@@ -668,7 +581,6 @@ def register():
         flash('登録が完了しました。ログインしてください。')
         return redirect(url_for('login'))
     
-    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
     return render_template('register.html', form=form)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -684,7 +596,6 @@ def login():
         else:
             flash('ユーザー名またはパスワードが正しくありません。')
             
-    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
     return render_template('login.html', form=form)
 
 @app.route('/logout')
@@ -712,36 +623,29 @@ def search():
     users = None
     
     if search_query:
-        
-        # 1. 検索クエリと「完全一致」するタグがあるか探す
         tag_match = Tag.query.filter(Tag.name.ilike(search_query)).first()
-
         like_query = f'%{search_query}%'
         
-        # 2. 投稿(Post)の検索クエリを構築 (ベース)
         posts_query_builder = Post.query.filter(
             (Post.title.like(like_query)) | (Post.content.like(like_query))
         )
-        # ▼▼▼ [修正] 3. ユーザー(User)の検索クエリを修正
         users_query_builder = User.query.filter(
             or_(
-                User.username.like(like_query), # 従来のユーザー名検索
-                User.grade == search_query,       # ステータスタグ (完全一致)
-                User.category == search_query,  # 
-                User.user_class == search_query, # 
-                User.program == search_query,    # 
-                User.major == search_query       # 
+                User.username.like(like_query), 
+                User.grade == search_query,       
+                User.category == search_query,  
+                User.user_class == search_query, 
+                User.program == search_query,    
+                User.major == search_query       
             )
         )
 
-        # 4. もし「タグ」が見つかったら、検索クエリに追加する
         if tag_match:
             post_tag_query = Post.query.join(post_tags).join(Tag).filter(Tag.id == tag_match.id)
             posts_query_builder = posts_query_builder.union(post_tag_query)
             user_tag_query = User.query.join(user_tags).join(Tag).filter(Tag.id == tag_match.id)
             users_query_builder = users_query_builder.union(user_tag_query)
 
-        # 5. 構築したクエリを実行し、ページネーション
         posts = posts_query_builder.order_by(Post.created_at.desc()).paginate(
             page=post_page, per_page=40, error_out=False
         )
@@ -765,7 +669,6 @@ def search():
         posts = db.paginate(db.select(Post).where(False), page=post_page, per_page=40, error_out=False)
         users = db.paginate(db.select(User).where(False), page=user_page, per_page=40, error_out=False)
 
-    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=form は *削除しない*)
     return render_template('search_results.html',
                            search_form=form,
                            posts=posts,
@@ -799,7 +702,7 @@ def edit_profile(username):
         if user.grade == '大学院生':
             user.major = form.major.data
         else:
-            user.major = None # 大学院生でなければ専攻はクリア
+            user.major = None 
         
         user.tags.clear()
         user.tags = get_or_create_tags_from_string(form.tags.data)
@@ -822,7 +725,6 @@ def edit_profile(username):
     elif request.method == 'GET':
         form.tags.data = ','.join([tag.name for tag in user.tags])
     
-    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
     return render_template('edit_profile.html', form=form, user=user)
 
 @app.route('/user/<string:username>')
@@ -851,7 +753,6 @@ def user_profile(username):
     for comment in comments.items:
         comment.created_at_jst = comment.created_at.replace(tzinfo=utc).astimezone(japan_tz)
     
-    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
     return render_template('profile.html', user=user, posts=posts, comments=comments, active_tab=active_tab,  md=md)
 
 @app.route('/admin')
@@ -863,7 +764,6 @@ def admin_dashboard():
     all_posts = Post.query.all()
     all_comments = Comment.query.all()
     
-    # ▼▼▼ ★ 修正 ★ ▼▼▼ (search_form=search_form を削除)
     return render_template('admin_dashboard.html', users=all_users, posts=all_posts, comments=all_comments)
 
 @app.route('/admin/delete_comment/<int:comment_id>', methods=['POST'])
@@ -911,15 +811,11 @@ def show_notifications():
     return render_template('notifications.html', notifications=notifications, md=md)
 
 
-#  最近使用したタグ5件を返すAPI 
 @app.route('/api/recent-tags')
 @login_required
 def get_recent_tags():
-    # 1. 最近使われたタグ (last_used 順)
     recent_tags_query = Tag.query.order_by(Tag.last_used.desc()).limit(5).all()
 
-    # 2. 人気のタグ (投稿数 順)
-    # 投稿 (post_tags) とタグ (Tag) を結合し、投稿IDの数でグループ化・カウント
     popular_tags_query = db.session.query(
         Tag, func.count(post_tags.c.post_id).label('post_count')
     ).join(
@@ -930,19 +826,15 @@ def get_recent_tags():
         func.count(post_tags.c.post_id).desc()
     ).limit(5).all()
 
-    # 3. 結合と重複除去
-    combined_tags = {} # dict を使って重複を名前で除去
+    combined_tags = {} 
 
-    # まず最近のタグを入れる (優先)
     for tag in recent_tags_query:
         combined_tags[tag.name] = tag
 
-    # 次に人気のタグを入れる (まだ入っていないものだけ)
     for tag, count in popular_tags_query:
         if tag.name not in combined_tags:
             combined_tags[tag.name] = tag
 
-    # 4. 最終的なリストを返す (最大5件)
     tag_names = [tag.name for tag in combined_tags.values()][:5]
 
     return jsonify(tag_names)
@@ -953,8 +845,6 @@ def kairanban_index():
     """
     回覧板ページ (表示と作成)
     """
-    
-    # ▼▼▼ ★ 1. タイムゾーンの定義を追加 ★ ▼▼▼
     japan_tz = timezone('Asia/Tokyo')
     
     is_developer = False
@@ -963,8 +853,7 @@ def kairanban_index():
 
     form = KairanbanForm()
     
-    # --- POST (回覧板の新規作成) ---
-    if form.validate_on_submit(): # L997
+    if form.validate_on_submit(): 
         try:
             days = int(form.expires_in_days.data)
             expires_at_datetime = datetime.utcnow() + timedelta(days=days)
@@ -975,25 +864,19 @@ def kairanban_index():
                 expires_at=expires_at_datetime
             )
             
-            db.session.add(new_kairanban) # L1010
+            db.session.add(new_kairanban) 
+            new_kairanban.tags = get_or_create_tags_from_string(form.tags.data) 
+            db.session.flush() 
             
-            # タグの処理
-            new_kairanban.tags = get_or_create_tags_from_string(form.tags.data) # L1013
-            
-            db.session.flush() # new_kairanban.id を確定させる
-            
-            # 1. この回覧板に付けられたタグの「名前」リストを取得 (e.g. {'I類', 'B4'})
             target_tag_names = {tag.name for tag in new_kairanban.tags}
 
             recipients = []
 
             if target_tag_names:
-                # 2a. カスタムタグ (user_tags) で一致するユーザーを検索
                 custom_tag_recipients_query = User.query.join(user_tags).join(Tag).filter(
                     Tag.name.in_(target_tag_names)
                 )
                 
-                # 2b. ステータスタグ (User.gradeなど) で一致するユーザーを検索
                 status_tag_conditions = []
                 for tag_name in target_tag_names:
                     status_tag_conditions.append(User.grade == tag_name)
@@ -1002,58 +885,36 @@ def kairanban_index():
                     status_tag_conditions.append(User.program == tag_name)
                     status_tag_conditions.append(User.major == tag_name)
                 
-                # or_ を使って、いずれかのステータスタグが一致するユーザーを検索
                 status_tag_recipients_query = User.query.filter(or_(*status_tag_conditions))
-                
-                # 2c. クエリを結合(union)して重複を除外
                 recipients = custom_tag_recipients_query.union(status_tag_recipients_query).distinct().all()
 
-            # 3. 通知を作成 (作成者本人を除く)
+            # サイト内通知の作成のみ (Web Push送信は削除)
             for user in recipients:
                 if user.id != current_user.id:
                     notification = Notification(
                         recipient=user,
-                        kairanban=new_kairanban, # リレーションシップ経由で設定
+                        kairanban=new_kairanban, 
                         message=f'回覧板「{new_kairanban.content[:20]}...」が届きました。'
                     )
                     db.session.add(notification)
-                    send_web_push(
-                        user,
-                        '新しい回覧板が届きました',
-                        f'回覧板「{new_kairanban.content[:20]}...」が届きました。',
-                        url_for('kairanban_index', _external=True)
-                    )
-            # ▲▲▲ [ここまでが修正箇所です] ▲▲▲
             
-            db.session.commit() # L1057
+            db.session.commit()
             flash('回覧板を送信しました。')
             return redirect(url_for('kairanban_index'))
             
         except ValueError:
             flash('日数の値が無効です。')
 
-    # --- GET (回覧板の一覧表示) ---
-    
-    # 期限切れでないものをベースクエリとする
     base_query = Kairanban.query.filter(Kairanban.expires_at > datetime.utcnow())
     
-    # 閲覧権限のフィルタリング
     show_all = request.args.get('show_all')
     kairanbans_query = None
 
     if not current_user.is_authenticated:
-        # 1. ログインしていない (要求仕様: すべて表示)
         kairanbans_query = base_query
-    
     elif is_developer or show_all:
-        # 2. 開発者または「すべて表示」が押された (すべて表示)
         kairanbans_query = base_query
-
     else:
-        # 3. 通常のログインユーザー (タグが一致するもののみ表示)
-        # ▼▼▼ [修正] このブロック(L1046-L1050)を丸ごと置き換え ▼▼▼
-        
-        # 3a. 自分の「ステータスタグ」をセットで取得
         user_status_tags = {
             current_user.grade, 
             current_user.category, 
@@ -1061,33 +922,24 @@ def kairanban_index():
             current_user.program, 
             current_user.major
         }
-        # 3b. 自分の「カスタムタグ」をセットで取得
         user_custom_tags = {tag.name for tag in current_user.tags}
-        
-        # 3c. 結合 (Noneや空文字を除外)
         user_all_tag_names = {tag for tag in user_status_tags.union(user_custom_tags) if tag}
         
         if user_all_tag_names:
-            # 3d. タグ名(Tag.name)でKairanbanを検索
             kairanbans_query = base_query.join(kairanban_tags).join(Tag).filter(
                 Tag.name.in_(user_all_tag_names)
             )
         else:
-            # ユーザーがタグを持っていない
-            kairanbans_query = base_query.filter(Kairanban.id < 0) # (空の結果を返す)
-        # ▲▲▲ ここまで修正 ▲▲▲
+            kairanbans_query = base_query.filter(Kairanban.id < 0) 
 
     
     kairanbans = kairanbans_query.order_by(Kairanban.created_at.desc()).all() if kairanbans_query else []
 
-    # ソート処理 (未チェックを上、チェック済みを下に)
     checked_ids = set()
     if current_user.is_authenticated:
         checked_ids = {c.kairanban_id for c in KairanbanCheck.query.filter_by(user_id=current_user.id)}
         
-        # 1. 作成日で降順ソート
         kairanbans.sort(key=lambda k: k.created_at, reverse=True)
-        # 2. チェック済み(True)が下に、未チェック(False)が上に来るようにソート
         kairanbans.sort(key=lambda k: k.id in checked_ids)
     for k in kairanbans:
         k.check_count = k.checks.count()
@@ -1100,8 +952,6 @@ def kairanban_index():
         'major': {c[0] for c in MAJOR_CHOICES if c[0]},
     }
 
-    
-    # ▼▼▼ ★ 1. タイムゾーン変数をテンプレートに渡す ★ ▼▼▼
     return render_template('kairanban.html', form=form, kairanbans=kairanbans, checked_ids=checked_ids,japan_tz=japan_tz,utc=utc, show_all=show_all,status_tags=status_tags)
 
 @app.route('/mailbox')
@@ -1117,7 +967,6 @@ def mailbox_index():
 def check_kairanban(kairanban_id):
     kairanban = Kairanban.query.get_or_404(kairanban_id)
     
-    # 既存のチェックを探す
     existing_check = KairanbanCheck.query.filter_by(
         user_id=current_user.id, 
         kairanban_id=kairanban_id
@@ -1126,11 +975,9 @@ def check_kairanban(kairanban_id):
     is_checked = False
     
     if existing_check:
-        # チェック済み -> 未チェックに戻す
         db.session.delete(existing_check)
         is_checked = False
     else:
-        # 未チェック -> チェック済みにする
         new_check = KairanbanCheck(user_id=current_user.id, kairanban_id=kairanban_id)
         db.session.add(new_check)
         is_checked = True
@@ -1144,9 +991,8 @@ def check_kairanban(kairanban_id):
 def delete_kairanban(kairanban_id):
     kairanban = Kairanban.query.get_or_404(kairanban_id)
     
-    # 差出人本人 または 管理者 のみ削除可能
     if kairanban.author != current_user and not current_user.is_admin:
-        abort(403) # 権限がありません
+        abort(403) 
     
     db.session.delete(kairanban)
     db.session.commit()
@@ -1154,60 +1000,6 @@ def delete_kairanban(kairanban_id):
     return redirect(url_for('kairanban_index'))
 
 
-# 2. Web Push 送信ヘルパー関数を追加
-def send_web_push(user, title, body, url=None):
-    """指定されたユーザーにWeb Push通知を送信する"""
-
-    print(f"DEBUG: send_web_push called for user {user.username}. Enabled: {user.push_notifications_enabled}")
-
-    if not user.push_notifications_enabled:
-        print(f"ユーザー {user.username} はプッシュ通知を無効にしています。")
-        return
-    
-    VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY')
-    VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL')
-    
-    if not VAPID_PRIVATE_KEY or not VAPID_CLAIM_EMAIL:
-        print("Web Push VAPIDキーが設定されていません。")
-        return
-
-    vapid_claims = {"sub": VAPID_CLAIM_EMAIL} # "mailto:" は不要になりました
-    
-    payload = {
-        'title': title,
-        'body': body,
-        # _external=True で完全なURLを生成
-        'icon': url_for('static', filename='icons/android-chrome-192x192.png', _external=True),
-        'data': {
-            'url': url or url_for('show_notifications', _external=True)
-        }
-    }
-    payload_json = json.dumps(payload)
-
-    subscriptions = user.subscriptions.all()
-    
-    for sub_model in subscriptions:
-        try:
-            subscription_info = json.loads(sub_model.subscription_json)
-            webpush(
-                subscription_info=subscription_info,
-                data=payload_json,
-                vapid_private_key=VAPID_PRIVATE_KEY,
-                vapid_claims=vapid_claims
-            )
-        except WebPushException as ex:
-            print(f"Web Push送信エラー: {ex}")
-            print("DEBUG: WebPushException has been caught.")
-            # 購読が無効になっている場合 (例: 410 Gone, 404 Not Found)
-            if ex.response and (ex.response.status_code == 410 or ex.response.status_code == 404):
-                print(f"購読ID {sub_model.id} は無効なため削除します。")
-                db.session.delete(sub_model)
-        except Exception as e:
-            print(f"予期せぬエラー: {e}")
-    
-    db.session.commit() # 削除された購読情報をコミット
-
-# 3. sw.js と manifest.json を配信するルートを追加
 @app.route('/sw.js')
 def service_worker():
     return app.send_static_file('sw.js')
@@ -1216,78 +1008,6 @@ def service_worker():
 def manifest():
     return app.send_static_file('manifest.json')
 
-# 4. APIエンドポイント (VAPIDキー取得、購読) を追加
-@app.route('/api/vapid_public_key')
-@login_required
-def get_vapid_public_key():
-    public_key = os.environ.get('VAPID_PUBLIC_KEY')
-    if not public_key:
-        return jsonify({'error': 'VAPID public key not configured'}), 500
-    return jsonify({'public_key': public_key})
-
-@app.route('/api/subscribe', methods=['POST'])
-@login_required
-def subscribe():
-    subscription_data = request.get_json()
-    if not subscription_data:
-        abort(400, 'No subscription data provided')
-
-    subscription_json = json.dumps(subscription_data)
-    
-    # 既に同じ購読情報がないか確認 (endpointで判定)
-    endpoint = subscription_data.get('endpoint')
-    existing_sub = UserSubscription.query.filter(
-        UserSubscription.subscription_json.like(f'%"{endpoint}"%')
-    ).first()
-
-    if existing_sub:
-        # 既に存在する場合、ユーザーIDが一致するか確認
-        if existing_sub.user_id == current_user.id:
-            return jsonify({'status': 'already_subscribed'}), 200
-        else:
-            # 別のユーザーが使っていた場合は削除
-            db.session.delete(existing_sub)
-            
-    new_sub = UserSubscription(user_id=current_user.id, subscription_json=subscription_json)
-    db.session.add(new_sub)
-    current_user.push_notifications_enabled = True
-    db.session.commit()
-    
-    return jsonify({'status': 'success'}), 201
-
-@app.route('/api/unsubscribe', methods=['POST'])
-@login_required
-def unsubscribe():
-    subscription_data = request.get_json()
-    if not subscription_data or 'endpoint' not in subscription_data:
-        abort(400, 'No endpoint data provided')
-
-    endpoint = subscription_data.get('endpoint')
-
-    # エンドポイントに一致する購読情報を検索
-    existing_sub = UserSubscription.query.filter(
-        UserSubscription.user_id == current_user.id,
-        UserSubscription.subscription_json.like(f'%"{endpoint}"%')
-    ).first()
-
-    if existing_sub:
-        db.session.delete(existing_sub)
-        print(f"購読ID {existing_sub.id} を削除しました。")
-        
-        # もし、このユーザーの他の購読情報が残っていなければ、
-        # マスター設定を「無効」にする
-        if current_user.subscriptions.count() == 0:
-            current_user.push_notifications_enabled = False
-            print(f"ユーザー {current_user.username} のプッシュ通知を無効化しました。")
-
-        db.session.commit()
-        return jsonify({'status': 'success (deleted)'}), 200
-    
-    # 既にDBにない場合も「成功」として扱う
-    current_user.push_notifications_enabled = False
-    db.session.commit()
-    return jsonify({'status': 'success (not found)'}), 200
-
 @app.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():
@@ -1295,30 +1015,21 @@ def settings():
     settings_open = request.args.get('settings_open') == '1'
     
     if form.validate_on_submit():
-        # (POSTリクエスト時)
-        settings_open = True # POST時は開いたままにする
-        
-        # フォームのチェックボックスの状態をDBに保存
+        settings_open = True 
         current_user.push_notifications_enabled = form.enable_push.data
         db.session.commit()
         
         if not form.enable_push.data:
-            # もしチェックを外した場合、関連する購読情報をすべて削除する
             UserSubscription.query.filter_by(user_id=current_user.id).delete()
             db.session.commit()
-            flash('プッシュ通知を無効にし、すべての購読を解除しました。')
+            flash('プッシュ通知設定を無効にしました。')
         else:
-            flash('設定を更新しました。プッシュ通知を有効にするには、このページの機能でブラウザの許可設定を行ってください。')
+            flash('プッシュ通知設定を有効にしました。')
         
-        # ▼▼▼PRGパターンに戻し、トグル状態をクエリパラメータで渡す ▼▼▼
         return redirect(url_for('settings', settings_open=1))
        
-
-    # (GETリクエスト時)
-    # DBの状態をフォームのデフォルト値に設定
     form.enable_push.data = current_user.push_notifications_enabled
     
-    # ▼▼▼ [修正] settings_open を渡す ▼▼▼
     return render_template('settings.html', form=form, settings_open=settings_open)
 
 
