@@ -1,10 +1,5 @@
 #!/bin/sh
 
-# ここから追加
-echo "Running critical database check script..."
-python check_subscriptions.py
-# ここまで追加
-
 # データベースのマイグレーション（テーブル作成）を実行する
 echo "Running database migrations..."
 flask db upgrade
