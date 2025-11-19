@@ -593,6 +593,7 @@ def edit_post(post_id):
                     message="あなたがブックマークした投稿に変更がありました。"
                 )
                 db.session.add(notification)
+                print(f"DEBUG: Attempting to send notification for post {post.id} to user {post.author.username}")
                 send_web_push(
                     bookmark.user,
                     '投稿が編集されました',
