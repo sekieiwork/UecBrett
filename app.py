@@ -458,6 +458,7 @@ def post_detail(post_id):
     comment_form = CommentForm()
 
     if comment_form.validate_on_submit() and current_user.is_authenticated:
+        print(f"DEBUG: Form validation passed, user {current_user.username} is authenticated.")
         comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
         db.session.add(comment)
         
@@ -1198,6 +1199,7 @@ def send_web_push(user, title, body, url=None):
             )
         except WebPushException as ex:
             print(f"Web Push送信エラー: {ex}")
+            print("DEBUG: WebPushException has been caught.")
             # 購読が無効になっている場合 (例: 410 Gone, 404 Not Found)
             if ex.response and (ex.response.status_code == 410 or ex.response.status_code == 404):
                 print(f"購読ID {sub_model.id} は無効なため削除します。")
