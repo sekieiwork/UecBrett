@@ -366,7 +366,7 @@ def send_onesignal_notification(user_ids, title, content, url=None):
 
         header = {
             "Content-Type": "application/json; charset=utf-8",
-            "Authorization": f"Basic {api_key}"
+            "Authorization": f"Bearer {api_key}"
         }
 
         # user_ids はリスト形式 (例: ['5', '12'])
