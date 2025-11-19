@@ -368,8 +368,8 @@ def send_onesignal_notification(user_ids, title, content, url=None):
 
         payload = {
             "app_id": app_id,
-            "headings": {"en": title},
-            "contents": {"en": content},
+            "headings": {"ja": title},
+            "contents": {"ja": content},
             "include_aliases": {"external_id": target_ids}, # ステップ1で登録したID宛に送る
             "target_channel": "push",
         }
