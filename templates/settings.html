@@ -81,6 +81,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const pushStatus = document.getElementById('push-status');
     let isSubscribed = false;
     let swRegistration = null;
+    
+    // ★★★ [追加] 公開鍵を格納する変数 ★★★
+    let applicationServerPublicKey = null;
 
     function urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -97,17 +100,36 @@ document.addEventListener('DOMContentLoaded', function() {
         return outputArray;
     }
 
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-        navigator.serviceWorker.ready.then(function(registration) {
-            swRegistration = registration;
-            checkSubscriptionStatus();
-        }).catch(function(error) {
-            console.error('Service Worker の準備に失敗:', error);
-            pushStatus.textContent = 'プッシュ通知の準備に失敗しました。';
+    // ★★★ [追加] サーバーからVAPID公開鍵を取得する処理 ★★★
+    fetch('{{ url_for("get_vapid_public_key") }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.public_key) {
+                // 公開鍵をUint8Arrayに変換して保存
+                applicationServerPublicKey = urlBase64ToUint8Array(data.public_key);
+                
+                // 公開鍵が取れてから Service Worker の準備をする
+                if ('serviceWorker' in navigator && 'PushManager' in window) {
+                    navigator.serviceWorker.ready.then(function(registration) {
+                        swRegistration = registration;
+                        checkSubscriptionStatus();
+                    }).catch(function(error) {
+                        console.error('Service Worker の準備に失敗:', error);
+                        pushStatus.textContent = 'プッシュ通知の準備に失敗しました。';
+                    });
+                } else {
+                    pushStatus.textContent = 'お使いのブラウザはプッシュ通知に対応していません。';
+                }
+            } else {
+                console.error('VAPID公開鍵の取得に失敗しました');
+                pushStatus.textContent = 'サーバー設定エラー: 公開鍵が取得できません。';
+            }
+        })
+        .catch(err => {
+            console.error('VAPID公開鍵の取得エラー:', err);
+            pushStatus.textContent = '通信エラー: 公開鍵を取得できませんでした。';
         });
-    } else {
-        pushStatus.textContent = 'お使いのブラウザはプッシュ通知に対応していません。';
-    }
+
 
     function checkSubscriptionStatus() {
         swRegistration.pushManager.getSubscription()
@@ -132,7 +154,10 @@ document.addEventListener('DOMContentLoaded', function() {
             pushButton.classList.remove('delete-button');
             pushButton.classList.add('yellow');
         }
-        pushButton.disabled = false;
+        // 公開鍵のロードが終わるまでボタンは無効化しておく
+        if (applicationServerPublicKey) {
+            pushButton.disabled = false;
+        }
     }
 
     pushButton.addEventListener('click', function() {
@@ -144,13 +169,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-function subscribeUser() {
+    function subscribeUser() {
+        // ★ここでの applicationServerPublicKey が未定義だったのが原因でした
+        if (!applicationServerPublicKey) {
+            pushStatus.textContent = 'エラー: 公開鍵がロードされていません。リロードしてください。';
+            return;
+        }
+
         swRegistration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: applicationServerPublicKey
         })
         .then(function(subscription) {
-            // サーバーに購読情報を送信
             return fetch('{{ url_for("subscribe") }}', {
                 method: 'POST',
                 body: JSON.stringify(subscription),
@@ -174,7 +204,7 @@ function subscribeUser() {
             if (Notification.permission === 'denied') {
                 pushStatus.textContent = 'ブラウザの設定で通知がブロックされています。';
             } else {
-                pushStatus.textContent = '購読処理に失敗しました。';
+                pushStatus.textContent = '購読処理に失敗しました: ' + err.message;
             }
             isSubscribed = false;
         })
