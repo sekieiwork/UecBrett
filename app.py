@@ -378,7 +378,8 @@ def send_onesignal_notification(user_ids, title, content, url=None):
             payload["url"] = url
 
         req = requests.post("https://onesignal.com/api/v1/notifications", headers=header, data=json.dumps(payload))
-        print(f"OneSignal Response: {req.status_code} {req.text}")
+        print(f"OneSignal Response: {req.status_code} {req.text}", flush=True)
+        
 
     except Exception as e:
         print(f"OneSignal Error: {e}")
@@ -437,6 +438,8 @@ def post_detail(post_id):
     if comment_form.validate_on_submit() and current_user.is_authenticated:
         comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
         db.session.add(comment)
+
+        print(f"DEBUG: Comment by {current_user.id} on Post by {post.author.id}", flush=True)
         
         # サイト内通知の作成のみ (Web Push送信は削除)
         if current_user != post.author:
