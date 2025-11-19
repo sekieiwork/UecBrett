@@ -351,8 +351,14 @@ class Notification(db.Model):
 def send_onesignal_notification(user_ids, title, content, url=None):
     """OneSignal経由でプッシュ通知を送信"""
     try:
-        api_key = os.environ.get('ONESIGNAL_API_KEY')
-        app_id = os.environ.get('ONESIGNAL_APP_ID')
+       # ▼▼▼ 一時的に直書きに変更 (テスト用) ▼▼▼
+        # ※ 環境変数の読み込みをコメントアウトし、文字列を直接代入します
+        # api_key = os.environ.get('ONESIGNAL_API_KEY')
+        # app_id = os.environ.get('ONESIGNAL_APP_ID')
+        
+        api_key = "2qki6pnjzungvnzg5377jk4q6"  # あなたのREST API KEY
+        app_id = "b623f8fd-69e9-4d6a-b999-2dcb87b7c086"  # あなたのAPP ID
+        # ▲▲▲ ここまで ▲▲▲
         
         if not api_key or not app_id:
             print("OneSignal API Key or App ID is missing.")
