@@ -35,13 +35,18 @@ cloudinary.config(
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
-# 元の状態に戻す
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
 db = SQLAlchemy(app)
 md = markdown.Markdown(extensions=['nl2br'])
 migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+# --- RichFlyerの設定 (Renderの環境変数から読み込み) ---
+RICHFLYER_MGMT_KEY = os.environ.get('RICHFLYER_MGMT_KEY')
+RICHFLYER_SDK_KEY = os.environ.get('RICHFLYER_SDK_KEY')
+RICHFLYER_CUSTOMER_ID = os.environ.get('RICHFLYER_CUSTOMER_ID')
+RICHFLYER_SERVICE_ID = os.environ.get('RICHFLYER_SERVICE_ID')
 
 @app.context_processor
 def inject_common_vars():
@@ -52,7 +57,6 @@ def inject_common_vars():
     is_developer = False
     has_unread_kairanban = False 
 
-    # 認証済みユーザーの場合のみ、開発者チェックと回覧板チェックを行う
     if current_user.is_authenticated:
         if current_user.username == '二酸化ケイ素':
             is_developer = True
@@ -120,22 +124,18 @@ def safe_markdown_filter(text):
     if not text:
         return ""
 
-    # ステップ1: まずMarkdownをHTMLに変換する
     html = md.convert(text)
 
-    # ステップ2: linkifyコールバックを定義
     def add_target_blank(attrs, new=False):
         attrs[(None, 'target')] = '_blank'
         return attrs
 
-    # ステップ3: bleach.linkify() で先にリンク化する
     linked_html = bleach.linkify(
         html,
         callbacks=[add_target_blank],
         skip_tags=['a', 'pre', 'code'] 
     )
 
-    # ステップ4: bleach.clean() で最後に全体を消毒する
     sanitized_html = bleach.clean(
         linked_html,
         tags=ALLOWED_TAGS,       
@@ -348,47 +348,62 @@ class Notification(db.Model):
     post = db.relationship('Post', back_populates='notifications')
     kairanban = db.relationship('Kairanban', back_populates='notifications')
 
-def send_onesignal_notification(user_ids, title, content, url=None):
-    """OneSignal経由でプッシュ通知を送信"""
+# --- RichFlyer連携関数 ---
+
+def get_richflyer_token():
+    """RichFlyerのAPI利用に必要な一時トークンを取得する"""
+    if not all([RICHFLYER_MGMT_KEY, RICHFLYER_CUSTOMER_ID, RICHFLYER_SERVICE_ID]):
+        print("RichFlyer keys are missing.")
+        return None
+
+    # トークン発行APIのエンドポイント
+    url = f"https://api.richflyer.net/v1/customers/{RICHFLYER_CUSTOMER_ID}/services/{RICHFLYER_SERVICE_ID}/{RICHFLYER_MGMT_KEY}/authentication-tokens"
+    
     try:
-       # ▼▼▼ 一時的に直書きに変更 (テスト用) ▼▼▼
-        # ※ 環境変数の読み込みをコメントアウトし、文字列を直接代入します
-        # api_key = os.environ.get('ONESIGNAL_API_KEY')
-        # app_id = os.environ.get('ONESIGNAL_APP_ID')
-        
-        api_key = "os_v2_app_wyr7r7lj5fgwvomzfxfypn6aqydenfv5ibeudjvhlscalnmt4uleqg6kbordnkn67nhoiwjovjnss2wtwxxujpcpdsekpcu3qo2zlxa"  # あなたのREST API KEY
-        app_id = "b623f8fd-69e9-4d6a-b999-2dcb87b7c086"  # あなたのAPP ID
-        # ▲▲▲ ここまで ▲▲▲
-        
-        if not api_key or not app_id:
-            print("OneSignal API Key or App ID is missing.")
-            return
-
-        header = {
-            "Content-Type": "application/json; charset=utf-8",
-            "Authorization": f"Bearer {api_key}"
-        }
-
-        # user_ids はリスト形式 (例: ['5', '12'])
-        target_ids = [str(uid) for uid in user_ids]
-
-        payload = {
-            "app_id": app_id,
-            "headings": {"ja": title},
-            "contents": {"ja": content},
-            "include_aliases": {"external_id": target_ids}, # ステップ1で登録したID宛に送る
-            "target_channel": "push",
-        }
-        
-        if url:
-            payload["url"] = url
-
-        req = requests.post("https://onesignal.com/api/v1/notifications", headers=header, data=json.dumps(payload))
-        print(f"OneSignal Response: {req.status_code} {req.text}", flush=True)
-        
-
+        response = requests.post(url)
+        if response.status_code == 200:
+            return response.json().get('token')
+        else:
+            print(f"RichFlyer Token Error: {response.status_code} {response.text}")
+            return None
     except Exception as e:
-        print(f"OneSignal Error: {e}")
+        print(f"RichFlyer Token Exception: {e}")
+        return None
+
+def send_richflyer_notification(user_ids, title, message, url=None):
+    """RichFlyerへプッシュ通知を送る (トークン取得 -> 送信)"""
+    
+    # 1. まずトークンを取得
+    token = get_richflyer_token()
+    if not token:
+        return
+
+    # 2. 通知送信APIのエンドポイント (単発配信URL)
+    api_url = "https://api.richflyer.net/v1/messages" 
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",      # 取得したトークン
+        "X-Service-Key": RICHFLYER_SDK_KEY,      # SDKキーもヘッダーに必要
+        "X-API-Version": "2017-04-01"            # APIバージョン指定
+    }
+
+    target_ids = [str(uid) for uid in user_ids]
+
+    payload = {
+        "title": title,
+        "body": message,
+        "url": url if url else "",
+        "recipients": {
+            "user_ids": target_ids  # ユーザーIDで送信先を指定
+        }
+    }
+
+    try:
+        response = requests.post(api_url, headers=headers, json=payload)
+        print(f"RichFlyer Send Response: {response.status_code} {response.text}", flush=True)
+    except Exception as e:
+        print(f"RichFlyer Send Error: {e}")
 
 # Routes
 @app.route('/', defaults={'page': 1}, methods=['GET', 'POST'])
@@ -447,11 +462,22 @@ def post_detail(post_id):
 
         print(f"DEBUG: Comment by {current_user.id} on Post by {post.author.id}", flush=True)
         
-        # サイト内通知の作成のみ (Web Push送信は削除)
+        # 投稿者への通知
         if current_user != post.author:
+            # 1. サイト内通知
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
             db.session.add(notification)
+
+            # 2. RichFlyer通知
+            if post.author.push_notifications_enabled:
+                send_richflyer_notification(
+                    user_ids=[post.author.id],
+                    title="新しいコメント",
+                    message=f'投稿「{post.title}」にコメントが付きました',
+                    url=url_for('post_detail', post_id=post.id, _external=True)
+                )
         
+        # 他のコメント投稿者への通知
         previous_commenters = db.session.query(User).join(Comment).filter(
             Comment.post_id == post.id
         ).distinct().all()
@@ -463,29 +489,25 @@ def post_detail(post_id):
                 continue
             
             if comment.commenter == post.author:
+                # 1. サイト内通知
                 notification = Notification(
                     recipient=user, 
                     post=post, 
                     message="あなたがコメントした投稿に投稿者がコメントしました。" 
                 )
                 db.session.add(notification)
+
+                # 2. RichFlyer通知
+                if user.push_notifications_enabled:
+                    send_richflyer_notification(
+                        user_ids=[user.id],
+                        title="コメントの返信",
+                        message="あなたがコメントした投稿に新しいコメントがあります",
+                        url=url_for('post_detail', post_id=post.id, _external=True)
+                    )
         
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
-
-    japan_tz = timezone('Asia/Tokyo')
-    post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
-    if post.updated_at:
-        post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
-    else:
-        post.updated_at_jst = None
-
-    for c in post.comments:
-        c.created_at_jst = c.created_at.replace(tzinfo=utc).astimezone(japan_tz)
-    
-    post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
-    
-    return render_template('detail.html', post=post, comment_form=comment_form,  md=md)
 
 @app.route('/bookmark_post/<int:post_id>', methods=['POST'])
 @login_required
@@ -549,7 +571,7 @@ def edit_post(post_id):
             
         db.session.commit() 
 
-        # サイト内通知の作成のみ (Web Push送信は削除)
+        # サイト内通知の作成のみ
         for bookmark in post.bookmarks.all():
             if bookmark.user_id != current_user.id:
                 notification = Notification(
@@ -933,7 +955,10 @@ def kairanban_index():
                 status_tag_recipients_query = User.query.filter(or_(*status_tag_conditions))
                 recipients = custom_tag_recipients_query.union(status_tag_recipients_query).distinct().all()
 
-            # サイト内通知の作成のみ (Web Push送信は削除)
+            # プッシュ通知用リストを初期化
+            recipient_ids_for_push = []
+
+            # サイト内通知の作成
             for user in recipients:
                 if user.id != current_user.id:
                     notification = Notification(
@@ -942,6 +967,19 @@ def kairanban_index():
                         message=f'回覧板「{new_kairanban.content[:20]}...」が届きました。'
                     )
                     db.session.add(notification)
+
+                    # プッシュ通知が有効ならリストに追加
+                    if user.push_notifications_enabled:
+                        recipient_ids_for_push.append(user.id)
+            
+            # RichFlyer通知を一括送信
+            if recipient_ids_for_push:
+                send_richflyer_notification(
+                    user_ids=recipient_ids_for_push,
+                    title="新しい回覧板",
+                    message=f'回覧板「{new_kairanban.content[:20]}...」が届きました',
+                    url=url_for('kairanban_index', _external=True)
+                )
             
             db.session.commit()
             flash('回覧板を送信しました。')
@@ -1074,6 +1112,11 @@ def settings():
     
     return render_template('settings.html', form=form, settings_open=settings_open)
 
+# ▼▼▼ 【修正】ファイル名を rf-serviceworker.js に合わせました ▼▼▼
+@app.route('/rf-serviceworker.js')
+def rf_serviceworker():
+    # staticフォルダ内にある rf-serviceworker.js を配信
+    return app.send_static_file('rf-serviceworker.js')
 
 if __name__ == '__main__':
     app.run(debug=True)

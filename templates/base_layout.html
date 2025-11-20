@@ -1828,5 +1828,26 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
 
 </script>
 {% block scripts %}{% endblock %}
+
+{% if current_user.is_authenticated %}
+<script src="https://cdn.richflyer.net/js/sdk.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 初期化
+    var rf = new RichFlyer({
+        key: "{{ config['RICHFLYER_SDK_KEY'] or 'ca7187bd-1346-42d3-91e6-71b8b1828a22' }}", // ここにSDKキー
+        serviceWorkerPath: "/rf-serviceworker.js"
+    });
+
+    // ユーザーIDの設定
+    rf.setUserId("{{ current_user.id }}").then(function() {
+        console.log("RichFlyer User ID set: {{ current_user.id }}");
+    }).catch(function(err) {
+        console.error("RichFlyer setUserId failed", err);
+    });
+});
+</script>
+{% endif %}
 </body>
 </html>
