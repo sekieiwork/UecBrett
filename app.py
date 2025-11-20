@@ -451,13 +451,6 @@ def post_detail(post_id):
         if current_user != post.author:
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
             db.session.add(notification)
-
-            send_onesignal_notification(
-                user_ids=[post.author.id],
-                title="新しいコメント",
-                content=f"あなたの投稿「{post.title}」にコメントが付きました。",
-                url=url_for('post_detail', post_id=post.id, _external=True)
-            )
         
         previous_commenters = db.session.query(User).join(Comment).filter(
             Comment.post_id == post.id
@@ -476,12 +469,6 @@ def post_detail(post_id):
                     message="あなたがコメントした投稿に投稿者がコメントしました。" 
                 )
                 db.session.add(notification)
-                send_onesignal_notification(
-                    user_ids=[user.id],
-                    title="コメントの返信",
-                    content="あなたがコメントした投稿に投稿者がコメントしました。",
-                    url=url_for('post_detail', post_id=post.id, _external=True)
-                )
         
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
@@ -1087,10 +1074,6 @@ def settings():
     
     return render_template('settings.html', form=form, settings_open=settings_open)
 
-# ▼▼▼ OneSignal用のService Workerを配信するルート ▼▼▼
-@app.route('/OneSignalSDKWorker.js')
-def onesignal_sdk_worker():
-    return app.send_static_file('OneSignalSDKWorker.js')
 
 if __name__ == '__main__':
     app.run(debug=True)

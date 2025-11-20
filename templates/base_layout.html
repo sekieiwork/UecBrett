@@ -5,22 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UEC 掲示板</title>
 
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-    <script>
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        OneSignalDeferred.push(async function(OneSignal) {
-            await OneSignal.init({
-            appId: "b623f8fd-69e9-4d6a-b999-2dcb87b7c086",
-            });
-
-            // ログイン中のユーザーIDをOneSignalに登録 ▼▼▼
-            {% if current_user.is_authenticated %}
-                // ユーザーIDを文字列として登録
-                await OneSignal.login("{{ current_user.id }}");
-            {% endif %}
-    });
-</script>
-
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icons/android-chrome-192x192.png') }}">
