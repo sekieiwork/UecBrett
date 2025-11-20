@@ -43,10 +43,16 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 # --- RichFlyerの設定 (Renderの環境変数から読み込み) ---
-RICHFLYER_MGMT_KEY = os.environ.get('RICHFLYER_MGMT_KEY')
-RICHFLYER_SDK_KEY = os.environ.get('RICHFLYER_SDK_KEY')
-RICHFLYER_CUSTOMER_ID = os.environ.get('RICHFLYER_CUSTOMER_ID')
-RICHFLYER_SERVICE_ID = os.environ.get('RICHFLYER_SERVICE_ID')
+app.config['RICHFLYER_MGMT_KEY'] = os.environ.get('RICHFLYER_MGMT_KEY')
+app.config['RICHFLYER_SDK_KEY'] = os.environ.get('RICHFLYER_SDK_KEY')
+app.config['RICHFLYER_CUSTOMER_ID'] = os.environ.get('RICHFLYER_CUSTOMER_ID')
+app.config['RICHFLYER_SERVICE_ID'] = os.environ.get('RICHFLYER_SERVICE_ID')
+
+# ※以下の関数内で使っている変数も app.config から取るように修正が必要です
+RICHFLYER_MGMT_KEY = app.config['RICHFLYER_MGMT_KEY']
+RICHFLYER_SDK_KEY = app.config['RICHFLYER_SDK_KEY']
+RICHFLYER_CUSTOMER_ID = app.config['RICHFLYER_CUSTOMER_ID']
+RICHFLYER_SERVICE_ID = app.config['RICHFLYER_SERVICE_ID']
 
 @app.context_processor
 def inject_common_vars():

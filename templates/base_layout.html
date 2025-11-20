@@ -1834,18 +1834,32 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // 初期化
-    var rf = new RichFlyer({
-        key: "{{ config['RICHFLYER_SDK_KEY'] or 'ca7187bd-1346-42d3-91e6-71b8b1828a22' }}", // ここにSDKキー
-        serviceWorkerPath: "/rf-serviceworker.js"
-    });
+    // デバッグ用ログ
+    console.log("RichFlyer Initializing...");
 
-    // ユーザーIDの設定
-    rf.setUserId("{{ current_user.id }}").then(function() {
-        console.log("RichFlyer User ID set: {{ current_user.id }}");
-    }).catch(function(err) {
-        console.error("RichFlyer setUserId failed", err);
-    });
+    var sdkKey = "{{ config['RICHFLYER_SDK_KEY'] }}";
+    if (!sdkKey) {
+        console.error("RichFlyer Error: SDK Key is missing in Flask config.");
+        // フォールバック（念のためハードコード値も残す場合）
+        sdkKey = 'ca7187bd-1346-42d3-91e6-71b8b1828a22';
+    }
+
+    try {
+        var rf = new RichFlyer({
+            key: sdkKey,
+            serviceWorkerPath: "/rf-serviceworker.js"
+        });
+
+        // ユーザーID設定
+        rf.setUserId("{{ current_user.id }}").then(function() {
+            console.log("RichFlyer User ID set successfully: {{ current_user.id }}");
+        }).catch(function(err) {
+            console.error("RichFlyer setUserId failed:", err);
+        });
+
+    } catch (e) {
+        console.error("RichFlyer Init Error:", e);
+    }
 });
 </script>
 {% endif %}
