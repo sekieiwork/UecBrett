@@ -526,6 +526,20 @@ def post_detail(post_id):
         
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
+    
+    japan_tz = timezone('Asia/Tokyo')
+    post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
+    if post.updated_at:
+        post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
+    else:
+        post.updated_at_jst = None
+
+    for c in post.comments:
+        c.created_at_jst = c.created_at.replace(tzinfo=utc).astimezone(japan_tz)
+    
+    post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
+    
+    return render_template('detail.html', post=post, comment_form=comment_form,  md=md)
 
 @app.route('/bookmark_post/<int:post_id>', methods=['POST'])
 @login_required
