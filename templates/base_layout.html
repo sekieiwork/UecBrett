@@ -1830,7 +1830,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
 {% block scripts %}{% endblock %}
 
 {% if current_user.is_authenticated %}
-<script src="https://cdn.richflyer.net/js/sdk.js"></script>
+<script src="{{ url_for('static', filename='rf-functions.js') }}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
