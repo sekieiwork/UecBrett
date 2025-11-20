@@ -1834,32 +1834,34 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // デバッグ用ログ
-    console.log("RichFlyer Initializing...");
+    console.log("RichFlyer: Initializing with local functions...");
 
-    var sdkKey = "{{ config['RICHFLYER_SDK_KEY'] }}";
-    if (!sdkKey) {
-        console.error("RichFlyer Error: SDK Key is missing in Flask config.");
-        // フォールバック（念のためハードコード値も残す場合）
-        sdkKey = 'ca7187bd-1346-42d3-91e6-71b8b1828a22';
-    }
+    var sdkKey = "{{ config['RICHFLYER_SDK_KEY'] }}"; 
+    if (!sdkKey) sdkKey = 'ca7187bd-1346-42d3-91e6-71b8b1828a22'; // フォールバック
 
-    try {
-        var rf = new RichFlyer({
-            key: sdkKey,
-            serviceWorkerPath: "/rf-serviceworker.js"
-        });
+    // 2. 初期化 (rf-functions.js の関数を直接呼ぶ)
+    // rf_init(ServiceKey, Domain, SafariPushId, Callback)
+    rf_init(sdkKey, window.location.hostname, null, function(result){
+        console.log("RichFlyer: Init callback result:", result);
+    }).then(function(result) {
+        console.log("RichFlyer: Init result:", result);
 
-        // ユーザーID設定
-        rf.setUserId("{{ current_user.id }}").then(function() {
-            console.log("RichFlyer User ID set successfully: {{ current_user.id }}");
+        // 3. ユーザーIDの登録 (セグメントとして登録するのが、このバージョンの正解)
+        // rf_updateStringSegments({ "user_id": "123" }, key, safariId)
+        var userId = "{{ current_user.id }}";
+        
+        // ※重要: RichFlyerの仕様に合わせて user_id というセグメント名で登録します
+        var segments = { "user_id": userId };
+        
+        rf_updateStringSegments(segments, sdkKey, null).then(function() {
+            console.log("RichFlyer: User ID registered successfully:", userId);
         }).catch(function(err) {
-            console.error("RichFlyer setUserId failed:", err);
+            console.error("RichFlyer: Failed to register User ID:", err);
         });
 
-    } catch (e) {
-        console.error("RichFlyer Init Error:", e);
-    }
+    }).catch(function(err) {
+        console.error("RichFlyer: Init failed:", err);
+    });
 });
 </script>
 {% endif %}
