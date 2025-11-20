@@ -379,12 +379,13 @@ def get_richflyer_token():
 def send_richflyer_notification(user_ids, title, message, url=None):
     """RichFlyerへプッシュ通知を送る (セグメント指定版)"""
     
-    # 1. まずトークンを取得
+    # 1. トークン取得
     token = get_richflyer_token()
     if not token:
+        print("RichFlyer Error: Failed to get token (Check Environment Variables)")
         return
 
-    # 2. 通知送信APIのエンドポイント
+    # 2. APIエンドポイント
     api_url = "https://api.richflyer.net/v1/messages" 
 
     headers = {
@@ -394,22 +395,23 @@ def send_richflyer_notification(user_ids, title, message, url=None):
         "X-API-Version": "2017-04-01"
     }
 
-    # 送信対象の条件を作成 (OR条件: リストの中のどれかのIDなら送る)
+    # 3. 送信対象の条件 (user_id セグメント)
     conditions = []
     for uid in user_ids:
         conditions.append({
             "segment_type": "string",
-            "segment_name": "user_id", # フロントエンドで登録した名前と一致させる
-            "operator": "EQ",          # Equal (等しい)
+            "segment_name": "user_id", 
+            "operator": "EQ",
             "value": str(uid)
         })
 
     if not conditions:
         return
 
+    # 4. ペイロード (キーの頭文字を大文字にする！)
     payload = {
-        "title": title,
-        "body": message,
+        "Title": title,      # ★修正: rf-serviceworker.jsに合わせてTitleにする
+        "Body": message,     # ★修正: rf-serviceworker.jsに合わせてBodyにする
         "url": url if url else "",
         "search_condition": {
             "search_type": "OR",
@@ -418,10 +420,16 @@ def send_richflyer_notification(user_ids, title, message, url=None):
     }
 
     try:
-        response = requests.post(api_url, headers=headers, json=payload)
+        # デバッグ用に送信内容を表示
+        print(f"RichFlyer Sending Payload: {json.dumps(payload)}", flush=True)
+        
+        response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+        
+        # 結果を表示
         print(f"RichFlyer Send Response: {response.status_code} {response.text}", flush=True)
+        
     except Exception as e:
-        print(f"RichFlyer Send Error: {e}")
+        print(f"RichFlyer Send Error: {e}", flush=True)
 
 # Routes
 @app.route('/', defaults={'page': 1}, methods=['GET', 'POST'])
