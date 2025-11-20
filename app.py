@@ -377,31 +377,43 @@ def get_richflyer_token():
         return None
 
 def send_richflyer_notification(user_ids, title, message, url=None):
-    """RichFlyerへプッシュ通知を送る (トークン取得 -> 送信)"""
+    """RichFlyerへプッシュ通知を送る (セグメント指定版)"""
     
     # 1. まずトークンを取得
     token = get_richflyer_token()
     if not token:
         return
 
-    # 2. 通知送信APIのエンドポイント (単発配信URL)
+    # 2. 通知送信APIのエンドポイント
     api_url = "https://api.richflyer.net/v1/messages" 
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}",      # 取得したトークン
-        "X-Service-Key": RICHFLYER_SDK_KEY,      # SDKキーもヘッダーに必要
-        "X-API-Version": "2017-04-01"            # APIバージョン指定
+        "Authorization": f"Bearer {token}",
+        "X-Service-Key": RICHFLYER_SDK_KEY,
+        "X-API-Version": "2017-04-01"
     }
 
-    target_ids = [str(uid) for uid in user_ids]
+    # 送信対象の条件を作成 (OR条件: リストの中のどれかのIDなら送る)
+    conditions = []
+    for uid in user_ids:
+        conditions.append({
+            "segment_type": "string",
+            "segment_name": "user_id", # フロントエンドで登録した名前と一致させる
+            "operator": "EQ",          # Equal (等しい)
+            "value": str(uid)
+        })
+
+    if not conditions:
+        return
 
     payload = {
         "title": title,
         "body": message,
         "url": url if url else "",
-        "recipients": {
-            "user_ids": target_ids  # ユーザーIDで送信先を指定
+        "search_condition": {
+            "search_type": "OR",
+            "conditions": conditions
         }
     }
 
