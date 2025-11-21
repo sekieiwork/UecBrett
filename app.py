@@ -356,14 +356,16 @@ class Notification(db.Model):
 
 # --- RichFlyer連携関数 ---
 
+# --- RichFlyer連携関数 (完全版) ---
+
 def get_richflyer_token():
-    """RichFlyerのAPI利用に必要な一時トークンを取得する (ヘッダー追加版)"""
+    """RichFlyerのAPI利用に必要な一時トークンを取得する (ヘッダー追加・空白除去版)"""
     
     # 1. グローバル変数から取得し、前後の空白を削除 (.strip)
     mgmt_key = (RICHFLYER_MGMT_KEY or "").strip()
     customer_id = (RICHFLYER_CUSTOMER_ID or "").strip()
     service_id = (RICHFLYER_SERVICE_ID or "").strip()
-    sdk_key = (RICHFLYER_SDK_KEY or "").strip() # SDKキーも準備
+    sdk_key = (RICHFLYER_SDK_KEY or "").strip() 
 
     if not all([mgmt_key, customer_id, service_id, sdk_key]):
         print("RichFlyer Error: Keys are missing in app.py.")
@@ -397,6 +399,62 @@ def get_richflyer_token():
     except Exception as e:
         print(f"RichFlyer Token Exception: {e}", flush=True)
         return None
+
+def send_richflyer_notification(user_ids, title, message, url=None):
+    """RichFlyerへプッシュ通知を送る (セグメント指定・大文字キー版)"""
+    
+    # 1. トークン取得
+    token = get_richflyer_token()
+    if not token:
+        print("RichFlyer Error: Failed to get token (Check Environment Variables)")
+        return
+
+    # 2. APIエンドポイント
+    api_url = "https://api.richflyer.net/v1/messages" 
+    
+    # SDKキーもここで再取得して空白除去
+    sdk_key = (RICHFLYER_SDK_KEY or "").strip()
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",
+        "X-Service-Key": sdk_key,
+        "X-API-Version": "2017-04-01"
+    }
+
+    # 3. 送信対象の条件 (user_id セグメント)
+    conditions = []
+    for uid in user_ids:
+        conditions.append({
+            "segment_type": "string",
+            "segment_name": "user_id", 
+            "operator": "EQ",
+            "value": str(uid)
+        })
+
+    if not conditions:
+        return
+
+    # 4. ペイロード (キーの頭文字を大文字にする！)
+    payload = {
+        "Title": title,      # title -> Title
+        "Body": message,     # body -> Body
+        "url": url if url else "",
+        "search_condition": {
+            "search_type": "OR",
+            "conditions": conditions
+        }
+    }
+
+    try:
+        # デバッグ用ログ
+        print(f"RichFlyer Sending Payload: {json.dumps(payload)}", flush=True)
+        
+        response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+        print(f"RichFlyer Send Response: {response.status_code} {response.text}", flush=True)
+        
+    except Exception as e:
+        print(f"RichFlyer Send Error: {e}", flush=True)
 
 # Routes
 @app.route('/', defaults={'page': 1}, methods=['GET', 'POST'])
