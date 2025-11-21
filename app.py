@@ -357,79 +357,43 @@ class Notification(db.Model):
 # --- RichFlyer連携関数 ---
 
 def get_richflyer_token():
-    """RichFlyerのAPI利用に必要な一時トークンを取得する"""
-    if not all([RICHFLYER_MGMT_KEY, RICHFLYER_CUSTOMER_ID, RICHFLYER_SERVICE_ID]):
-        print("RichFlyer keys are missing.")
+    """RichFlyerのAPI利用に必要な一時トークンを取得する (デバッグ強化版)"""
+    
+    # 1. グローバル変数から取得し、前後の空白を削除する (.strip)
+    #    ※ここが重要です。コピペ時のスペース混入を防ぎます。
+    mgmt_key = (RICHFLYER_MGMT_KEY or "").strip()
+    customer_id = (RICHFLYER_CUSTOMER_ID or "").strip()
+    service_id = (RICHFLYER_SERVICE_ID or "").strip()
+
+    if not all([mgmt_key, customer_id, service_id]):
+        print("RichFlyer Error: Keys are missing in app.py.")
         return None
 
-    # トークン発行APIのエンドポイント
-    url = f"https://api.richflyer.net/v1/customers/{RICHFLYER_CUSTOMER_ID}/services/{RICHFLYER_SERVICE_ID}/{RICHFLYER_MGMT_KEY}/authentication-tokens"
+    # 2. トークン発行APIのエンドポイントを作成
+    #    URLの構成: /customers/{customer_id}/services/{service_id}/{mgmt_key}/...
+    url = f"https://api.richflyer.net/v1/customers/{customer_id}/services/{service_id}/{mgmt_key}/authentication-tokens"
     
     try:
+        # デバッグログ：送ろうとしているIDの一部を表示して確認できるようにする
+        print(f"RichFlyer Debug: Requesting Token...", flush=True)
+        print(f" - Customer ID: {customer_id[:4]}...{customer_id[-4:]}", flush=True)
+        print(f" - Service ID:  {service_id[:4]}...{service_id[-4:]}", flush=True)
+        print(f" - Mgmt Key:    {mgmt_key[:4]}...{mgmt_key[-4:]}", flush=True)
+
         response = requests.post(url)
+        
         if response.status_code == 200:
+            print("RichFlyer Debug: Token retrieved successfully.", flush=True)
             return response.json().get('token')
         else:
-            print(f"RichFlyer Token Error: {response.status_code} {response.text}")
+            # エラー詳細を表示
+            print(f"RichFlyer Token Error: {response.status_code} {response.text}", flush=True)
+            print(f" - Used URL: {url}", flush=True) # URLの形がおかしくないか確認
             return None
+            
     except Exception as e:
-        print(f"RichFlyer Token Exception: {e}")
+        print(f"RichFlyer Token Exception: {e}", flush=True)
         return None
-
-def send_richflyer_notification(user_ids, title, message, url=None):
-    """RichFlyerへプッシュ通知を送る (セグメント指定版)"""
-    
-    # 1. トークン取得
-    token = get_richflyer_token()
-    if not token:
-        print("RichFlyer Error: Failed to get token (Check Environment Variables)")
-        return
-
-    # 2. APIエンドポイント
-    api_url = "https://api.richflyer.net/v1/messages" 
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}",
-        "X-Service-Key": RICHFLYER_SDK_KEY,
-        "X-API-Version": "2017-04-01"
-    }
-
-    # 3. 送信対象の条件 (user_id セグメント)
-    conditions = []
-    for uid in user_ids:
-        conditions.append({
-            "segment_type": "string",
-            "segment_name": "user_id", 
-            "operator": "EQ",
-            "value": str(uid)
-        })
-
-    if not conditions:
-        return
-
-    # 4. ペイロード (キーの頭文字を大文字にする！)
-    payload = {
-        "Title": title,      # ★修正: rf-serviceworker.jsに合わせてTitleにする
-        "Body": message,     # ★修正: rf-serviceworker.jsに合わせてBodyにする
-        "url": url if url else "",
-        "search_condition": {
-            "search_type": "OR",
-            "conditions": conditions
-        }
-    }
-
-    try:
-        # デバッグ用に送信内容を表示
-        print(f"RichFlyer Sending Payload: {json.dumps(payload)}", flush=True)
-        
-        response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-        
-        # 結果を表示
-        print(f"RichFlyer Send Response: {response.status_code} {response.text}", flush=True)
-        
-    except Exception as e:
-        print(f"RichFlyer Send Error: {e}", flush=True)
 
 # Routes
 @app.route('/', defaults={'page': 1}, methods=['GET', 'POST'])
