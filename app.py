@@ -357,38 +357,41 @@ class Notification(db.Model):
 # --- RichFlyer連携関数 ---
 
 def get_richflyer_token():
-    """RichFlyerのAPI利用に必要な一時トークンを取得する (デバッグ強化版)"""
+    """RichFlyerのAPI利用に必要な一時トークンを取得する (ヘッダー追加版)"""
     
-    # 1. グローバル変数から取得し、前後の空白を削除する (.strip)
-    #    ※ここが重要です。コピペ時のスペース混入を防ぎます。
+    # 1. グローバル変数から取得し、前後の空白を削除 (.strip)
     mgmt_key = (RICHFLYER_MGMT_KEY or "").strip()
     customer_id = (RICHFLYER_CUSTOMER_ID or "").strip()
     service_id = (RICHFLYER_SERVICE_ID or "").strip()
+    sdk_key = (RICHFLYER_SDK_KEY or "").strip() # SDKキーも準備
 
-    if not all([mgmt_key, customer_id, service_id]):
+    if not all([mgmt_key, customer_id, service_id, sdk_key]):
         print("RichFlyer Error: Keys are missing in app.py.")
         return None
 
-    # 2. トークン発行APIのエンドポイントを作成
-    #    URLの構成: /customers/{customer_id}/services/{service_id}/{mgmt_key}/...
+    # 2. トークン発行APIのエンドポイント
     url = f"https://api.richflyer.net/v1/customers/{customer_id}/services/{service_id}/{mgmt_key}/authentication-tokens"
     
-    try:
-        # デバッグログ：送ろうとしているIDの一部を表示して確認できるようにする
-        print(f"RichFlyer Debug: Requesting Token...", flush=True)
-        print(f" - Customer ID: {customer_id[:4]}...{customer_id[-4:]}", flush=True)
-        print(f" - Service ID:  {service_id[:4]}...{service_id[-4:]}", flush=True)
-        print(f" - Mgmt Key:    {mgmt_key[:4]}...{mgmt_key[-4:]}", flush=True)
+    # ★重要：ヘッダーにSDKキーとAPIバージョンを追加
+    headers = {
+        "Content-Type": "application/json",
+        "X-Service-Key": sdk_key,
+        "X-API-Version": "2017-04-01"
+    }
 
-        response = requests.post(url)
+    try:
+        # デバッグログ
+        print(f"RichFlyer Debug: Requesting Token...", flush=True)
+        print(f" - URL: {url}", flush=True)
+
+        # headersを追加してリクエスト
+        response = requests.post(url, headers=headers)
         
         if response.status_code == 200:
             print("RichFlyer Debug: Token retrieved successfully.", flush=True)
             return response.json().get('token')
         else:
-            # エラー詳細を表示
             print(f"RichFlyer Token Error: {response.status_code} {response.text}", flush=True)
-            print(f" - Used URL: {url}", flush=True) # URLの形がおかしくないか確認
             return None
             
     except Exception as e:
