@@ -1830,39 +1830,28 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
 {% block scripts %}{% endblock %}
 
 {% if current_user.is_authenticated %}
-<script src="{{ url_for('static', filename='rf-functions.js') }}"></script>
-
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("RichFlyer: Initializing with local functions...");
-
-    var sdkKey = "{{ config['RICHFLYER_SDK_KEY'] }}"; 
-    if (!sdkKey) sdkKey = 'ca7187bd-1346-42d3-91e6-71b8b1828a22'; // フォールバック
-
-    // 2. 初期化 (rf-functions.js の関数を直接呼ぶ)
-    // rf_init(ServiceKey, Domain, SafariPushId, Callback)
-    rf_init(sdkKey, window.location.hostname, null, function(result){
-        console.log("RichFlyer: Init callback result:", result);
-    }).then(function(result) {
-        console.log("RichFlyer: Init result:", result);
-
-        // 3. ユーザーIDの登録 (セグメントとして登録するのが、このバージョンの正解)
-        // rf_updateStringSegments({ "user_id": "123" }, key, safariId)
-        var userId = "{{ current_user.id }}";
-        
-        // ※重要: RichFlyerの仕様に合わせて user_id というセグメント名で登録します
-        var segments = { "user_id": userId };
-        
-        rf_updateStringSegments(segments, sdkKey, null).then(function() {
-            console.log("RichFlyer: User ID registered successfully:", userId);
-        }).catch(function(err) {
-            console.error("RichFlyer: Failed to register User ID:", err);
-        });
-
-    }).catch(function(err) {
-        console.error("RichFlyer: Init failed:", err);
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(function(OneSignal) {
+    OneSignal.init({
+      appId: "{{ config['ONESIGNAL_APP_ID'] or 'あなたのAppIDを直書きしてもOK' }}",
+      // サービスワーカーのパスを指定 (ルートにあるように見せかける)
+      serviceWorker: {
+          path: "/OneSignalSDKWorker.js",
+          workerName: "OneSignalSDKWorker.js",
+          registrationOptions: { scope: '/' }
+      },
+      // HTTPS設定 (ローカル開発時は false になる場合があるが、RenderはTrue)
+      allowLocalhostAsSecureOrigin: true,
     });
-});
+
+    // ユーザーID (DBのID) を OneSignalに "external_id" としてログインさせる
+    // これにより、Pythonから user.id で通知を送れるようになります
+    OneSignal.login("{{ current_user.id }}");
+    
+    console.log("OneSignal Initialized for User ID: {{ current_user.id }}");
+  });
 </script>
 {% endif %}
 </body>

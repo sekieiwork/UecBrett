@@ -42,17 +42,12 @@ migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# --- RichFlyerの設定 (Renderの環境変数から読み込み) ---
-app.config['RICHFLYER_MGMT_KEY'] = os.environ.get('RICHFLYER_MGMT_KEY')
-app.config['RICHFLYER_SDK_KEY'] = os.environ.get('RICHFLYER_SDK_KEY')
-app.config['RICHFLYER_CUSTOMER_ID'] = os.environ.get('RICHFLYER_CUSTOMER_ID')
-app.config['RICHFLYER_SERVICE_ID'] = os.environ.get('RICHFLYER_SERVICE_ID')
+# --- OneSignalの設定 (Renderの環境変数から読み込み) ---
+app.config['ONESIGNAL_APP_ID'] = os.environ.get('ONESIGNAL_APP_ID')
+app.config['ONESIGNAL_API_KEY'] = os.environ.get('ONESIGNAL_API_KEY')
 
-# ※以下の関数内で使っている変数も app.config から取るように修正が必要です
-RICHFLYER_MGMT_KEY = app.config['RICHFLYER_MGMT_KEY']
-RICHFLYER_SDK_KEY = app.config['RICHFLYER_SDK_KEY']
-RICHFLYER_CUSTOMER_ID = app.config['RICHFLYER_CUSTOMER_ID']
-RICHFLYER_SERVICE_ID = app.config['RICHFLYER_SERVICE_ID']
+ONESIGNAL_APP_ID = app.config['ONESIGNAL_APP_ID']
+ONESIGNAL_API_KEY = app.config['ONESIGNAL_API_KEY']
 
 @app.context_processor
 def inject_common_vars():
@@ -354,107 +349,39 @@ class Notification(db.Model):
     post = db.relationship('Post', back_populates='notifications')
     kairanban = db.relationship('Kairanban', back_populates='notifications')
 
-# --- RichFlyer連携関数 ---
+# --- OneSignal連携関数 ---
 
-# --- RichFlyer連携関数 (完全版) ---
-
-def get_richflyer_token():
-    """RichFlyerのAPI利用に必要な一時トークンを取得する (ヘッダー追加・空白除去版)"""
-    
-    # 1. グローバル変数から取得し、前後の空白を削除 (.strip)
-    mgmt_key = (RICHFLYER_MGMT_KEY or "").strip()
-    customer_id = (RICHFLYER_CUSTOMER_ID or "").strip()
-    service_id = (RICHFLYER_SERVICE_ID or "").strip()
-    sdk_key = (RICHFLYER_SDK_KEY or "").strip() 
-
-    if not all([mgmt_key, customer_id, service_id, sdk_key]):
-        print("RichFlyer Error: Keys are missing in app.py.")
-        return None
-
-    # 2. トークン発行APIのエンドポイント
-    url = f"https://api.richflyer.net/v1/customers/{customer_id}/services/{service_id}/{mgmt_key}/authentication-tokens"
-    
-    # ★重要：ヘッダーにSDKキーとAPIバージョンを追加
-    headers = {
-        "Content-Type": "application/json",
-        "X-Service-Key": sdk_key,
-        "X-API-Version": "2017-04-01"
-    }
-
-    try:
-        # デバッグログ
-        print(f"RichFlyer Debug: Requesting Token...", flush=True)
-        print(f" - URL: {url}", flush=True)
-
-        # headersを追加してリクエスト
-        response = requests.post(url, headers=headers)
-        
-        if response.status_code == 200:
-            print("RichFlyer Debug: Token retrieved successfully.", flush=True)
-            return response.json().get('token')
-        else:
-            print(f"RichFlyer Token Error: {response.status_code} {response.text}", flush=True)
-            return None
-            
-    except Exception as e:
-        print(f"RichFlyer Token Exception: {e}", flush=True)
-        return None
-
-def send_richflyer_notification(user_ids, title, message, url=None):
-    """RichFlyerへプッシュ通知を送る (セグメント指定・大文字キー版)"""
-    
-    # 1. トークン取得
-    token = get_richflyer_token()
-    if not token:
-        print("RichFlyer Error: Failed to get token (Check Environment Variables)")
+def send_onesignal_notification(user_ids, title, message, url=None):
+    """OneSignalへプッシュ通知を送信"""
+    if not ONESIGNAL_APP_ID or not ONESIGNAL_API_KEY:
+        print("OneSignal Error: Keys are missing.")
         return
 
-    # 2. APIエンドポイント
-    api_url = "https://api.richflyer.net/v1/messages" 
-    
-    # SDKキーもここで再取得して空白除去
-    sdk_key = (RICHFLYER_SDK_KEY or "").strip()
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}",
-        "X-Service-Key": sdk_key,
-        "X-API-Version": "2017-04-01"
+    header = {
+        "Content-Type": "application/json; charset=utf-8",
+        "Authorization": f"Basic {ONESIGNAL_API_KEY}"
     }
 
-    # 3. 送信対象の条件 (user_id セグメント)
-    conditions = []
-    for uid in user_ids:
-        conditions.append({
-            "segment_type": "string",
-            "segment_name": "user_id", 
-            "operator": "EQ",
-            "value": str(uid)
-        })
+    # user_ids (DBのID) を文字列リストに変換
+    target_external_user_ids = [str(uid) for uid in user_ids]
 
-    if not conditions:
-        return
-
-    # 4. ペイロード (キーの頭文字を大文字にする！)
     payload = {
-        "Title": title,      # title -> Title
-        "Body": message,     # body -> Body
-        "url": url if url else "",
-        "search_condition": {
-            "search_type": "OR",
-            "conditions": conditions
-        }
+        "app_id": ONESIGNAL_APP_ID,
+        "include_aliases": {
+            "external_id": target_external_user_ids
+        },
+        "target_channel": "push",
+        "headings": {"en": title},
+        "contents": {"en": message},
+        "url": url if url else ""
     }
 
     try:
-        # デバッグ用ログ
-        print(f"RichFlyer Sending Payload: {json.dumps(payload)}", flush=True)
-        
-        response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-        print(f"RichFlyer Send Response: {response.status_code} {response.text}", flush=True)
-        
+        print(f"OneSignal Sending to: {target_external_user_ids}", flush=True)
+        req = requests.post("https://onesignal.com/api/v1/notifications", headers=header, data=json.dumps(payload))
+        print(f"OneSignal Response: {req.status_code} {req.text}", flush=True)
     except Exception as e:
-        print(f"RichFlyer Send Error: {e}", flush=True)
+        print(f"OneSignal Error: {e}", flush=True)
 
 # Routes
 @app.route('/', defaults={'page': 1}, methods=['GET', 'POST'])
@@ -519,9 +446,9 @@ def post_detail(post_id):
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
             db.session.add(notification)
 
-            # 2. RichFlyer通知
+            # 2. OneSignal通知
             if post.author.push_notifications_enabled:
-                send_richflyer_notification(
+                send_onesignal_notification(
                     user_ids=[post.author.id],
                     title="新しいコメント",
                     message=f'投稿「{post.title}」にコメントが付きました',
@@ -548,9 +475,9 @@ def post_detail(post_id):
                 )
                 db.session.add(notification)
 
-                # 2. RichFlyer通知
+                # 2. OneSignal通知
                 if user.push_notifications_enabled:
-                    send_richflyer_notification(
+                    send_onesignal_notification(
                         user_ids=[user.id],
                         title="コメントの返信",
                         message="あなたがコメントした投稿に新しいコメントがあります",
@@ -1037,9 +964,9 @@ def kairanban_index():
                     if user.push_notifications_enabled:
                         recipient_ids_for_push.append(user.id)
             
-            # RichFlyer通知を一括送信
+            # OneSignal通知を一括送信
             if recipient_ids_for_push:
-                send_richflyer_notification(
+                send_onesignal_notification(
                     user_ids=recipient_ids_for_push,
                     title="新しい回覧板",
                     message=f'回覧板「{new_kairanban.content[:20]}...」が届きました',
@@ -1177,11 +1104,10 @@ def settings():
     
     return render_template('settings.html', form=form, settings_open=settings_open)
 
-# ▼▼▼ 【修正】ファイル名を rf-serviceworker.js に合わせました ▼▼▼
-@app.route('/rf-serviceworker.js')
-def rf_serviceworker():
-    # staticフォルダ内にある rf-serviceworker.js を配信
-    return app.send_static_file('rf-serviceworker.js')
+# ▼▼▼ OneSignal用サービスワーカー配信設定 ▼▼▼
+@app.route('/OneSignalSDKWorker.js')
+def onesignal_worker():
+    return app.send_static_file('OneSignalSDKWorker.js')
 
 if __name__ == '__main__':
     app.run(debug=True)
