@@ -2,12 +2,18 @@ services:
   web:
     build: .
     ports:
-      - "5000:8000"  # ローカルのポート5000をコンテナのポート8000にマッピング
+      - "5000:8000"
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=development
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
       
+      # ▼▼▼ これを追加してください！ ▼▼▼
+      # .env ファイルから値を読み込んでコンテナに渡します
+      - ONESIGNAL_APP_ID=${ONESIGNAL_APP_ID}
+      - ONESIGNAL_API_KEY=${ONESIGNAL_API_KEY}
+      # ▲▲▲ ここまで ▲▲▲
+
     volumes:
       - .:/app
     depends_on:
