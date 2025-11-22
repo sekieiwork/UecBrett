@@ -1834,23 +1834,30 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(function(OneSignal) {
+    
+    // 1. 初期化
     OneSignal.init({
-      appId: "{{ config['ONESIGNAL_APP_ID'] or 'あなたのAppIDを直書きしてもOK' }}",
-      // サービスワーカーのパスを指定 (ルートにあるように見せかける)
+      appId: "{{ config['ONESIGNAL_APP_ID'] or '66f089f7-9a47-4197-a0e4-3451c3d9e854' }}",
       serviceWorker: {
           path: "/OneSignalSDKWorker.js",
           workerName: "OneSignalSDKWorker.js",
           registrationOptions: { scope: '/' }
       },
-      // HTTPS設定 (ローカル開発時は false になる場合があるが、RenderはTrue)
       allowLocalhostAsSecureOrigin: true,
+    }).then(function() {
+        console.log("OneSignal Init Completed.");
+        
+        // 2. ログイン (1000ms -> 100ms に短縮)
+        // 一瞬だけ待つことで、DBの書き込み完了を確実にします
+        setTimeout(function() {
+            OneSignal.login("{{ current_user.id }}");
+            console.log("OneSignal Login executed for User ID: {{ current_user.id }}");
+        }, 100);
+        
+    }).catch(function(err) {
+        console.error("OneSignal Init Failed:", err);
     });
 
-    // ユーザーID (DBのID) を OneSignalに "external_id" としてログインさせる
-    // これにより、Pythonから user.id で通知を送れるようになります
-    OneSignal.login("{{ current_user.id }}");
-    
-    console.log("OneSignal Initialized for User ID: {{ current_user.id }}");
   });
 </script>
 {% endif %}
