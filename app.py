@@ -362,8 +362,8 @@ def send_onesignal_notification(user_ids, title, message, url=None):
         "Authorization": f"Basic {ONESIGNAL_API_KEY}"
     }
 
-    # user_ids (DBのID) を文字列リストに変換
-    target_external_user_ids = [str(uid) for uid in user_ids]
+    # 送信先IDにも "user_" を付ける
+    target_external_user_ids = [f"user_{uid}" for uid in user_ids]
 
     payload = {
         "app_id": ONESIGNAL_APP_ID,

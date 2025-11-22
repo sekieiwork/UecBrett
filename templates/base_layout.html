@@ -1854,8 +1854,8 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             
             // 3. その後、新しいIDとしてログインし直す
             setTimeout(function() {
-                OneSignal.login("{{ current_user.id }}");
-                console.log("Re-Login executed for User ID: {{ current_user.id }}");
+                OneSignal.login("user_{{ current_user.id }}");
+                console.log("Re-Login executed for User ID: user_{{ current_user.id }}");
             }, 500);
             
         }).catch(function(err) {
