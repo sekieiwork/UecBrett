@@ -813,10 +813,10 @@ a.tag-box:hover {
                             <a href="{{ url_for('user_profile', username=current_user.username) }}">プロフィール</a>
                             <a href="{{ url_for('edit_profile', username=current_user.username) }}">プロフィールの編集</a>
                             <a href="{{ url_for('show_bookmarks') }}">ブックマーク一覧</a>
+                            <a href="{{ url_for('logout') }}"><p style="color: #c82333;">ログアウト</p></a>
                             {% if current_user.is_admin %}
                                 <a href="{{ url_for('admin_dashboard') }}">管理者ダッシュボード</a>
                             {% endif %}
-                            <a href="{{ url_for('logout') }}">ログアウト</a>
                             <hr style="margin: 5px 0;">
                             <a href="{{ url_for('settings') }}" style="padding: 10px 16px;">設定</a>
                         </div>
