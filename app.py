@@ -288,9 +288,9 @@ class User(db.Model, UserMixin):
     major = db.Column(db.String(100), nullable=True)
     push_notifications_enabled = db.Column(db.Boolean, default=False)
     posts = db.relationship('Post', backref='author', lazy=True, cascade="all, delete")
-    comments = db.relationship('Comment', backref='commenter', lazy=True)
-    bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic')
-    notifications = db.relationship('Notification', backref='recipient', lazy='dynamic')
+    comments = db.relationship('Comment', backref='commenter', lazy=True, cascade="all, delete")
+    bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic', cascade="all, delete")
+    notifications = db.relationship('Notification', backref='recipient', lazy='dynamic', cascade="all, delete")
     
     tags = db.relationship('Tag', secondary=user_tags, lazy='subquery',
         backref=db.backref('users', lazy=True), cascade="all, delete")
