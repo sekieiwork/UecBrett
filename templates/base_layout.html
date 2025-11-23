@@ -830,6 +830,15 @@ a.tag-box:hover {
         font-size: 0.75em;
         color: #8899a6;
     }
+    /* ▼▼▼ 追加: リンクカードをまとめるコンテナ ▼▼▼ */
+    .link-card-container {
+        margin-top: 10px;
+        margin-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px; /* カードが複数の場合の隙間 */
+        width: 100%;
+    }
     
     /* スマホ用調整 */
     @media (max-width: 480px) {
@@ -1823,15 +1832,14 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- リンクカード生成機能 ---
-    // 投稿本文(.post-content)とコメント(.comment-content)の中のリンクを探す
+    // --- リンクカード生成機能 (修正版) ---
     const contentAreas = document.querySelectorAll('.post-content, .comment-content');
     
     contentAreas.forEach(area => {
         const links = area.querySelectorAll('a');
         links.forEach(link => {
             const url = link.href;
-            // 自分のサイト内のリンクは除外、画像リンクも除外
+            // 自分のサイト内のリンク、画像リンクは除外
             if (url.includes(window.location.hostname) || url.match(/\.(jpeg|jpg|gif|png)$/i)) {
                 return;
             }
@@ -1866,14 +1874,29 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     `;
 
-                    // 元のテキストリンクの下にカードを挿入
-                    link.parentNode.insertBefore(card, link.nextSibling);
+                    // ▼▼▼ 【修正】 カードの挿入場所を変更 ▼▼▼
                     
-                    // 元のリンクを消したい場合は下記を有効化（今回は残す設定のまま）
-                    // link.style.display = 'none'; 
+                    // 1. リンクが含まれている「本文エリア(.post-content 等)」を探す
+                    const contentWrapper = link.closest('.post-content') || link.closest('.comment-content');
+
+                    if (contentWrapper) {
+                        // 2. 本文エリアのすぐ次に「カード置き場」があるか確認
+                        let cardContainer = contentWrapper.nextElementSibling;
+                        
+                        // なければ作る
+                        if (!cardContainer || !cardContainer.classList.contains('link-card-container')) {
+                            cardContainer = document.createElement('div');
+                            cardContainer.className = 'link-card-container';
+                            // 本文エリアの「直後」に挿入
+                            contentWrapper.parentNode.insertBefore(cardContainer, contentWrapper.nextSibling);
+                        }
+                        
+                        // 3. その置き場にカードを追加
+                        cardContainer.appendChild(card);
+                    }
+                    // ▲▲▲ 修正ここまで ▲▲▲
                 })
                 .catch(err => {
-                    // エラー時は何もしない（テキストリンクのまま）
                     console.log('OGP fetch failed for:', url);
                 });
         });
