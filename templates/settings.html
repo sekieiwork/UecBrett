@@ -37,10 +37,17 @@
             
             <h3>プッシュ通知の管理 (このブラウザ)</h3>
             
-            <p style="font-size: 0.9em; color: var(--text-muted);">
-                現在、新しい通知システムの準備中です。
+            <div class="form-field" style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.5em; background: none; border: none; box-shadow: none; padding: 0;">
+                <input type="checkbox" id="device-push-toggle" style="width: auto; height: auto; cursor: pointer;">
+                <label for="device-push-toggle" style="margin: 0; font-weight: normal; cursor: pointer;">
+                    このデバイス（ブラウザ）で通知を受け取る
+                </label>
+            </div>
+            
+            <p style="font-size: 0.8em; color: var(--text-muted); margin-top: 0;">
+                ※「PCはOFF、スマホはON」のように、端末ごとに設定できます。<br>
+                ※上の「サイト全体」の設定が有効になっている必要があります。
             </p>
-        
         </div>
     </div>
 {% endblock %}
@@ -59,6 +66,36 @@ document.addEventListener('DOMContentLoaded', function() {
         settingsToggle.addEventListener('click', function() {
             const isHidden = settingsContent.classList.toggle('hidden');
             toggleIcon.textContent = isHidden ? '▽' : '△';
+        });
+    }
+
+    // ▼▼▼ デバイス別通知設定の制御 ▼▼▼
+    const deviceToggle = document.getElementById('device-push-toggle');
+
+    if (deviceToggle && window.OneSignalDeferred) {
+        // 1. ページを開いたときに、現在のOneSignalの状態を見てチェックボックスを合わせる
+        window.OneSignalDeferred.push(function(OneSignal) {
+            // 現在、通知が許可されているか確認 (optedIn)
+            const isPushEnabled = OneSignal.User.PushSubscription.optedIn;
+            deviceToggle.checked = isPushEnabled;
+
+            // 2. チェックボックスが変更されたら、OneSignalの設定を変更する
+            deviceToggle.addEventListener('change', function() {
+                if (this.checked) {
+                    // ONにされたら -> 購読する (Opt-In)
+                    console.log("Device Push: ON");
+                    OneSignal.User.PushSubscription.optIn();
+                } else {
+                    // OFFにされたら -> 購読解除する (Opt-Out)
+                    console.log("Device Push: OFF");
+                    OneSignal.User.PushSubscription.optOut();
+                }
+            });
+            
+            // OneSignal側で状態が変わったらスイッチも連動させる
+            OneSignal.User.PushSubscription.addEventListener("change", function(event) {
+                deviceToggle.checked = event.current.optedIn;
+            });
         });
     }
 

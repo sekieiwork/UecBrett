@@ -1845,36 +1845,7 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
       },
       allowLocalhostAsSecureOrigin: true,
 
-      notifyButton: {
-          enable: true, /* ボタン機能を有効化 */
-          
-          /* 表示条件: 購読済み(true)なら非表示(false)にする */
-          displayPredicate: function() {
-              return OneSignal.User.PushSubscription.optedIn.then(function(isOptedIn) {
-                  return !isOptedIn;
-              });
-          },
-          
-          /* 見た目のカスタマイズ（お好みで） */
-          size: 'medium', /* small, medium, large */
-          position: 'bottom-right', /* bottom-left, bottom-right */
-          offset: {
-              bottom: '20px',
-              right: '20px' /* スマホでナビとかぶる場合はここを調整 */
-          },
-          colors: {
-              'circle.background': '#007bff', /* サイトの色に合わせるなら青 */
-              'circle.foreground': 'white',
-              'badge.background': '#007bff',
-              'badge.foreground': 'white',
-              'badge.border': 'white',
-              'pulse.background': '#007bff',
-              'dialog.button.background.hovering': '#007bff',
-              'dialog.button.background.active': '#007bff',
-              'dialog.button.background': '#007bff',
-              'dialog.button.foreground': 'white'
-          },
-      },
+      
     }).then(function() {
         console.log("OneSignal Init Completed.");
 
