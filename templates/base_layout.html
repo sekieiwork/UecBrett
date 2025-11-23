@@ -1464,44 +1464,66 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         });
     });
 
-    // ▼▼▼ [修正] 「8. プロフィール編集フォーム」の全コードを置き換え ▼▼▼
+    // ▼▼▼ [修正] 「8. プロフィール編集フォーム」 Safari対応版 ▼▼▼
     const gradeSelect = document.getElementById('form-select-grade');
     
     if (gradeSelect) {
-        // (div と select の取得は変更なし)
         const categoryDiv = document.getElementById('form-field-category');
         const classDiv = document.getElementById('form-field-class');
         const programDiv = document.getElementById('form-field-program');
         const majorDiv = document.getElementById('form-field-major');
+        
         const categorySelect = document.getElementById('form-select-category');
         const classSelect = document.getElementById('form-select-class');
         const programSelect = document.getElementById('form-select-program');
         const majorSelect = document.getElementById('form-select-major');
-        
-        // (filterOptions, filterProgramOptions, getProgramGroup, filterMajorOptions, getMajorGroup は変更なし)
-        // (これらは v6 のまま、カッコなしの「値」を参照しているので、forms.pyの「表示名」変更の影響を受けません)
-        const filterOptions = (selectElement, allowedGroups) => {
-            Array.from(selectElement.options).forEach(option => {
-                const optionValue = option.value;
-                if (optionValue === '') { option.style.display = 'block'; return; }
-                let show = false;
-                for (const group of allowedGroups) {
-                    if (getClassGroup(optionValue) === group) { show = true; break; }
+
+        // --- Safari対策: 選択肢を物理的に削除・再構築する関数 ---
+        const filterSelectOptions = (selectElement, predicate) => {
+            // 初回実行時に、すべての選択肢をメモリにバックアップする
+            if (!selectElement._originalOptions) {
+                selectElement._originalOptions = Array.from(selectElement.options).map(opt => ({
+                    value: opt.value,
+                    text: opt.text
+                }));
+            }
+
+            const currentVal = selectElement.value;
+            selectElement.innerHTML = ''; // 一旦空にする
+
+            let isCurrentValValid = false;
+
+            selectElement._originalOptions.forEach(optData => {
+                // 空文字（"--- 選択 ---"）は常に表示、それ以外は条件判定
+                if (optData.value === '' || predicate(optData.value)) {
+                    const option = document.createElement('option');
+                    option.value = optData.value;
+                    option.textContent = optData.text;
+                    selectElement.appendChild(option);
+
+                    if (optData.value === currentVal) {
+                        isCurrentValValid = true;
+                    }
                 }
-                option.style.display = show ? 'block' : 'none';
             });
+
+            // もともと選んでいた値が有効なら維持、無効になったらリセット
+            if (isCurrentValValid) {
+                selectElement.value = currentVal;
+            } else {
+                selectElement.value = '';
+            }
         };
-        const filterProgramOptions = (selectElement, allowedGroups) => {
-             Array.from(selectElement.options).forEach(option => {
-                const optionValue = option.value;
-                if (optionValue === '' || optionValue === '未決定') { option.style.display = 'block'; return; }
-                let show = false;
-                for (const group of allowedGroups) {
-                    if (getProgramGroup(optionValue) === group) { show = true; break; }
-                }
-                option.style.display = show ? 'block' : 'none';
-            });
+
+        // --- 判定ロジック関数群 ---
+        const getClassGroup = (value) => {
+            if (['1クラス', '2クラス', '3クラス', '4クラス', '5クラス', '6クラス', '7クラス', '8クラス', '9クラス', '10クラス', '11クラス', '12クラス'].includes(value)) return '1_year';
+            if (['Aクラス', 'Bクラス', 'Cクラス'].includes(value)) return '2_year_I';
+            if (['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'Mエリア'].includes(value)) return '2_year_II';
+            if (['III類1クラス', 'III類2クラス', 'III類3クラス', 'III類4クラス'].includes(value)) return '2_year_III';
+            return 'other';
         };
+
         const getProgramGroup = (value) => {
             const programs_I = ['メディア情報学プログラム', '経営・社会情報学プログラム', '情報数理工学プログラム', 'コンピュータサイエンスプログラム', 'デザイン思考・データサイエンスプログラム'];
             const programs_II = ['セキュリティ情報学プログラム', '情報通信工学プログラム', '電子情報学プログラム', '計測・制御システムプログラム', '先端ロボティクスプログラム'];
@@ -1511,22 +1533,21 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             if (programs_III.includes(value)) return 'III類';
             return 'other';
         };
-        const filterMajorOptions = (selectElement, allowedGroups) => {
-             Array.from(selectElement.options).forEach(option => {
-                const optionValue = option.value;
-                if (optionValue === '') { option.style.display = 'block'; return; }
-                let show = false;
-                for (const group of allowedGroups) {
-                    if (getMajorGroup(optionValue) === group) { show = true; break; }
-                }
-                option.style.display = show ? 'block' : 'none';
-            });
-        };
-        const getMajorGroup = (value) => {
-            if (value === '情報学専攻') return 'I類';
-            if (value === '情報・ネットワーク工学専攻') return 'II類';
-            if (['機械知能システム学専攻', '基盤理工学専攻'].includes(value)) return 'III類';
-            return 'other';
+
+        const getMajorByProgram = (programValue) => {
+            const major_JohoGaku = ['メディア情報学プログラム', '経営・社会情報学プログラム', 'デザイン思考・データサイエンスプログラム', 'セキュリティ情報学プログラム'];
+            if (major_JohoGaku.includes(programValue)) return '情報学専攻';
+
+            const major_JohoNetwork = ['情報通信工学プログラム', '電子情報学プログラム', '情報数理工学プログラム', 'コンピュータサイエンスプログラム'];
+            if (major_JohoNetwork.includes(programValue)) return '情報・ネットワーク工学専攻';
+
+            const major_KikaiChino = ['機械システムプログラム', '計測・制御システムプログラム', '先端ロボティクスプログラム'];
+            if (major_KikaiChino.includes(programValue)) return '機械知能システム学専攻';
+
+            const major_KibanRiko = ['光工学プログラム', '物理工学プログラム', '化学生命工学プログラム', '電子工学プログラム'];
+            if (major_KibanRiko.includes(programValue)) return '基盤理工学専攻';
+            
+            return ''; 
         };
 
         const getCategoryForFirstYear = (classValue) => {
@@ -1538,226 +1559,135 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             return '';
         };
 
-       const getMajorByProgram = (programValue) => {
-
-            // --- 1. 情報学専攻 (I類) になるプログラム ---
-            const major_JohoGaku = [
-                // (I類から)
-                'メディア情報学プログラム', 
-                '経営・社会情報学プログラム', 
-                'デザイン思考・データサイエンスプログラム',
-                // ★ 修正(II類から) ★
-                'セキュリティ情報学プログラム'
-            ];
-            if (major_JohoGaku.includes(programValue)) return '情報学専攻';
-
-            // --- 2. 情報・ネットワーク工学専攻 (II類) になるプログラム ---
-            const major_JohoNetwork = [
-                // (II類から)
-                '情報通信工学プログラム', 
-                '電子情報学プログラム',
-                // ★ 修正(I類から) ★
-                '情報数理工学プログラム', 
-                'コンピュータサイエンスプログラム'
-            ];
-            if (major_JohoNetwork.includes(programValue)) return '情報・ネットワーク工学専攻';
-
-            // --- 3. 機械知능システム学専攻 (III類) になるプログラム ---
-            const major_KikaiChino = [
-                // (III類から)
-                '機械システムプログラム',
-                // ★ 修正(II類から) ★
-                '計測・制御システムプログラム', 
-                '先端ロボティクスプログラム'
-            ];
-            if (major_KikaiChino.includes(programValue)) return '機械知能システム学専攻';
-
-            // --- 4. 基盤理工学専攻 (III類) になるプログラム ---
-            const major_KibanRiko = [
-                // (III類から)
-                '光工学プログラム', 
-                '物理工学プログラム', 
-                '化学生命工学プログラム',
-                // ★ 修正(III類から) ★
-                '電子工学プログラム'
-            ];
-            if (major_KibanRiko.includes(programValue)) return '基盤理工学専攻';
-            
-            // '未決定' または '---' の場合
-            return ''; 
-        };
-
-        const filterMajorByProgram = (majorSelect, selectedProgram) => {
-            const targetMajor = getMajorByProgram(selectedProgram);
-            Array.from(majorSelect.options).forEach(option => {
-                const optionValue = option.value;
-                if (optionValue === '') { option.style.display = 'block'; return; }
-                option.style.display = (optionValue === targetMajor) ? 'block' : 'none';
-            });
-            // 専攻が特定されたら自動選択する
-            if (targetMajor) {
-                majorSelect.value = targetMajor;
-            }
-        };
-
-        const filterFirstYearClasses = (categoryValue) => {
-            // どの類が選ばれているか (I類: 1-4, II類: 5-8, III類: 9-12)
-            const classNumMap = { 'I類': [1, 4], 'II類': [5, 8], 'III類': [9, 12] };
-            const allowedRange = classNumMap[categoryValue];
-
-            Array.from(classSelect.options).forEach(option => {
-                // '---' は常に表示
-                if (option.value === '') { option.style.display = 'block'; return; }
-                
-                // 1年生のクラス ('1_year') でないものは非表示
-                if (getClassGroup(option.value) !== '1_year') {
-                    option.style.display = 'none';
-                    return;
-                }
-                
-                // 類が未選択 ('---') の場合は、全ての1年クラスを表示
-                if (!allowedRange) {
-                    option.style.display = 'block';
-                    return;
-                }
-                
-                // 選択された類に応じてクラス番号を絞り込む
-                const classNum = parseInt(option.value.replace('クラス', ''), 10);
-                option.style.display = (classNum >= allowedRange[0] && classNum <= allowedRange[1]) ? 'block' : 'none';
-            });
-        };
-
-       const getClassGroup = (value) => {
-            if (['1クラス', '2クラス', '3クラス', '4クラス', '5クラス', '6クラス', '7クラス', '8クラス', '9クラス', '10クラス', '11クラス', '12クラス'].includes(value)) return '1_year';
-            if (['Aクラス', 'Bクラス', 'Cクラス'].includes(value)) return '2_year_I';
-            if (['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'Mエリア'].includes(value)) return '2_year_II';
-            // ★ v1, line 1189 を修正
-            if (['III類1クラス', 'III類2クラス', 'III類3クラス', 'III類4クラス'].includes(value)) return '2_year_III';
-            return 'other';
-        };
-
-
-        // メインの表示切替ロジック
+        // --- メインの表示切替ロジック ---
         const updateFormVisibility = () => {
             const gradeVal = gradeSelect.value;
             const categoryVal = categorySelect.value;
             const classVal = classSelect.value;
             const programVal = programSelect.value;
 
-            // まずすべて非表示に
+            // 1. 全ての表示枠を一旦リセット
             categoryDiv.style.display = 'none';
             classDiv.style.display = 'none';
             programDiv.style.display = 'none';
             majorDiv.style.display = 'none';
-            categorySelect.disabled = false
+            
+            categorySelect.disabled = false;
             majorSelect.disabled = false;
+            categorySelect.style.pointerEvents = 'auto';
+            categorySelect.style.backgroundColor = '#fff';
+            majorSelect.style.pointerEvents = 'auto';
+            majorSelect.style.backgroundColor = '#fff';
 
+            // 2. 「類」の選択肢をフィルタリング (大学院生ならK課程を消す)
+            filterSelectOptions(categorySelect, (val) => {
+                if (gradeVal === '大学院生') {
+                    return val !== 'K課程'; // 大学院生ならK課程を除外
+                }
+                return true; // それ以外は全表示
+            });
+
+            // K課程の場合の特別処理
             if (categoryVal === 'K課程') {
-                categoryDiv.style.display = 'block'; // 「類」だけ表示
-                return; // 他の項目は非表示のまま終了
+                categoryDiv.style.display = 'block';
+                return; 
             }
 
             if (gradeVal === '1年') {
                 categoryDiv.style.display = 'block'; 
                 classDiv.style.display = 'block';
                 
-                // 1. まず「クラス」が選択されているか確認 (DBからの読み込み時など)
-                const autoCategory = getCategoryForFirstYear(classVal);
+                // 1年生のクラス選択肢を更新 (選ばれた類に合わせて絞る)
+                filterSelectOptions(classSelect, (val) => {
+                    const group = getClassGroup(val);
+                    if (group !== '1_year') return false; // 1年以外のクラスは消す
 
+                    if (categoryVal === 'I類') return parseInt(val) >= 1 && parseInt(val) <= 4;
+                    if (categoryVal === 'II類') return parseInt(val) >= 5 && parseInt(val) <= 8;
+                    if (categoryVal === 'III類') return parseInt(val) >= 9 && parseInt(val) <= 12;
+                    return true; // 類が未選択なら全部出す
+                });
+
+                // クラスから類を自動判定
+                const autoCategory = getCategoryForFirstYear(classVal);
                 if (autoCategory) {
-                    // (例: 5クラスが選択中)
-                    // 2a. 「類」を自動設定し、CSSで操作不可に (ご要望①)
                     categorySelect.value = autoCategory;
                     categorySelect.style.pointerEvents = 'none';
                     categorySelect.style.backgroundColor = '#e9ecef';
-                    categorySelect.disabled = false; // 値は送信する
-                    
-                    // 2b. 「クラス」は、その類のものだけを表示 (ご要望②)
-                    filterFirstYearClasses(autoCategory);
-                } else {
-                    // (例: クラスが '---' の場合)
-                    // 2c. 「類」の操作を許可
-                    categorySelect.style.pointerEvents = 'auto';
-                    categorySelect.style.backgroundColor = '#fff';
-                    categorySelect.disabled = false;
-                    
-                    // 2d. 手動で選択された「類」に応じて「クラス」を絞り込む (ご要望②)
-                    filterFirstYearClasses(categoryVal);
                 }
+
             }
             else if (gradeVal === '2年') {
                 categoryDiv.style.display = 'block';
                 programDiv.style.display = 'block';
                 
-                if (categoryVal === 'I類') {
+                if (categoryVal === 'I類' || categoryVal === 'II類' || categoryVal === 'III類') {
                     classDiv.style.display = 'block';
-                    filterOptions(classSelect, ['2_year_I']);
-                    filterProgramOptions(programSelect, ['I類']);
-                } else if (categoryVal === 'II類') {
-                    classDiv.style.display = 'block';
-                    filterOptions(classSelect, ['2_year_II']);
-                    filterProgramOptions(programSelect, ['II類']);
-                } else if (categoryVal === 'III類') {
-                    // ▼▼▼ [修正] III類でもクラスを表示 ▼▼▼
-                    classDiv.style.display = 'block';
-                    filterOptions(classSelect, ['2_year_III']); // ★III類クラスのみ
-                    filterProgramOptions(programSelect, ['III類']);
-                    // ▲▲▲ ここまで修正 ▲▲▲
+                    
+                    // 2年生クラスの絞り込み
+                    filterSelectOptions(classSelect, (val) => {
+                        if (categoryVal === 'I類') return getClassGroup(val) === '2_year_I';
+                        if (categoryVal === 'II類') return getClassGroup(val) === '2_year_II';
+                        if (categoryVal === 'III類') return getClassGroup(val) === '2_year_III';
+                        return false;
+                    });
+
+                    // プログラムの絞り込み
+                    filterSelectOptions(programSelect, (val) => {
+                        if (val === '未決定') return true;
+                        return getProgramGroup(val) === categoryVal;
+                    });
                 } else {
-                    filterProgramOptions(programSelect, ['I類', 'II類', 'III類']);
+                    // 類未選択時: プログラムは全部表示(未決定含む)、クラスは隠す
+                    filterSelectOptions(programSelect, () => true);
                 }
             }
             else if (gradeVal === '3年' || gradeVal === '4年') {
-                // (変更なし)
                 categoryDiv.style.display = 'block';
                 programDiv.style.display = 'block';
-                if (categoryVal === 'I類') filterProgramOptions(programSelect, ['I類']);
-                else if (categoryVal === 'II類') filterProgramOptions(programSelect, ['II類']);
-                else if (categoryVal === 'III類') filterProgramOptions(programSelect, ['III類']);
-                else filterProgramOptions(programSelect, ['I類', 'II類', 'III類']);
+                
+                filterSelectOptions(programSelect, (val) => {
+                    if (val === '未決定') return true;
+                    if (!categoryVal) return true;
+                    return getProgramGroup(val) === categoryVal;
+                });
             }
             else if (gradeVal === '大学院生') {
-                // 1. 類、プログラム、専攻の「枠」をすべて表示
                 categoryDiv.style.display = 'block';
                 programDiv.style.display = 'block';
                 majorDiv.style.display = 'block';
                 
-                // 2. 「類」の選択に応じて「プログラム」の選択肢を絞り込む (3/4年と同じ)
-                if (categoryVal === 'I類') filterProgramOptions(programSelect, ['I類']);
-                else if (categoryVal === 'II類') filterProgramOptions(programSelect, ['II類']);
-                else if (categoryVal === 'III類') filterProgramOptions(programSelect, ['III類']);
-                else filterProgramOptions(programSelect, ['I類', 'II類', 'III類']); // '---' の場合は全部
+                // プログラムの絞り込み
+                filterSelectOptions(programSelect, (val) => {
+                    if (val === '未決定') return true;
+                    if (!categoryVal) return true;
+                    return getProgramGroup(val) === categoryVal;
+                });
 
-                // 3. 「プログラム」の選択に応じて「専攻」の選択肢を絞り込み、自動設定する
-                filterMajorByProgram(majorSelect, programVal);
+                // 専攻の絞り込み (プログラムに合わせて)
+                const targetMajor = getMajorByProgram(programVal);
                 
-                // 4. 専攻が自動設定されたら、編集不可にする
-                if (getMajorByProgram(programVal)) {
-                    // ▼▼▼ disabled = true の代わりにCSSで操作不可にする ▼▼▼
+                filterSelectOptions(majorSelect, (val) => {
+                    if (!programVal || programVal === '未決定') return true; // プログラム未定なら全専攻表示
+                    return val === targetMajor;
+                });
+
+                // 専攻の自動設定とロック
+                if (targetMajor) {
+                    majorSelect.value = targetMajor;
                     majorSelect.style.pointerEvents = 'none';
-                    majorSelect.style.backgroundColor = '#e9ecef'; // disabled風の背景色
-                    majorSelect.disabled = false; // 値が送信されるように false に変更
-                } else {
-                    // ▼▼▼スタイルを元に戻す ▼▼▼
-                    majorSelect.style.pointerEvents = 'auto';
-                    majorSelect.style.backgroundColor = '#fff';
-                    majorSelect.disabled = false;
+                    majorSelect.style.backgroundColor = '#e9ecef';
                 }
             }
         };
 
-        // (イベントリスナーは変更なし)
+        // --- イベントリスナー ---
         gradeSelect.addEventListener('change', () => {
+            // 学年が変わったらリセット
             categorySelect.value = '';
             classSelect.value = '';
             programSelect.value = '';
             majorSelect.value = '';
-            categorySelect.disabled = false;
-            categorySelect.style.pointerEvents = 'auto';
-            categorySelect.style.backgroundColor = '#fff';
-            majorSelect.style.pointerEvents = 'auto';
-            majorSelect.style.backgroundColor = '#fff';
-            majorSelect.disabled = false;
             updateFormVisibility();
         });
         
@@ -1765,34 +1695,26 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
             classSelect.value = '';
             programSelect.value = '';
             majorSelect.value = '';
-            majorSelect.disabled = false;
-            majorSelect.style.pointerEvents = 'auto';
-            majorSelect.style.backgroundColor = '#fff';
-            categorySelect.style.pointerEvents = 'auto';
-            categorySelect.style.backgroundColor = '#fff';
             updateFormVisibility();
         });
 
         classSelect.addEventListener('change', () => {
-            // 1年生の場合、類を自動設定するためにメイン関数を呼び出す
             if (gradeSelect.value === '1年') {
                 updateFormVisibility();
             }
-            // 2年生以上の場合は、クラス->類 の連動は不要
         });
 
         programSelect.addEventListener('change', () => {
-            majorSelect.value = ''; // 専攻をリセット
-            // 大学院生の場合のみ、プログラム→専攻の連動を実行
+            majorSelect.value = '';
             if (gradeSelect.value === '大学院生') {
                 updateFormVisibility();
             }
         });
 
-        // --- ページ読み込み時に1回実行 ---
+        // 初期化
         updateFormVisibility();
     }
-// ▲▲▲ 「8. プロフィール編集フォーム」ここまで ▲▲▲
+    // ▲▲▲ 「8. プロフィール編集フォーム」ここまで ▲▲▲
     const profileEditForm = document.getElementById('profile-edit-form');
     const usernameInput = document.getElementById('username-input');
     const iconInput = document.getElementById('icon-input-field');
