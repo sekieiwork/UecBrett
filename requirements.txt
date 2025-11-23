@@ -27,3 +27,4 @@ psycopg2
 Pillow
 cloudinary
 requests
+beautifulsoup4

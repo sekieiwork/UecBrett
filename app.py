@@ -25,6 +25,7 @@ import bleach
 from bleach.linkifier import Linker
 from forms import NotificationSettingsForm
 import requests
+from bs4 import BeautifulSoup
 
 cloudinary.config(
     cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
@@ -1109,6 +1110,41 @@ def settings():
 @app.route('/OneSignalSDKWorker.js')
 def onesignal_worker():
     return app.send_static_file('OneSignalSDKWorker.js')
+
+@app.route('/api/ogp')
+def get_ogp():
+    url = request.args.get('url')
+    if not url:
+        return jsonify({'error': 'No URL provided'}), 400
+
+    try:
+        # 相手のサイトにアクセス (User-Agentを偽装してブラウザっぽく振る舞う)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+        resp = requests.get(url, headers=headers, timeout=5)
+        resp.raise_for_status()
+        
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        
+        # OGPデータの取得
+        og_title = soup.find('meta', property='og:title')
+        og_image = soup.find('meta', property='og:image')
+        og_desc = soup.find('meta', property='og:description')
+        
+        # OGPがない場合はtitleタグなどから補完
+        title = og_title['content'] if og_title else (soup.title.string if soup.title else url)
+        image = og_image['content'] if og_image else None
+        description = og_desc['content'] if og_desc else ''
+
+        return jsonify({
+            'title': title,
+            'image': image,
+            'description': description,
+            'url': url
+        })
+    except Exception as e:
+        print(f"OGP Fetch Error: {e}")
+        # エラーでも最低限の情報は返す（カード化しないため）
+        return jsonify({'error': 'Failed to fetch'}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)
