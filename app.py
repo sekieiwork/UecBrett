@@ -432,6 +432,7 @@ def index(page):
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
     post = Post.query.get_or_404(post_id)
+    post.comments.sort(key=lambda c: c.created_at, reverse=True)
     comment_form = CommentForm()
 
     if comment_form.validate_on_submit() and current_user.is_authenticated:
