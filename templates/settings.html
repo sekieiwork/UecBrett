@@ -116,12 +116,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         // OFF -> ON にする操作
                         console.log("User Action: ON");
                         await OneSignal.User.PushSubscription.optIn();
-                        alert("通知を【ON】にしました。");
+                        //alert("通知を【ON】にしました。");
                     } else {
                         // ON -> OFF にする操作
                         console.log("User Action: OFF");
                         await OneSignal.User.PushSubscription.optOut();
-                        alert("通知を【OFF】にしました。");
+                        //alert("通知を【OFF】にしました。");
                     }
                 } catch (e) {
                     console.error("Change setting failed:", e);
