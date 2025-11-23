@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>UEC 掲示板</title>
 
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
@@ -511,6 +511,8 @@
     bottom: 0;
     left: 0;
     width: 100%;
+    height: auto;
+    padding-bottom: env(safe-area-inset-bottom); /* iPhoneのバーの高さ分、自動で余白が入ります */
     height: 70px;
     background-color: #ffffff;
     border-top: 1px solid #dee2e6;
@@ -526,7 +528,7 @@
     justify-content: space-around;
     align-items: center;
     width: 100%;
-    height: 100%;
+    height: 70px;
 }
 
 /* 当たり判定を大きくする (要求通り) */
