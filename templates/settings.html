@@ -57,7 +57,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-    // --- 設定ページのトグル機能 ---
+    // --- 1. 設定ページのトグル開閉機能 (既存のまま) ---
     const settingsToggle = document.getElementById('notification-settings-toggle');
     const settingsContent = document.getElementById('notification-settings-content');
     const toggleIcon = document.getElementById('toggle-icon');
@@ -69,36 +69,78 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ▼▼▼ デバイス別通知設定の制御 ▼▼▼
+    // --- 2. デバイス別通知設定の制御 (ここを強化！) ---
     const deviceToggle = document.getElementById('device-push-toggle');
+    const deviceToggleLabel = deviceToggle ? deviceToggle.nextElementSibling : null;
 
     if (deviceToggle && window.OneSignalDeferred) {
-        // 1. ページを開いたときに、現在のOneSignalの状態を見てチェックボックスを合わせる
-        window.OneSignalDeferred.push(function(OneSignal) {
-            // 現在、通知が許可されているか確認 (optedIn)
-            const isPushEnabled = OneSignal.User.PushSubscription.optedIn;
-            deviceToggle.checked = isPushEnabled;
+        
+        // 操作できないように一旦無効化（ロード中）
+        deviceToggle.disabled = true;
+        if(deviceToggleLabel) deviceToggleLabel.textContent = "設定を読み込み中...";
 
-            // 2. チェックボックスが変更されたら、OneSignalの設定を変更する
-            deviceToggle.addEventListener('change', function() {
-                if (this.checked) {
-                    // ONにされたら -> 購読する (Opt-In)
-                    console.log("Device Push: ON");
-                    OneSignal.User.PushSubscription.optIn();
-                } else {
-                    // OFFにされたら -> 購読解除する (Opt-Out)
-                    console.log("Device Push: OFF");
-                    OneSignal.User.PushSubscription.optOut();
+        window.OneSignalDeferred.push(function(OneSignal) {
+            
+            // 現在の状態を取得してチェックボックスに反映する関数
+            function updateToggleState() {
+                // 通知権限が許可されており、かつ購読中(optedIn)かどうか
+                const isSubscribed = OneSignal.User.PushSubscription.optedIn;
+                const permission = Notification.permission;
+
+                console.log("Current State -> Subscribed:", isSubscribed, " Permission:", permission);
+
+                // 権限が 'denied' (ブロック) されている場合は強制OFF
+                if (permission === 'denied') {
+                    deviceToggle.checked = false;
+                    deviceToggle.disabled = true;
+                    if(deviceToggleLabel) deviceToggleLabel.textContent = "ブラウザの設定で通知がブロックされています";
+                    return;
+                }
+
+                deviceToggle.checked = isSubscribed;
+                deviceToggle.disabled = false; // 読み込み完了で有効化
+                if(deviceToggleLabel) deviceToggleLabel.textContent = "このデバイス（ブラウザ）で通知を受け取る";
+            }
+
+            // A. ページ読み込み時に状態を反映
+            updateToggleState();
+
+            // B. チェックボックスが変更されたときの処理 (これがセーブ機能になります)
+            deviceToggle.addEventListener('change', async function() {
+                // 連打防止のため一時的に無効化
+                deviceToggle.disabled = true;
+
+                try {
+                    if (this.checked) {
+                        // ONにされた -> 購読する (Opt-In)
+                        console.log("Attempting to Opt-In...");
+                        await OneSignal.User.PushSubscription.optIn();
+                        alert("このデバイスの通知を【ON】にしました。\n(設定は自動で保存されます)");
+                    } else {
+                        // OFFにされた -> 購読解除する (Opt-Out)
+                        console.log("Attempting to Opt-Out...");
+                        await OneSignal.User.PushSubscription.optOut();
+                        alert("このデバイスの通知を【OFF】にしました。\n(設定は自動で保存されます)");
+                    }
+                } catch (e) {
+                    console.error("Change setting failed:", e);
+                    alert("設定の変更に失敗しました。ブラウザの通知許可を確認してください。");
+                    // 失敗したらスイッチを元に戻す
+                    deviceToggle.checked = !deviceToggle.checked;
+                } finally {
+                    // 処理が終わったら有効化し、状態を再確認
+                    deviceToggle.disabled = false;
+                    updateToggleState();
                 }
             });
             
-            // OneSignal側で状態が変わったらスイッチも連動させる
+            // C. OneSignal側で（ブラウザ設定などで）状態が変わった場合も同期する
             OneSignal.User.PushSubscription.addEventListener("change", function(event) {
-                deviceToggle.checked = event.current.optedIn;
+                console.log("OneSignal Subscription Changed:", event);
+                updateToggleState();
             });
         });
     }
-
 });
 </script>
 {% endblock %}
