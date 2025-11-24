@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, desc
 from flask_migrate import Migrate, upgrade
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, TextAreaField, SubmitField
@@ -26,7 +26,11 @@ from bleach.linkifier import Linker
 from forms import NotificationSettingsForm
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse 
+from urllib.parse import urlparse
+# --- 公式SDKのインポート ---
+import onesignal
+from onesignal.api import default_api
+from onesignal.model.notification import Notification as OSNotification
 
 cloudinary.config(
     cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
@@ -53,9 +57,6 @@ ONESIGNAL_API_KEY = app.config['ONESIGNAL_API_KEY']
 
 @app.context_processor
 def inject_common_vars():
-    """
-    全てのテンプレートに共通の変数を自動で渡す
-    """
     search_form = SearchForm()
     is_developer = False
     has_unread_kairanban = False 
@@ -64,34 +65,19 @@ def inject_common_vars():
         if current_user.username == '二酸化ケイ素':
             is_developer = True
         
-        # 1. 期限切れでない回覧板
         base_query = Kairanban.query.filter(Kairanban.expires_at > datetime.utcnow())
-            
-        # 2a. 自分の「ステータスタグ」をセットで取得
         user_status_tags = {
-            current_user.grade, 
-            current_user.category, 
-            current_user.user_class, 
-            current_user.program, 
-            current_user.major
+            current_user.grade, current_user.category, current_user.user_class, 
+            current_user.program, current_user.major
         }
-        # 2b. 自分の「カスタムタグ」をセットで取得
         user_custom_tags = {tag.name for tag in current_user.tags} 
-        
-        # 2c. 結合 (Noneや空文字を除外)
         user_all_tag_names = {tag for tag in user_status_tags.union(user_custom_tags) if tag}
 
-        target_kairanbans_query = base_query.filter(Kairanban.id < 0) # デフォルトは空
         if user_all_tag_names:
-            # 2d. タグ名(Tag.name)でKairanbanを検索
             target_kairanbans_query = base_query.join(kairanban_tags).join(Tag).filter(
                 Tag.name.in_(user_all_tag_names)
             )
-               
-            # 3. チェック済みのIDを取得
             checked_ids = {c.kairanban_id for c in KairanbanCheck.query.filter_by(user_id=current_user.id)}
-                
-            # 4. 1件ずつチェック
             target_kairanbans = target_kairanbans_query.all()
             for k in target_kairanbans:
                 if k.author_id != current_user.id and k.id not in checked_ids:
@@ -104,57 +90,27 @@ def inject_common_vars():
         has_unread_kairanban=has_unread_kairanban 
     )
 
-# 1. アプリケーションで許可するHTMLタグを定義します
 ALLOWED_TAGS = [
     'p', 'br', 'strong', 'em', 'ol', 'ul', 'li', 'a', 'span', 'hr',
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'code', 'blockquote',
 ]
+ALLOWED_ATTRIBUTES = {'a': ['href', 'target'], 'span': ['class']}
+linker = Linker(callbacks=[lambda attrs, new: attrs.update({(None, 'target'): '_blank'})])
 
-# 2. 許可するタグに付随する属性を定義します
-ALLOWED_ATTRIBUTES = {
-    'a': ['href', 'target'], 
-    'span': ['class']        
-}
-
-# 3. BleachのLinkerを設定
-linker = Linker(callbacks=[
-    lambda attrs, new: attrs.update({(None, 'target'): '_blank'})
-])
-
-# 4. 「safe_markdown」という名前のカスタムフィルターを定義
 @app.template_filter('safe_markdown')
 def safe_markdown_filter(text):
-    if not text:
-        return ""
-
+    if not text: return ""
     html = md.convert(text)
-
     def add_target_blank(attrs, new=False):
         attrs[(None, 'target')] = '_blank'
         return attrs
+    linked_html = bleach.linkify(html, callbacks=[add_target_blank], skip_tags=['a', 'pre', 'code'])
+    return bleach.clean(linked_html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRIBUTES)
 
-    linked_html = bleach.linkify(
-        html,
-        callbacks=[add_target_blank],
-        skip_tags=['a', 'pre', 'code'] 
-    )
-
-    sanitized_html = bleach.clean(
-        linked_html,
-        tags=ALLOWED_TAGS,       
-        attributes=ALLOWED_ATTRIBUTES
-    )
-
-    return sanitized_html
-
-# タグ処理ヘルパー関数
 def get_or_create_tags_from_string(tag_string):
     tag_objects = []
-    if not tag_string:
-        return tag_objects
-
+    if not tag_string: return tag_objects
     tag_names = [name.strip() for name in tag_string.split(',') if name.strip()]
-    
     for name in tag_names:
         tag = Tag.query.filter_by(name=name).first()
         if not tag:
@@ -162,45 +118,27 @@ def get_or_create_tags_from_string(tag_string):
             db.session.add(tag)
         else:
             tag.last_used = datetime.utcnow()
-        
         tag_objects.append(tag)
-        
     db.session.commit()
     return tag_objects
 
 def parse_review_for_editing(content):
-    if not content.strip().startswith('<span class="text-large">**'):
-        return None 
-
+    if not content.strip().startswith('<span class="text-large">**'): return None 
     subjects = []
     reviews = re.split(r'\n\s*---\s*\n', content.strip())
-    
     pattern = re.compile(
-        r'<span class="text-large">\*\*(.*?)\*\*</span>\s*'
-        r'成績:<span class="text-red text-large">\*\*(.*?)\*\*</span>\s*'
-        r'担当教員:(.*?)\n'
-        r'(.*?)(?=\Z)', 
+        r'<span class="text-large">\*\*(.*?)\*\*</span>\s*成績:<span class="text-red text-large">\*\*(.*?)\*\*</span>\s*担当教員:(.*?)\n(.*?)(?=\Z)', 
         re.DOTALL 
     )
-
     placeholders = ['ここに科目名を入力', 'ここに担当教員名を入力', '本文を入力']
-
     for review_text in reviews:
         match = pattern.search(review_text.strip())
         if match:
             subject, grade, teacher, body = match.groups()
-            
             subject = '' if subject == placeholders[0] else subject
             teacher = '' if teacher == placeholders[1] else teacher
             body = '' if body == placeholders[2] else body
-            
-            subjects.append({
-                'subject': subject.strip(),
-                'grade': grade.strip(),
-                'teacher': teacher.strip(),
-                'body': body.strip()
-            })
-
+            subjects.append({'subject': subject.strip(), 'grade': grade.strip(), 'teacher': teacher.strip(), 'body': body.strip()})
     return subjects if subjects else None
 
 def save_picture(form_picture):
@@ -208,17 +146,11 @@ def save_picture(form_picture):
     return upload_result.get('secure_url')
 
 def save_icon(form_icon):
-    upload_result = cloudinary.uploader.upload(form_icon, 
-                                               folder="profile_icons", 
-                                               width=150, 
-                                               height=150, 
-                                               crop="fill", 
-                                               gravity="face")
+    upload_result = cloudinary.uploader.upload(form_icon, folder="profile_icons", width=150, height=150, crop="fill", gravity="face")
     return upload_result.get('secure_url')
 
 def delete_from_cloudinary(image_url):
-    if not image_url:
-        return 
+    if not image_url: return 
     try:
         public_id_with_ext = '/'.join(image_url.split('/')[-2:])
         public_id = os.path.splitext(public_id_with_ext)[0]
@@ -235,9 +167,12 @@ post_tags = db.Table('post_tags',
     db.Column('post_id', db.Integer, db.ForeignKey('post.id', ondelete="CASCADE"), primary_key=True),
     db.Column('tag_id', db.Integer, db.ForeignKey('tag.id', ondelete="CASCADE"), primary_key=True)
 )
-
 user_tags = db.Table('user_tags',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), primary_key=True),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id', ondelete="CASCADE"), primary_key=True)
+)
+kairanban_tags = db.Table('kairanban_tags',
+    db.Column('kairanban_id', db.Integer, db.ForeignKey('kairanban.id', ondelete="CASCADE"), primary_key=True),
     db.Column('tag_id', db.Integer, db.ForeignKey('tag.id', ondelete="CASCADE"), primary_key=True)
 )
 
@@ -246,22 +181,14 @@ class Tag(db.Model):
     name = db.Column(db.String(100), unique=True, nullable=False)
     last_used = db.Column(db.DateTime, default=datetime.utcnow)
 
-kairanban_tags = db.Table('kairanban_tags',
-    db.Column('kairanban_id', db.Integer, db.ForeignKey('kairanban.id', ondelete="CASCADE"), primary_key=True),
-    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id', ondelete="CASCADE"), primary_key=True)
-)
-
 class Kairanban(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, nullable=False) 
     author_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
-    
     author = db.relationship('User', backref='kairanbans')
-    tags = db.relationship('Tag', secondary=kairanban_tags, lazy='subquery',
-        backref=db.backref('kairanbans', lazy=True), cascade="all, delete")
-    
+    tags = db.relationship('Tag', secondary=kairanban_tags, lazy='subquery', backref=db.backref('kairanbans', lazy=True), cascade="all, delete")
     checks = db.relationship('KairanbanCheck', backref='kairanban', lazy='dynamic', cascade="all, delete")
     notifications = db.relationship('Notification', back_populates='kairanban', lazy='dynamic', cascade="all, delete")
 
@@ -270,10 +197,17 @@ class KairanbanCheck(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     kairanban_id = db.Column(db.Integer, db.ForeignKey('kairanban.id', ondelete="CASCADE"), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    
     user = db.relationship('User', backref='kairanban_checks')
     __table_args__ = (db.UniqueConstraint('user_id', 'kairanban_id', name='_user_kairanban_uc'),)
 
+# ▼▼▼ 新規追加: Likeモデル ▼▼▼
+class Like(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id', ondelete="CASCADE"), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('user_id', 'post_id', name='_user_post_like_uc'),)
+# ▲▲▲ ここまで ▲▲▲
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -289,19 +223,18 @@ class User(db.Model, UserMixin):
     program = db.Column(db.String(100), nullable=True)
     major = db.Column(db.String(100), nullable=True)
     push_notifications_enabled = db.Column(db.Boolean, default=False)
+    
     posts = db.relationship('Post', backref='author', lazy=True, cascade="all, delete")
     comments = db.relationship('Comment', backref='commenter', lazy=True, cascade="all, delete")
     bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic', cascade="all, delete")
     notifications = db.relationship('Notification', backref='recipient', lazy='dynamic', cascade="all, delete")
+    # ▼▼▼ 追加: いいねのリレーション ▼▼▼
+    likes = db.relationship('Like', backref='user', lazy='dynamic', cascade="all, delete")
+    # ▲▲▲ ここまで ▲▲▲
+    tags = db.relationship('Tag', secondary=user_tags, lazy='subquery', backref=db.backref('users', lazy=True), cascade="all, delete")
     
-    tags = db.relationship('Tag', secondary=user_tags, lazy='subquery',
-        backref=db.backref('users', lazy=True), cascade="all, delete")
-    
-    def get_username_class(self):
-        return 'admin-username' if self.is_admin else ''
-
-    def has_unread_notifications(self):
-        return self.notifications.filter_by(is_read=False).count() > 0
+    def get_username_class(self): return 'admin-username' if self.is_admin else ''
+    def has_unread_notifications(self): return self.notifications.filter_by(is_read=False).count() > 0
 
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -314,16 +247,16 @@ class Post(db.Model):
     comments = db.relationship('Comment', backref='post', lazy=True, cascade="all, delete")
     bookmarks = db.relationship('Bookmark', backref='post', lazy='dynamic', cascade="all, delete")
     notifications = db.relationship('Notification', back_populates='post', lazy='dynamic', cascade="all, delete")
-    
-    tags = db.relationship('Tag', secondary=post_tags, lazy='subquery',
-        backref=db.backref('posts', lazy=True), cascade="all, delete")
-    
+    # ▼▼▼ 追加: いいねのリレーション ▼▼▼
+    likes = db.relationship('Like', backref='post', lazy='dynamic', cascade="all, delete")
+    # ▲▲▲ ここまで ▲▲▲
+    tags = db.relationship('Tag', secondary=post_tags, lazy='subquery', backref=db.backref('posts', lazy=True), cascade="all, delete")
+
 class UserSubscription(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
     subscription_json = db.Column(db.Text, nullable=False)
     user = db.relationship('User', backref=db.backref('subscriptions', lazy='dynamic', cascade="all, delete"))
-    
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -347,43 +280,33 @@ class Notification(db.Model):
     recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id', ondelete="CASCADE"), nullable=True)
     kairanban_id = db.Column(db.Integer, db.ForeignKey('kairanban.id', ondelete="CASCADE"), nullable=True)
-    
     post = db.relationship('Post', back_populates='notifications')
     kairanban = db.relationship('Kairanban', back_populates='notifications')
 
 # --- OneSignal連携関数 ---
-
 def send_onesignal_notification(user_ids, title, message, url=None):
-    """OneSignalへプッシュ通知を送信"""
+    """OneSignalへプッシュ通知を送信 (公式SDK使用)"""
     if not ONESIGNAL_APP_ID or not ONESIGNAL_API_KEY:
         print("OneSignal Error: Keys are missing.")
         return
 
-    header = {
-        "Content-Type": "application/json; charset=utf-8",
-        "Authorization": f"Basic {ONESIGNAL_API_KEY}"
-    }
-
-    # 送信先IDにも "user_" を付ける
-    target_external_user_ids = [f"user_{uid}" for uid in user_ids]
-
-    payload = {
-        "app_id": ONESIGNAL_APP_ID,
-        "include_aliases": {
-            "external_id": target_external_user_ids
-        },
-        "target_channel": "push",
-        "headings": {"en": title},
-        "contents": {"en": message},
-        "url": url if url else ""
-    }
-
-    try:
-        print(f"OneSignal Sending to: {target_external_user_ids}", flush=True)
-        req = requests.post("https://onesignal.com/api/v1/notifications", headers=header, data=json.dumps(payload))
-        print(f"OneSignal Response: {req.status_code} {req.text}", flush=True)
-    except Exception as e:
-        print(f"OneSignal Error: {e}", flush=True)
+    configuration = onesignal.Configuration(app_key = ONESIGNAL_API_KEY)
+    with onesignal.ApiClient(configuration) as api_client:
+        api_instance = default_api.DefaultApi(api_client)
+        target_external_user_ids = [f"user_{uid}" for uid in user_ids]
+        notification = OSNotification(
+            app_id=ONESIGNAL_APP_ID,
+            include_aliases={"external_id": target_external_user_ids},
+            contents={"en": message},
+            headings={"en": title},
+            url=url if url else ""
+        )
+        try:
+            print(f"OneSignal Sending to: {target_external_user_ids}", flush=True)
+            api_response = api_instance.create_notification(notification)
+            print(f"OneSignal Response: {api_response}", flush=True)
+        except onesignal.ApiException as e:
+            print(f"OneSignal Error: {e}", flush=True)
 
 # Routes
 @app.route('/', defaults={'page': 1}, methods=['GET', 'POST'])
@@ -394,20 +317,31 @@ def index(page):
         image_url_str = None 
         if form.image.data:
             image_url_str = save_picture(form.image.data)
-
         post = Post(title=form.title.data, content=form.content.data, author=current_user, image_url=image_url_str)
         post.tags = get_or_create_tags_from_string(form.tags.data)
-        
         db.session.add(post)
         db.session.commit()
         return redirect(url_for('index'))
 
     posts_per_page = 40
-
-    order_by_clause = func.coalesce(Post.updated_at, Post.created_at).desc()
-    posts = Post.query.order_by(order_by_clause).paginate(
-        page=page, per_page=posts_per_page, error_out=False
-    )
+    
+    # ▼▼▼ 並び替えロジックの追加 ▼▼▼
+    sort_by = request.args.get('sort_by', 'newest') # デフォルトは新しい順
+    
+    query = Post.query
+    
+    if sort_by == 'likes':
+        # いいねが多い順: Likeテーブルを結合してカウント
+        query = query.outerjoin(Like).group_by(Post.id).order_by(func.count(Like.id).desc(), Post.created_at.desc())
+    elif sort_by == 'bookmarks':
+        # ブックマークが多い順: Bookmarkテーブルを結合してカウント
+        query = query.outerjoin(Bookmark).group_by(Post.id).order_by(func.count(Bookmark.id).desc(), Post.created_at.desc())
+    else:
+        # デフォルト: 作成日(または更新日)の新しい順
+        query = query.order_by(func.coalesce(Post.updated_at, Post.created_at).desc())
+        
+    posts = query.paginate(page=page, per_page=posts_per_page, error_out=False)
+    # ▲▲▲ ここまで ▲▲▲
     
     japan_tz = timezone('Asia/Tokyo')
     for post in posts.items:
@@ -417,19 +351,20 @@ def index(page):
         else:
             post.updated_at_jst = None
         
-        post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
+        if current_user.is_authenticated:
+            post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
+            post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None # 追加
+        else:
+            post.is_bookmarked = False
+            post.is_liked = False # 追加
 
     templates = []
     if current_user.is_authenticated:
         templates = [
-            {
-                'name': 'UECreview',
-                'title': f'○年 ○期 {current_user.username}の授業review',
-                'body': '<span class="text-large">**ここに科目名を入力**</span> 成績:<span class="text-red text-large">**ここに成績を入力**</span> 担当教員:ここに担当教員名を入力\n本文を入力'
-            }
+            {'name': 'UECreview', 'title': f'○年 ○期 {current_user.username}の授業review', 'body': '<span class="text-large">**ここに科目名を入力**</span> 成績:<span class="text-red text-large">**ここに成績を入力**</span> 担当教員:ここに担当教員名を入力\n本文を入力'}
         ]
     
-    return render_template('index.html', form=form, posts=posts,  md=md, templates=templates, templates_for_js=json.dumps(templates))
+    return render_template('index.html', form=form, posts=posts,  md=md, templates=templates, templates_for_js=json.dumps(templates), sort_by=sort_by)
 
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
@@ -440,53 +375,21 @@ def post_detail(post_id):
     if comment_form.validate_on_submit() and current_user.is_authenticated:
         comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
         db.session.add(comment)
-
         print(f"DEBUG: Comment by {current_user.id} on Post by {post.author.id}", flush=True)
-        
-        # 投稿者への通知
         if current_user != post.author:
-            # 1. サイト内通知
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
             db.session.add(notification)
-
-            # 2. OneSignal通知
             if post.author.push_notifications_enabled:
-                send_onesignal_notification(
-                    user_ids=[post.author.id],
-                    title="新しいコメント",
-                    message=f'投稿「{post.title}」にコメントが付きました',
-                    url=url_for('post_detail', post_id=post.id, _external=True)
-                )
-        
-        # 他のコメント投稿者への通知
-        previous_commenters = db.session.query(User).join(Comment).filter(
-            Comment.post_id == post.id
-        ).distinct().all()
-
+                send_onesignal_notification(user_ids=[post.author.id], title="新しいコメント", message=f'投稿「{post.title}」にコメントが付きました', url=url_for('post_detail', post_id=post.id, _external=True))
+        previous_commenters = db.session.query(User).join(Comment).filter(Comment.post_id == post.id).distinct().all()
         for user in previous_commenters:
-            if user.id == current_user.id:
-                continue
-            if user.id == post.author.id:
-                continue
-            
+            if user.id == current_user.id: continue
+            if user.id == post.author.id: continue
             if comment.commenter == post.author:
-                # 1. サイト内通知
-                notification = Notification(
-                    recipient=user, 
-                    post=post, 
-                    message="あなたがコメントした投稿に投稿者がコメントしました。" 
-                )
+                notification = Notification(recipient=user, post=post, message="あなたがコメントした投稿に投稿者がコメントしました。")
                 db.session.add(notification)
-
-                # 2. OneSignal通知
                 if user.push_notifications_enabled:
-                    send_onesignal_notification(
-                        user_ids=[user.id],
-                        title="コメントの返信",
-                        message="あなたがコメントした投稿に新しいコメントがあります",
-                        url=url_for('post_detail', post_id=post.id, _external=True)
-                    )
-        
+                    send_onesignal_notification(user_ids=[user.id], title="コメントの返信", message="あなたがコメントした投稿に新しいコメントがあります", url=url_for('post_detail', post_id=post.id, _external=True))
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
     
@@ -500,28 +403,54 @@ def post_detail(post_id):
     for c in post.comments:
         c.created_at_jst = c.created_at.replace(tzinfo=utc).astimezone(japan_tz)
     
-    post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
+    if current_user.is_authenticated:
+        post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
+        post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None # 追加
+    else:
+        post.is_bookmarked = False
+        post.is_liked = False # 追加
     
     return render_template('detail.html', post=post, comment_form=comment_form,  md=md)
+
+@app.route('/like/<int:post_id>', methods=['POST'])
+@login_required
+def toggle_like(post_id):
+    """いいねの切り替えAPI"""
+    post = Post.query.get_or_404(post_id)
+    like = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first()
+    
+    if like:
+        db.session.delete(like)
+        is_liked = False
+    else:
+        like = Like(user_id=current_user.id, post_id=post.id)
+        db.session.add(like)
+        is_liked = True
+        
+        # 通知は不要との要望なのでスキップ
+        # if current_user != post.author:
+        #     notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にいいねが付きました。')
+        #     db.session.add(notification)
+
+    db.session.commit()
+    
+    return jsonify({'is_liked': is_liked, 'count': post.likes.count()})
 
 @app.route('/bookmark_post/<int:post_id>', methods=['POST'])
 @login_required
 def bookmark_post(post_id):
     post = Post.query.get_or_404(post_id)
     bookmark = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first()
-    
     if bookmark:
         db.session.delete(bookmark)
         is_bookmarked = False
     else:
         new_bookmark = Bookmark(user_id=current_user.id, post_id=post.id)
         if current_user != post.author:
-            # サイト内通知の作成のみ
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」がブックマークされました。')
             db.session.add(notification)
         is_bookmarked = True
         db.session.add(new_bookmark)
-    
     db.session.commit()
     return jsonify(is_bookmarked=is_bookmarked)
 
@@ -530,7 +459,6 @@ def bookmark_post(post_id):
 def show_bookmarks():
     bookmarked_posts_query = Post.query.join(Bookmark, Post.id == Bookmark.post_id).filter(Bookmark.user_id == current_user.id).order_by(Bookmark.timestamp.desc())
     bookmarked_posts = bookmarked_posts_query.all()
-    
     japan_tz = timezone('Asia/Tokyo')
     for post in bookmarked_posts:
         post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
@@ -539,65 +467,39 @@ def show_bookmarks():
         else:
             post.updated_at_jst = None
         post.is_bookmarked = True
-
+        post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None # 追加
     return render_template('bookmarks.html', posts=bookmarked_posts, md=md)
 
 @app.route('/post/<int:post_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_post(post_id):
     post = Post.query.get_or_404(post_id)
-    if post.author != current_user:
-        abort(403)
-
+    if post.author != current_user: abort(403)
     form = PostForm()
-
     if form.validate_on_submit():
         post.title = form.title.data
         post.content = form.content.data
-        
         post.tags.clear()
         post.tags = get_or_create_tags_from_string(form.tags.data)
-        
         if form.image.data:
-            if post.image_url:
-                delete_from_cloudinary(post.image_url)
+            if post.image_url: delete_from_cloudinary(post.image_url)
             image_url_str = save_picture(form.image.data)
             post.image_url = image_url_str
-            
         db.session.commit() 
-
-        # サイト内通知の作成のみ
         for bookmark in post.bookmarks.all():
             if bookmark.user_id != current_user.id:
-                notification = Notification(
-                    recipient=bookmark.user,
-                    post=post,
-                    message="あなたがブックマークした投稿に変更がありました。"
-                )
+                notification = Notification(recipient=bookmark.user, post=post, message="あなたがブックマークした投稿に変更がありました。")
                 db.session.add(notification)
-        
         db.session.commit() 
-
         return redirect(url_for('post_detail', post_id=post.id))
-
     elif request.method == 'GET': 
         form.title.data = post.title
         form.content.data = post.content
         form.tags.data = ','.join([tag.name for tag in post.tags])
-
-    templates = [
-        {
-            'name': 'UECreview',
-            'title': f'○年 ○期 {current_user.username}の授業review',
-            'body': '<span class="text-large">**ここに科目名を入力**</span> 成績:<span class="text-red text-large">**ここに成績を入力**</span> 担当教員:ここに担当教員名を入力\n本文を入力'
-        }
-    ]
-
+    templates = [{'name': 'UECreview', 'title': f'○年 ○期 {current_user.username}の授業review', 'body': '<span class="text-large">**ここに科目名を入力**</span> 成績:<span class="text-red text-large">**ここに成績を入力**</span> 担当教員:ここに担当教員名を入力\n本文を入力'}]
     uec_review_data = parse_review_for_editing(post.content)
     uec_review_data_json = None
-    if uec_review_data:
-        uec_review_data_json = json.dumps(uec_review_data)
-    
+    if uec_review_data: uec_review_data_json = json.dumps(uec_review_data)
     return render_template('edit.html', form=form, post=post, md=md, templates=templates, templates_for_js=json.dumps(templates), uec_review_data_json=uec_review_data_json)
 
 @app.route('/post/<int:post_id>/delete', methods=['POST'])
@@ -605,13 +507,11 @@ def edit_post(post_id):
 def delete_post(post_id):
     post = Post.query.get_or_404(post_id)
     if post.author == current_user or current_user.is_admin:
-        if post.image_url:
-            delete_from_cloudinary(post.image_url)
+        if post.image_url: delete_from_cloudinary(post.image_url)
         db.session.delete(post)
         db.session.commit()
         return redirect(url_for('index'))
-    else:
-        abort(403)
+    else: abort(403)
 
 @app.route('/comment/<int:comment_id>/delete', methods=['POST'])
 @login_required
@@ -623,13 +523,11 @@ def delete_comment(comment_id):
         db.session.commit()
         remaining_comments = Comment.query.filter_by(post_id=post_id).count()
         return jsonify({'status': 'success', 'remaining_comments': remaining_comments})
-    else:
-        abort(403)
+    else: abort(403)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
+    if current_user.is_authenticated: return redirect(url_for('index'))
     form = RegisterForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
@@ -642,22 +540,18 @@ def register():
         db.session.commit()
         flash('登録が完了しました。ログインしてください。')
         return redirect(url_for('login'))
-    
     return render_template('register.html', form=form)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
+    if current_user.is_authenticated: return redirect(url_for('index'))
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user and check_password_hash(user.password, form.password.data):
             login_user(user, remember=form.remember_me.data)
             return redirect(url_for('index'))
-        else:
-            flash('ユーザー名またはパスワードが正しくありません。')
-            
+        else: flash('ユーザー名またはパスワードが正しくありません。')
     return render_template('login.html', form=form)
 
 @app.route('/logout')
@@ -670,10 +564,13 @@ def logout():
 def search():
     search_query = None
     form = SearchForm()
-    
     active_tab = request.args.get('active_tab', 'posts')
     post_page = request.args.get('post_page', 1, type=int)
     user_page = request.args.get('user_page', 1, type=int)
+    
+    # ▼▼▼ 並び替え対応 ▼▼▼
+    sort_by = request.args.get('sort_by', 'newest') 
+    # ▲▲▲ ここまで ▲▲▲
 
     if form.validate_on_submit():
         search_query = form.search_query.data
@@ -692,14 +589,7 @@ def search():
             (Post.title.like(like_query)) | (Post.content.like(like_query))
         )
         users_query_builder = User.query.filter(
-            or_(
-                User.username.like(like_query), 
-                User.grade == search_query,       
-                User.category == search_query,  
-                User.user_class == search_query, 
-                User.program == search_query,    
-                User.major == search_query       
-            )
+            or_(User.username.like(like_query), User.grade == search_query, User.category == search_query, User.user_class == search_query, User.program == search_query, User.major == search_query)
         )
 
         if tag_match:
@@ -708,131 +598,102 @@ def search():
             user_tag_query = User.query.join(user_tags).join(Tag).filter(Tag.id == tag_match.id)
             users_query_builder = users_query_builder.union(user_tag_query)
 
-        posts = posts_query_builder.order_by(Post.created_at.desc()).paginate(
-            page=post_page, per_page=40, error_out=False
-        )
-        users = users_query_builder.order_by(User.username.asc()).paginate(
-            page=user_page, per_page=40, error_out=False
-        )
+        # ▼▼▼ 並び替えロジック適用 ▼▼▼
+        if sort_by == 'likes':
+            posts = posts_query_builder.outerjoin(Like).group_by(Post.id).order_by(func.count(Like.id).desc(), Post.created_at.desc())
+        elif sort_by == 'bookmarks':
+            posts = posts_query_builder.outerjoin(Bookmark).group_by(Post.id).order_by(func.count(Bookmark.id).desc(), Post.created_at.desc())
+        else:
+            posts = posts_query_builder.order_by(Post.created_at.desc())
+        # ▲▲▲ ここまで ▲▲▲
+
+        posts = posts.paginate(page=post_page, per_page=40, error_out=False)
+        users = users_query_builder.order_by(User.username.asc()).paginate(page=user_page, per_page=40, error_out=False)
 
         japan_tz = timezone('Asia/Tokyo')
         for post in posts.items:
             post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
             if post.updated_at:
                 post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
-            else:
-                post.updated_at_jst = None
+            else: post.updated_at_jst = None
+            
             if current_user.is_authenticated:
                 post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
+                post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None # 追加
             else:
                 post.is_bookmarked = False
+                post.is_liked = False # 追加
     
     else:
         posts = db.paginate(db.select(Post).where(False), page=post_page, per_page=40, error_out=False)
         users = db.paginate(db.select(User).where(False), page=user_page, per_page=40, error_out=False)
 
-    return render_template('search_results.html',
-                           search_form=form,
-                           posts=posts,
-                           users=users,
-                           search_query=search_query,
-                           active_tab=active_tab,
-                           md=md)
+    return render_template('search_results.html', search_form=form, posts=posts, users=users, search_query=search_query, active_tab=active_tab, md=md, sort_by=sort_by)
+
 @app.route('/profile/edit/<string:username>', methods=['GET', 'POST'])
 @login_required
 def edit_profile(username):
     user = User.query.filter_by(username=username).first_or_404()
-    if user != current_user:
-        abort(403)
-    
+    if user != current_user: abort(403)
     original_username = user.username
-    
     form = ProfileForm(obj=user)
-    
     if form.validate_on_submit():
-        
         new_username = form.username.data
-        
         user.username = new_username 
         user.bio = form.bio.data
-
         user.grade = form.grade.data
         user.category = form.category.data
         user.user_class = form.user_class.data
         user.program = form.program.data
-
-        if user.grade == '大学院生':
-            user.major = form.major.data
-        else:
-            user.major = None 
-        
+        if user.grade == '大学院生': user.major = form.major.data
+        else: user.major = None 
         user.tags.clear()
         user.tags = get_or_create_tags_from_string(form.tags.data)
-        
         if form.icon.data:
-            if user.icon_url:
-                delete_from_cloudinary(user.icon_url)
+            if user.icon_url: delete_from_cloudinary(user.icon_url)
             icon_url = save_icon(form.icon.data)
             user.icon_url = icon_url
-        
         db.session.commit() 
-        
         if original_username != new_username:
             logout_user() 
             flash(f'ユーザー名が「{new_username}」に変更されました。新しいユーザー名で再度ログインしてください。')
             return redirect(url_for('login'))
-        else:
-            return redirect(url_for('user_profile', username=user.username))
-
-    elif request.method == 'GET':
-        form.tags.data = ','.join([tag.name for tag in user.tags])
-    
+        else: return redirect(url_for('user_profile', username=user.username))
+    elif request.method == 'GET': form.tags.data = ','.join([tag.name for tag in user.tags])
     return render_template('edit_profile.html', form=form, user=user)
 
 @app.route('/user/<string:username>')
 def user_profile(username):
     user = User.query.filter_by(username=username).first_or_404()
-    
     active_tab = request.args.get('active_tab', 'posts')
     post_page = request.args.get('post_page', 1, type=int)
     comment_page = request.args.get('comment_page', 1, type=int)
-    
-    posts = Post.query.filter_by(author=user).order_by(Post.created_at.desc()).paginate(
-        page=post_page, per_page=40, error_out=False
-    )
-    comments = Comment.query.filter_by(commenter=user).order_by(Comment.created_at.desc()).paginate(
-        page=comment_page, per_page=40, error_out=False
-    )
-    
+    posts = Post.query.filter_by(author=user).order_by(Post.created_at.desc()).paginate(page=post_page, per_page=40, error_out=False)
+    comments = Comment.query.filter_by(commenter=user).order_by(Comment.created_at.desc()).paginate(page=comment_page, per_page=40, error_out=False)
     japan_tz = timezone('Asia/Tokyo')
     for post in posts.items:
         post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
-        if post.updated_at:
-            post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
-        else:
-            post.updated_at_jst = None
+        if post.updated_at: post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
+        else: post.updated_at_jst = None
         post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
+        post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False # 追加
     for comment in comments.items:
         comment.created_at_jst = comment.created_at.replace(tzinfo=utc).astimezone(japan_tz)
-    
     return render_template('profile.html', user=user, posts=posts, comments=comments, active_tab=active_tab,  md=md)
 
 @app.route('/admin')
 @login_required
 def admin_dashboard():
-    if not current_user.is_admin:
-        abort(403)
+    if not current_user.is_admin: abort(403)
     all_users = User.query.all()
     all_posts = Post.query.all()
     all_comments = Comment.query.all()
-    
     return render_template('admin_dashboard.html', users=all_users, posts=all_posts, comments=all_comments)
 
 @app.route('/admin/delete_comment/<int:comment_id>', methods=['POST'])
 @login_required
 def admin_delete_comment(comment_id):
-    if not current_user.is_admin:
-        abort(403)
+    if not current_user.is_admin: abort(403)
     comment = Comment.query.get_or_404(comment_id)
     db.session.delete(comment)
     db.session.commit()
@@ -842,8 +703,7 @@ def admin_delete_comment(comment_id):
 @app.route('/admin/delete_post/<int:post_id>', methods=['POST'])
 @login_required
 def admin_delete_post(post_id):
-    if not current_user.is_admin:
-        abort(403)
+    if not current_user.is_admin: abort(403)
     post = Post.query.get_or_404(post_id)
     db.session.delete(post)
     db.session.commit()
@@ -853,8 +713,7 @@ def admin_delete_post(post_id):
 @app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
 @login_required
 def admin_delete_user(user_id):
-    if not current_user.is_admin:
-        abort(403)
+    if not current_user.is_admin: abort(403)
     user = User.query.get_or_404(user_id)
     db.session.delete(user)
     db.session.commit()
@@ -865,80 +724,41 @@ def admin_delete_user(user_id):
 @login_required
 def show_notifications():
     notifications = Notification.query.filter_by(recipient=current_user).order_by(Notification.timestamp.desc()).all()
-    
-    for n in notifications:
-        n.is_read = True
+    for n in notifications: n.is_read = True
     db.session.commit()
-    
     return render_template('notifications.html', notifications=notifications, md=md)
-
 
 @app.route('/api/recent-tags')
 @login_required
 def get_recent_tags():
     recent_tags_query = Tag.query.order_by(Tag.last_used.desc()).limit(5).all()
-
-    popular_tags_query = db.session.query(
-        Tag, func.count(post_tags.c.post_id).label('post_count')
-    ).join(
-        post_tags, Tag.id == post_tags.c.tag_id
-    ).group_by(
-        Tag.id
-    ).order_by(
-        func.count(post_tags.c.post_id).desc()
-    ).limit(5).all()
-
+    popular_tags_query = db.session.query(Tag, func.count(post_tags.c.post_id).label('post_count')).join(post_tags, Tag.id == post_tags.c.tag_id).group_by(Tag.id).order_by(func.count(post_tags.c.post_id).desc()).limit(5).all()
     combined_tags = {} 
-
-    for tag in recent_tags_query:
-        combined_tags[tag.name] = tag
-
+    for tag in recent_tags_query: combined_tags[tag.name] = tag
     for tag, count in popular_tags_query:
-        if tag.name not in combined_tags:
-            combined_tags[tag.name] = tag
-
+        if tag.name not in combined_tags: combined_tags[tag.name] = tag
     tag_names = [tag.name for tag in combined_tags.values()][:5]
-
     return jsonify(tag_names)
 
 @app.route('/kairanban', methods=['GET', 'POST'])
 @login_required
 def kairanban_index():
-    """
-    回覧板ページ (表示と作成)
-    """
     japan_tz = timezone('Asia/Tokyo')
-    
     is_developer = False
-    if current_user.is_authenticated and current_user.username == '二酸化ケイ素':
-        is_developer = True
-
+    if current_user.is_authenticated and current_user.username == '二酸化ケイ素': is_developer = True
     form = KairanbanForm()
-    
     if form.validate_on_submit(): 
         try:
             days = int(form.expires_in_days.data)
             expires_at_datetime = datetime.utcnow() + timedelta(days=days)
-            
-            new_kairanban = Kairanban(
-                content=form.content.data,
-                author=current_user,
-                expires_at=expires_at_datetime
-            )
-            
+            new_kairanban = Kairanban(content=form.content.data, author=current_user, expires_at=expires_at_datetime)
             db.session.add(new_kairanban) 
             new_kairanban.tags = get_or_create_tags_from_string(form.tags.data) 
             db.session.flush() 
-            
             target_tag_names = {tag.name for tag in new_kairanban.tags}
-
             recipients = []
-
             if target_tag_names:
-                custom_tag_recipients_query = User.query.join(user_tags).join(Tag).filter(
-                    Tag.name.in_(target_tag_names)
-                )
-                
+                custom_tag_recipients_query = User.query.join(user_tags).join(Tag).filter(Tag.name.in_(target_tag_names))
                 status_tag_conditions = []
                 for tag_name in target_tag_names:
                     status_tag_conditions.append(User.grade == tag_name)
@@ -946,112 +766,54 @@ def kairanban_index():
                     status_tag_conditions.append(User.user_class == tag_name)
                     status_tag_conditions.append(User.program == tag_name)
                     status_tag_conditions.append(User.major == tag_name)
-                
                 status_tag_recipients_query = User.query.filter(or_(*status_tag_conditions))
                 recipients = custom_tag_recipients_query.union(status_tag_recipients_query).distinct().all()
-
-            # プッシュ通知用リストを初期化
             recipient_ids_for_push = []
-
-            # サイト内通知の作成
             for user in recipients:
                 if user.id != current_user.id:
-                    notification = Notification(
-                        recipient=user,
-                        kairanban=new_kairanban, 
-                        message=f'回覧板「{new_kairanban.content[:20]}...」が届きました。'
-                    )
+                    notification = Notification(recipient=user, kairanban=new_kairanban, message=f'回覧板「{new_kairanban.content[:20]}...」が届きました。')
                     db.session.add(notification)
-
-                    # プッシュ通知が有効ならリストに追加
-                    if user.push_notifications_enabled:
-                        recipient_ids_for_push.append(user.id)
-            
-            # OneSignal通知を一括送信
+                    if user.push_notifications_enabled: recipient_ids_for_push.append(user.id)
             if recipient_ids_for_push:
-                send_onesignal_notification(
-                    user_ids=recipient_ids_for_push,
-                    title="新しい回覧板",
-                    message=f'回覧板「{new_kairanban.content[:20]}...」が届きました',
-                    url=url_for('kairanban_index', _external=True)
-                )
-            
+                send_onesignal_notification(user_ids=recipient_ids_for_push, title="新しい回覧板", message=f'回覧板「{new_kairanban.content[:20]}...」が届きました', url=url_for('kairanban_index', _external=True))
             db.session.commit()
             flash('回覧板を送信しました。')
             return redirect(url_for('kairanban_index'))
-            
-        except ValueError:
-            flash('日数の値が無効です。')
-
-    base_query = Kairanban.query.filter(Kairanban.expires_at > datetime.utcnow())
+        except ValueError: flash('日数の値が無効です。')
     
+    base_query = Kairanban.query.filter(Kairanban.expires_at > datetime.utcnow())
     show_all = request.args.get('show_all')
     kairanbans_query = None
-
-    if not current_user.is_authenticated:
-        kairanbans_query = base_query
-    elif is_developer or show_all:
-        kairanbans_query = base_query
+    if not current_user.is_authenticated: kairanbans_query = base_query
+    elif is_developer or show_all: kairanbans_query = base_query
     else:
-        user_status_tags = {
-            current_user.grade, 
-            current_user.category, 
-            current_user.user_class, 
-            current_user.program, 
-            current_user.major
-        }
+        user_status_tags = {current_user.grade, current_user.category, current_user.user_class, current_user.program, current_user.major}
         user_custom_tags = {tag.name for tag in current_user.tags}
         user_all_tag_names = {tag for tag in user_status_tags.union(user_custom_tags) if tag}
-        
         if user_all_tag_names:
-            kairanbans_query = base_query.join(kairanban_tags).join(Tag).filter(
-                Tag.name.in_(user_all_tag_names)
-            )
-        else:
-            kairanbans_query = base_query.filter(Kairanban.id < 0) 
-
+            kairanbans_query = base_query.join(kairanban_tags).join(Tag).filter(Tag.name.in_(user_all_tag_names))
+        else: kairanbans_query = base_query.filter(Kairanban.id < 0) 
     
     kairanbans = kairanbans_query.order_by(Kairanban.created_at.desc()).all() if kairanbans_query else []
-
     checked_ids = set()
     if current_user.is_authenticated:
         checked_ids = {c.kairanban_id for c in KairanbanCheck.query.filter_by(user_id=current_user.id)}
-        
         kairanbans.sort(key=lambda k: k.created_at, reverse=True)
         kairanbans.sort(key=lambda k: k.id in checked_ids)
-    for k in kairanbans:
-        k.check_count = k.checks.count()
-
-    status_tags = {
-        'grade': {c[0] for c in GRADE_CHOICES if c[0]},
-        'category': {c[0] for c in CATEGORY_CHOICES if c[0]},
-        'class': {c[0] for c in CLASS_CHOICES if c[0]},
-        'program': {c[0] for c in PROGRAM_CHOICES if c[0]},
-        'major': {c[0] for c in MAJOR_CHOICES if c[0]},
-    }
-
+    for k in kairanbans: k.check_count = k.checks.count()
+    status_tags = {'grade': {c[0] for c in GRADE_CHOICES if c[0]}, 'category': {c[0] for c in CATEGORY_CHOICES if c[0]}, 'class': {c[0] for c in CLASS_CHOICES if c[0]}, 'program': {c[0] for c in PROGRAM_CHOICES if c[0]}, 'major': {c[0] for c in MAJOR_CHOICES if c[0]}}
     return render_template('kairanban.html', form=form, kairanbans=kairanbans, checked_ids=checked_ids,japan_tz=japan_tz,utc=utc, show_all=show_all,status_tags=status_tags)
 
 @app.route('/mailbox')
 @login_required
-def mailbox_index():
-    """
-    メールボックスページ (開発中)
-    """
-    return render_template('mailbox.html')
+def mailbox_index(): return render_template('mailbox.html')
 
 @app.route('/kairanban/check/<int:kairanban_id>', methods=['POST'])
 @login_required
 def check_kairanban(kairanban_id):
     kairanban = Kairanban.query.get_or_404(kairanban_id)
-    
-    existing_check = KairanbanCheck.query.filter_by(
-        user_id=current_user.id, 
-        kairanban_id=kairanban_id
-    ).first()
-    
+    existing_check = KairanbanCheck.query.filter_by(user_id=current_user.id, kairanban_id=kairanban_id).first()
     is_checked = False
-    
     if existing_check:
         db.session.delete(existing_check)
         is_checked = False
@@ -1059,7 +821,6 @@ def check_kairanban(kairanban_id):
         new_check = KairanbanCheck(user_id=current_user.id, kairanban_id=kairanban_id)
         db.session.add(new_check)
         is_checked = True
-
     db.session.commit()
     new_count = kairanban.checks.count()
     return jsonify({'status': 'success', 'is_checked': is_checked, 'new_count': new_count})
@@ -1068,117 +829,68 @@ def check_kairanban(kairanban_id):
 @login_required
 def delete_kairanban(kairanban_id):
     kairanban = Kairanban.query.get_or_404(kairanban_id)
-    
-    if kairanban.author != current_user and not current_user.is_admin:
-        abort(403) 
-    
+    if kairanban.author != current_user and not current_user.is_admin: abort(403) 
     db.session.delete(kairanban)
     db.session.commit()
     flash('回覧板を撤回しました。')
     return redirect(url_for('kairanban_index'))
 
-
-
 @app.route('/manifest.json')
-def manifest():
-    return app.send_static_file('manifest.json')
+def manifest(): return app.send_static_file('manifest.json')
 
 @app.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():
     form = NotificationSettingsForm()
     settings_open = request.args.get('settings_open') == '1'
-    
     if form.validate_on_submit():
         settings_open = True 
         current_user.push_notifications_enabled = form.enable_push.data
         db.session.commit()
-        
         if not form.enable_push.data:
             UserSubscription.query.filter_by(user_id=current_user.id).delete()
             db.session.commit()
             flash('プッシュ通知設定を無効にしました。')
-        else:
-            flash('プッシュ通知設定を有効にしました。')
-        
+        else: flash('プッシュ通知設定を有効にしました。')
         return redirect(url_for('settings', settings_open=1))
-       
     form.enable_push.data = current_user.push_notifications_enabled
-    
     return render_template('settings.html', form=form, settings_open=settings_open)
 
-# ▼▼▼ OneSignal用サービスワーカー配信設定 ▼▼▼
 @app.route('/OneSignalSDKWorker.js')
-def onesignal_worker():
-    return app.send_static_file('OneSignalSDKWorker.js')
+def onesignal_worker(): return app.send_static_file('OneSignalSDKWorker.js')
 
 @app.route('/api/ogp')
 def get_ogp():
     url = request.args.get('url')
-    if not url:
-        return jsonify({'error': 'No URL provided'}), 400
-
-    title = None
-    image = None
-    description = None
-
+    if not url: return jsonify({'error': 'No URL provided'}), 400
     try:
-        # 1. まずは普通にサイトにアクセスして情報を取ってみる
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
-        
-        # タイムアウトを短めに設定（遅延防止）
         resp = requests.get(url, headers=headers, timeout=3)
-        
         if resp.status_code == 200:
             soup = BeautifulSoup(resp.text, 'html.parser')
-            
-            # OGPデータの取得
             og_title = soup.find('meta', property='og:title')
             og_image = soup.find('meta', property='og:image')
             og_desc = soup.find('meta', property='og:description')
-            
             title = og_title['content'] if og_title else (soup.title.string if soup.title else url)
             image = og_image['content'] if og_image else None
             description = og_desc['content'] if og_desc else ''
-
+            
+            parsed = urlparse(url)
+            domain = parsed.netloc
+            if not title: title = domain
+            if not image:
+                if domain in ['x.com', 'twitter.com', 'www.x.com', 'www.twitter.com']:
+                    path_parts = parsed.path.strip('/').split('/')
+                    if len(path_parts) >= 1:
+                        username = path_parts[0]
+                        image = f"https://unavatar.io/twitter/{username}"
+                if not image:
+                    image = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+            
+            return jsonify({'title': title, 'image': image, 'description': description, 'url': url})
     except Exception as e:
         print(f"OGP Fetch Error: {e}")
-        # エラーが出ても、最低限の処理（アイコン取得など）へ進むためここではreturnしない
-
-    # --- ▼▼▼ ここから追加ロジック ▼▼▼ ---
-    
-    # 解析用にURLを分解
-    parsed = urlparse(url)
-    domain = parsed.netloc
-
-    # 2. もしタイトルが取れていなければ、ドメインをタイトルにする
-    if not title:
-        title = domain
-
-    # 3. 画像が取れなかった場合のバックアップ処理
-    if not image:
-        # Aプラン: X (Twitter) なら「ユーザーアイコン」を取得する
-        if domain in ['x.com', 'twitter.com', 'www.x.com', 'www.twitter.com']:
-            # URLのパス (例: /user_name/status/123) からユーザー名を取得
-            path_parts = parsed.path.strip('/').split('/')
-            if len(path_parts) >= 1:
-                username = path_parts[0]
-                # unavatar.io という便利なAPIを使ってTwitterアイコンを取得
-                image = f"https://unavatar.io/twitter/{username}"
-        
-        # Bプラン: それでも画像がないなら「サイトのファビコン」を取得する
-        if not image:
-            # Googleの非公式APIを使って高画質(128px)なファビコンを取得
-            image = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
-
-    # --- ▲▲▲ 追加ロジックここまで ▲▲▲ ---
-
-    return jsonify({
-        'title': title,
-        'image': image,
-        'description': description or '', # 説明がない場合は空文字
-        'url': url
-    })
+        return jsonify({'error': 'Failed to fetch'}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)

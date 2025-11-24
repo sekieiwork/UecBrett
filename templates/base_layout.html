@@ -1873,9 +1873,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="link-card-url">${new URL(data.url).hostname}</div>
                         </div>
                     `;
-
-                    // ▼▼▼ 【修正】 カードの挿入場所を変更 ▼▼▼
-                    
+                  
                     // 1. リンクが含まれている「本文エリア(.post-content 等)」を探す
                     const contentWrapper = link.closest('.post-content') || link.closest('.comment-content');
 
@@ -1894,7 +1892,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         // 3. その置き場にカードを追加
                         cardContainer.appendChild(card);
                     }
-                    // ▲▲▲ 修正ここまで ▲▲▲
                 })
                 .catch(err => {
                     console.log('OGP fetch failed for:', url);
@@ -1902,6 +1899,64 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// ▼▼▼いいねボタンの機能 ▼▼▼
+    document.querySelectorAll('.like-toggle-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation(); // 親要素への伝播を防ぐ
+            
+            // フォームからIDを取得
+            const form = this.closest('.like-form');
+            const postId = form.dataset.postId;
+            const url = `/like/${postId}`;
+            
+            fetch(url, {
+                method: 'POST',
+                headers: { 
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json' 
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // アイコンとカウントを更新
+                const iconSpan = document.getElementById(`like-icon-${postId}`);
+                const countSpan = document.getElementById(`like-count-${postId}`);
+                
+                if (data.is_liked) {
+                    // いいね済みアイコン (赤色)
+                    iconSpan.innerHTML = '<i class="fas fa-heart text-red"></i>';
+                } else {
+                    // 未いいねアイコン (グレー)
+                    iconSpan.innerHTML = '<i class="far fa-heart"></i>';
+                }
+                
+                // カウント更新
+                if (countSpan) {
+                    countSpan.textContent = data.count > 0 ? data.count : '';
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    });
+
+    // ▼▼▼並び替えドロップダウンの機能 ▼▼▼
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', function() {
+            const selectedSort = this.value;
+            const currentUrl = new URL(window.location.href);
+            
+            // URLパラメータを更新してリロード
+            currentUrl.searchParams.set('sort_by', selectedSort);
+            // ページネーションをリセットするためにページ番号は削除
+            currentUrl.searchParams.delete('page');
+            
+            window.location.href = currentUrl.toString();
+        });
+    }
+
 </script>
 {% endblock %}
 
