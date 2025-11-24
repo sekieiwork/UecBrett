@@ -27,10 +27,7 @@ from forms import NotificationSettingsForm
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-# --- 公式SDKのインポート ---
-import onesignal
-from onesignal.api import default_api
-from onesignal.model.notification import Notification as OSNotification
+
 
 cloudinary.config(
     cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
@@ -285,28 +282,37 @@ class Notification(db.Model):
 
 # --- OneSignal連携関数 ---
 def send_onesignal_notification(user_ids, title, message, url=None):
-    """OneSignalへプッシュ通知を送信 (公式SDK使用)"""
+    """OneSignalへプッシュ通知を送信 (requests版 - 一番安定)"""
     if not ONESIGNAL_APP_ID or not ONESIGNAL_API_KEY:
         print("OneSignal Error: Keys are missing.")
         return
 
-    configuration = onesignal.Configuration(app_key = ONESIGNAL_API_KEY)
-    with onesignal.ApiClient(configuration) as api_client:
-        api_instance = default_api.DefaultApi(api_client)
-        target_external_user_ids = [f"user_{uid}" for uid in user_ids]
-        notification = OSNotification(
-            app_id=ONESIGNAL_APP_ID,
-            include_aliases={"external_id": target_external_user_ids},
-            contents={"en": message},
-            headings={"en": title},
-            url=url if url else ""
-        )
-        try:
-            print(f"OneSignal Sending to: {target_external_user_ids}", flush=True)
-            api_response = api_instance.create_notification(notification)
-            print(f"OneSignal Response: {api_response}", flush=True)
-        except onesignal.ApiException as e:
-            print(f"OneSignal Error: {e}", flush=True)
+    # 新しいキー(os_v2...)でも Basic 認証で通ります
+    header = {
+        "Content-Type": "application/json; charset=utf-8",
+        "Authorization": f"Basic {ONESIGNAL_API_KEY}"
+    }
+
+    target_external_user_ids = [f"user_{uid}" for uid in user_ids]
+
+    payload = {
+        "app_id": ONESIGNAL_APP_ID,
+        "include_aliases": {
+            "external_id": target_external_user_ids
+        },
+        "target_channel": "push",
+        "headings": {"en": title},
+        "contents": {"en": message},
+        "url": url if url else ""
+    }
+
+    try:
+        print(f"OneSignal Sending to: {target_external_user_ids}", flush=True)
+        # requestsを使って送信
+        req = requests.post("https://onesignal.com/api/v1/notifications", headers=header, data=json.dumps(payload))
+        print(f"OneSignal Response: {req.status_code} {req.text}", flush=True)
+    except Exception as e:
+        print(f"OneSignal Error: {e}", flush=True)
 
 # Routes
 @app.route('/', defaults={'page': 1}, methods=['GET', 'POST'])

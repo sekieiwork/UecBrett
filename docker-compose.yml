@@ -8,16 +8,19 @@ services:
       - FLASK_ENV=development
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
       
-      # ▼▼▼ これを追加してください！ ▼▼▼
       # .env ファイルから値を読み込んでコンテナに渡します
       - ONESIGNAL_APP_ID=${ONESIGNAL_APP_ID}
       - ONESIGNAL_API_KEY=${ONESIGNAL_API_KEY}
-      # ▲▲▲ ここまで ▲▲▲
 
     volumes:
       - .:/app
     depends_on:
       - db
+    
+    # ▼▼▼ これを追加！ start.shを使わずに直接起動させます ▼▼▼
+    command: sh -c "flask db upgrade && gunicorn app:app --bind 0.0.0.0:8000"
+    # ▲▲▲ ここまで ▲▲▲
+
   db:
     image: postgres:13
     environment:

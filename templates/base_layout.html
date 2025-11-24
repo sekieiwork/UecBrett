@@ -1832,42 +1832,34 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- リンクカード生成機能 (修正版) ---
+    // --- リンクカード生成機能 (修正版: 1つだけ表示 & エラーハンドリング強化) ---
     const contentAreas = document.querySelectorAll('.post-content, .comment-content');
     
     contentAreas.forEach(area => {
         const links = area.querySelectorAll('a');
-        links.forEach(link => {
+        
+        // 記事内のリンクを順番にチェック
+        for (const link of links) {
             const url = link.href;
-            // ▼▼▼ チェック強化: 無効なURLは無視する ▼▼▼
-            
-            // 1. http または https で始まらないものは無視 (javascript: 等の対策)
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                return;
-            }
 
-            // 2. 自分のサイト内のリンクは除外
-            if (url.includes(window.location.hostname)) {
-                return;
-            }
+            // 1. 無効なリンクはスキップ
+            if (!url.startsWith('http://') && !url.startsWith('https://')) continue;
+            if (url.includes(window.location.hostname)) continue;
+            if (url.match(/\.(jpeg|jpg|gif|png|webp|heic|heif)$/i)) continue;
 
-            // 3. 画像ファイルへの直接リンクは除外 (カードにしても画像が出るだけなので)
-            if (url.match(/\.(jpeg|jpg|gif|png|webp|heic|heif)$/i)) {
-                return;
-            }
-            
-            // ▲▲▲ ここまで ▲▲▲
-
-            // APIに問い合わせ
+            // 2. APIに問い合わせ
             fetch(`/api/ogp?url=${encodeURIComponent(url)}`)
                 .then(response => {
-                    if (!response.ok) throw new Error('Network response was not ok');
+                    if (!response.ok) {
+                        // 400エラーや500エラーの場合もここでキャッチさせる
+                        throw new Error(`Server returned ${response.status}`);
+                    }
                     return response.json();
                 })
                 .then(data => {
                     if (data.error) return;
 
-                    // カードのHTMLを作成
+                    // カード作成
                     const card = document.createElement('a');
                     card.href = data.url;
                     card.className = 'link-card';
@@ -1887,30 +1879,29 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="link-card-url">${new URL(data.url).hostname}</div>
                         </div>
                     `;
-                  
-                    // 1. リンクが含まれている「本文エリア(.post-content 等)」を探す
-                    const contentWrapper = link.closest('.post-content') || link.closest('.comment-content');
 
+                    // カード置き場を作成して挿入
+                    const contentWrapper = link.closest('.post-content') || link.closest('.comment-content');
                     if (contentWrapper) {
-                        // 2. 本文エリアのすぐ次に「カード置き場」があるか確認
                         let cardContainer = contentWrapper.nextElementSibling;
-                        
-                        // なければ作る
                         if (!cardContainer || !cardContainer.classList.contains('link-card-container')) {
                             cardContainer = document.createElement('div');
                             cardContainer.className = 'link-card-container';
-                            // 本文エリアの「直後」に挿入
                             contentWrapper.parentNode.insertBefore(cardContainer, contentWrapper.nextSibling);
                         }
                         
-                        // 3. その置き場にカードを追加
-                        cardContainer.appendChild(card);
+                        if (cardContainer.children.length === 0) {
+                            cardContainer.appendChild(card);
+                        }
                     }
                 })
                 .catch(err => {
-                    console.log('OGP fetch failed for:', url);
+                    console.log('OGP fetch failed for:', url, err);
                 });
-        });
+
+            // 最初の1つを見つけたらループ終了
+            break; 
+        }
     });
 });
 
