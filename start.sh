@@ -1,9 +1,17 @@
 #!/bin/sh
 
-# ▼▼▼ 追加: DBの履歴不整合を直すためのリセット処理 ▼▼▼
+# ▼▼▼ 修正版: DB履歴のリセット処理 ▼▼▼
 echo "Resetting alembic history..."
-python -c "from app import db; from sqlalchemy import text; with db.engine.connect() as conn: conn.execute(text('DROP TABLE IF EXISTS alembic_version')); conn.commit()"
-# ▲▲▲ ここまで追加 ▲▲▲
+python -c "
+from app import app, db
+from sqlalchemy import text
+
+with app.app_context():
+    with db.engine.connect() as conn:
+        conn.execute(text('DROP TABLE IF EXISTS alembic_version'))
+        conn.commit()
+"
+# ▲▲▲ ここまで修正 ▲▲▲
 
 # データベースのマイグレーション（テーブル作成）を実行する
 echo "Running database migrations..."
