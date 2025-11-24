@@ -28,4 +28,4 @@ Pillow
 cloudinary
 requests
 beautifulsoup4
-onesignal-python-client
+onesignal-python-api
