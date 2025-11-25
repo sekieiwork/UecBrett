@@ -909,80 +909,125 @@ a.tag-box:hover {
         color: #dc3545;
     }
 
-    /* ▼▼▼ Twitter風コメントツリー用CSS ▼▼▼ */
+    /* ▼▼▼ コメントツリー用CSS (修正版) ▼▼▼ */
+    
+    /* スレッド全体を囲む枠（今回は使わず、個別に枠をつける方針に変更） */
     .comment-thread {
         position: relative;
+        margin-bottom: 10px;
     }
-    
+
+    /* 個別のコメントアイテム */
     .comment-item {
         display: flex;
-        gap: 10px;
-        padding: 12px 0; /* 上下の余白 */
-        border-bottom: none; /* 既存の枠線を消す */
-        background-color: transparent; /* 背景色を透明に */
-        box-shadow: none; /* 影を消す */
-        margin-bottom: 0; /* マージンを消す */
+        gap: 15px; /* アイコンと本文の間隔を広げる */
+        padding: 15px; /* 内側の余白を増やしてゆったりさせる */
+        background-color: #fff;
+        border: 1px solid #dee2e6; /* ★枠線を復活！★ */
+        border-radius: 8px; /* 角丸 */
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* 軽い影 */
+        margin-bottom: 10px; /* 下のコメントとの隙間 */
+        position: relative;
     }
 
     /* アイコン列 */
     .comment-avatar-column {
         position: relative;
-        width: 40px;
+        width: 45px; /* 少し広げる */
+        flex-shrink: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
-        margin-right: 10px; /* 本文との距離 */
     }
 
     .comment-avatar-column .user-icon {
-        width: 40px;
-        height: 40px;
+        width: 45px; /* アイコンサイズを少し大きく */
+        height: 45px;
         border-radius: 50%;
-        z-index: 1; /* 線の上に表示 */
+        border: 1px solid #eee; /* アイコンにも薄い枠線 */
+        z-index: 2;
+        background-color: #fff;
     }
 
-    /* 縦線 */
+    /* 縦線（スレッドライン） */
     .thread-line {
         position: absolute;
-        top: 40px;    /* アイコンの真下から */
-        bottom: -12px; /* 次の階層まで伸ばす */
-        left: 50%;    /* 真ん中に */
-        border-left: 2px solid #e1e8ed; /* 線を描画 */
-        width: 0;
-        z-index: 0;
+        top: 50px;     /* アイコンの下から */
+        bottom: -25px; /* 次のコメントのアイコンまで伸ばす */
+        left: 50%;
+        transform: translateX(-50%);
+        width: 2px;
+        background-color: #e1e8ed;
+        z-index: 1;
     }
 
     /* 本文列 */
     .comment-main-column {
         flex-grow: 1;
-        min-width: 0; /* はみ出し防止 */
-        padding-bottom: 5px;
+        min-width: 0;
+    }
+
+    .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center; /* 垂直方向中央揃え */
+        margin-bottom: 8px; /* 本文との間隔 */
+        height: 24px; /* 高さ揃え */
+    }
+
+    .comment-meta {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+    
+    .comment-meta strong a {
+        font-size: 1em;
+        color: #333;
+        text-decoration: none;
+    }
+    
+    .comment-meta span {
+        font-size: 0.8em;
+        color: #6c757d;
     }
 
     /* 返信エリア（インデント） */
     .comment-replies {
-        margin-left: 40px; /* アイコンの幅分ずらす */
+        margin-left: 40px; /* ツリー構造のために右にずらす */
+        border-left: 2px solid #f0f0f0; /* 補助線を入れる */
+        padding-left: 10px; /* 線との距離 */
     }
 
-    /* 既存スタイルの調整 */
+    /* コメント本文（投稿と同じ見た目に合わせる） */
     .comment-content {
-        margin-top: 2px;
+        font-size: 1em;
+        line-height: 1.6;
+        color: #333;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        /* 以前の枠線や背景色は親の .comment-item に任せるので削除 */
+        margin: 0;
         padding: 0;
         border: none;
         background: none;
-        font-size: 0.95em;
     }
     
-    .comment-header {
-        margin-bottom: 2px;
+    /* 3点リーダーの位置調整 */
+    .comment-menu-btn {
+        padding: 0 10px;
+        color: #aaa;
     }
-    
+    .comment-menu-btn:hover {
+        color: #333;
+    }
+
+    /* 返信フォーム */
     .reply-form-container {
-        margin-top: 5px;
-        padding-top: 0;
-        border-top: none;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed #eee;
     }
-    /* ▲▲▲ ここまで ▲▲▲ */
 
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
