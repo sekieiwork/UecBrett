@@ -434,7 +434,7 @@ def toggle_like(post_id):
         is_liked = True
         
         if current_user != post.author:
-            # 1. サイト内通知の作成
+            # 1.サイト内通知の作成
             message = f'あなたの投稿「{post.title}」にいいねが付きました。'
             notification = Notification(recipient=post.author, post=post, message=message)
             db.session.add(notification)
