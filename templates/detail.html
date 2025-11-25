@@ -105,11 +105,10 @@
                 </div>
             </div>
         <div class="content-width-limiter">
-            {% set parent_comments = post.comments | selectattr("parent_id", "none") | list %}
-            <h3 id="comment-count-header">コメント ({{ parent_comments|length }})</h3>
+                <h3 id="comment-count-header">コメント ({{ post.comments|length }})</h3>
         
-            {# --- マクロ: コメントを再帰的に表示 --- #}
-            {% macro render_comment(comment, depth=0) %}
+                {# --- シンプルなループ表示に戻す --- #}
+                {% for comment in post.comments %}
                 <div class="comment-item" id="comment-{{ comment.id }}">
                     <div class="comment-avatar-column">
                         <a href="{{ url_for('user_profile', username=comment.commenter.username) }}">
@@ -119,65 +118,30 @@
                                 <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="icon" class="user-icon">
                             {% endif %}
                         </a>
-                        {% if comment.replies.count() > 0 %}
-                            <div class="thread-line"></div>
-                        {% endif %}
                     </div>
-                        
+                    
                     <div class="comment-main-column">
                         <div class="comment-header">
                             <div class="comment-meta">
                                 <strong><a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="{{ comment.commenter.get_username_class() }}" style="color: #333; text-decoration: none;">{{ comment.commenter.username }}</a></strong>
                                 <span style="color: #6c757d; font-size: 0.85em; margin-left: 5px;">{{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M') }}</span>
                             </div>
-                                
+                            
                             <div class="comment-menu-container">
-                                <button class="comment-menu-btn" onclick="toggleCommentMenu('{{ comment.id }}')">︙</button>
-                                <div id="comment-menu-{{ comment.id }}" class="comment-menu-dropdown hidden">
-                                    {% if current_user.is_authenticated %}
-                                        <a href="javascript:void(0)" onclick="toggleReplyForm('{{ comment.id }}')">返信する</a>
-                                    {% endif %}
-                                    {% if current_user.is_authenticated and (current_user == comment.commenter or current_user == post.author or current_user.is_admin) %}
+                                {% if current_user.is_authenticated and (current_user == comment.commenter or current_user == post.author or current_user.is_admin) %}
+                                    <button class="comment-menu-btn" onclick="toggleCommentMenu('{{ comment.id }}')">︙</button>
+                                    <div id="comment-menu-{{ comment.id }}" class="comment-menu-dropdown hidden">
                                         <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="POST" style="margin:0;">
                                             <button type="submit" class="menu-delete-btn" onclick="return confirm('本当に削除しますか？')">削除</button>
                                         </form>
-                                    {% endif %}
-                                </div>
+                                    </div>
+                                {% endif %}
                             </div>
                         </div>
-                            
+                        
                         <div class="comment-content">{{ comment.content | safe_markdown | safe }}</div>
-                            
-                        <div id="reply-form-{{ comment.id }}" class="reply-form-container hidden">
-                            <form method="POST">
-                                {{ comment_form.csrf_token }}
-                                <input type="hidden" name="parent_id" value="{{ comment.id }}">
-                                <textarea name="content" rows="2" class="comment-textarea" placeholder="返信を入力..." required style="width: 100%;"></textarea>
-                                <div style="text-align: right; margin-top: 5px;">
-                                    <button type="submit" class="file-upload-btn" style="font-size: 0.85em; padding: 5px 10px;">返信</button>
-                                </div>
-                            </form>
-                        </div>
                     </div>
                 </div>
-
-            {# --- 返信があれば、ここに追加 --- #}
-                {% if comment.replies.count() > 0 %}
-                    <div class="comment-replies">
-                        {% for reply in comment.replies %}
-                            {{ render_comment(reply, depth + 1) }}
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endmacro %}
-
-            {# --- メインループ: 親コメントごとに枠を作る --- #}
-            {% for comment in post.comments %}
-                    {% if not comment.parent_id %}
-                        <div class="comment-thread">
-                            {{ render_comment(comment) }}
-                        </div>
-                    {% endif %}
                 {% endfor %}
             </div>
 {% endblock %}

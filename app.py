@@ -383,29 +383,23 @@ def post_detail(post_id):
     post.comments.sort(key=lambda c: c.created_at, reverse=True)
     comment_form = CommentForm()
     if comment_form.validate_on_submit() and current_user.is_authenticated:
-        parent_id = request.form.get('parent_id')
-        parent_id = int(parent_id) if parent_id else None
-        comment = Comment(content=comment_form.content.data, post=post, commenter=current_user, parent_id=parent_id)
+        comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
         db.session.add(comment)
         db.session.commit()
         print(f"DEBUG: Comment by {current_user.id} on Post by {post.author.id}", flush=True)
         
-        if parent_id:
-            parent_comment = Comment.query.get(parent_id)
-            if parent_comment and parent_comment.commenter != current_user:
-                if parent_comment.commenter.notification_reply:
-                    message = f'{current_user.username}さんがあなたのコメントに返信しました'
-                    notification = Notification(recipient=parent_comment.commenter, post=post, message=message)
-                    db.session.add(notification)
-                    if parent_comment.commenter.push_notifications_enabled:
-                        send_onesignal_notification(user_ids=[parent_comment.commenter.id], title="コメントへの返信", message=message, url=url_for('post_detail', post_id=post.id, _external=True))
-        else:
-            if current_user != post.author:
-                if post.author.notification_comment_like:
-                    notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
-                    db.session.add(notification)
-                    if post.author.push_notifications_enabled:
-                        send_onesignal_notification(user_ids=[post.author.id], title="新しいコメント", message=f'投稿「{post.title}」にコメントが付きました', url=url_for('post_detail', post_id=post.id, _external=True))
+        if current_user != post.author:
+            if post.author.notification_comment_like:
+                notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
+                db.session.add(notification)
+
+                if post.author.push_notifications_enabled:
+                    send_onesignal_notification(
+                        user_ids=[post.author.id],
+                        title="新しいコメント",
+                        message=f'投稿「{post.title}」にコメントが付きました',
+                        url=url_for('post_detail', post_id=post.id, _external=True)
+                    )
         process_mentions(comment.content, comment)
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
