@@ -18,7 +18,7 @@ services:
       - db
     
     # ▼▼▼ これを追加！ start.shを使わずに直接起動させます ▼▼▼
-    command: sh -c "flask db upgrade && gunicorn app:app --bind 0.0.0.0:8000"
+    command: tail -f /dev/null
     # ▲▲▲ ここまで ▲▲▲
 
   db:
