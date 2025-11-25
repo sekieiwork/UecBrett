@@ -1,23 +1,24 @@
 #!/bin/sh
 
-# ▼▼▼ 追加: DBの履歴不整合を直すためのリセット処理 ▼▼▼
-echo "Resetting alembic history..."
+echo "!!! RESETTING DATABASE FOR CLEAN DEPLOY !!!"
+
+# 1. 既存のテーブルを全て削除して、真っ白にする
+python -c "from app import app, db; app.app_context().push(); db.drop_all(); db.session.commit()"
+
+# 2. 履歴テーブルの残骸も念のため消す
 python -c "
 from app import app, db
 from sqlalchemy import text
-
 with app.app_context():
     with db.engine.connect() as conn:
-        # 履歴テーブル(alembic_version)だけを消して、無理やり適用できるようにする
         conn.execute(text('DROP TABLE IF EXISTS alembic_version'))
         conn.commit()
 "
-# ▲▲▲ ここまで追加 ▲▲▲
 
-# データベースのマイグレーション（テーブル作成）を実行する
+# 3. マイグレーション適用（全テーブルを新規作成）
 echo "Running database migrations..."
 flask db upgrade
 
-# Webサーバー（Gunicorn）を起動する
+# 4. サーバー起動
 echo "Starting Gunicorn server..."
 gunicorn app:app --bind 0.0.0.0:8000
