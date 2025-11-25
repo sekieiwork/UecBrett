@@ -1,8 +1,8 @@
-"""Initial migration for Neon
+"""Rebuild All
 
-Revision ID: b83764aae8db
+Revision ID: acdd38222db1
 Revises: 
-Create Date: 2025-11-25 14:47:38.169574
+Create Date: 2025-11-25 15:17:34.761324
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'b83764aae8db'
+revision = 'acdd38222db1'
 down_revision = None
 branch_labels = None
 depends_on = None

@@ -895,6 +895,78 @@ a.tag-box:hover {
         color: #dc3545;
     }
 
+    /* ▼▼▼ Twitter風コメントツリー用CSS ▼▼▼ */
+    .comment-thread {
+        position: relative;
+    }
+    
+    .comment-item {
+        display: flex;
+        gap: 10px;
+        padding: 12px 0; /* 上下の余白 */
+        border-bottom: none; /* 既存の枠線を消す */
+        background-color: transparent; /* 背景色を透明に */
+        box-shadow: none; /* 影を消す */
+        margin-bottom: 0; /* マージンを消す */
+    }
+
+    /* アイコン列 */
+    .comment-avatar-column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 40px;
+        flex-shrink: 0;
+    }
+
+    .comment-avatar-column .user-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        z-index: 1; /* 線の上に表示 */
+    }
+
+    /* 縦線 */
+    .thread-line {
+        width: 2px;
+        background-color: #cfd9de; /* Twitterっぽいグレー */
+        flex-grow: 1;
+        margin-top: 5px;
+        margin-bottom: -20px; /* 下の階層まで伸ばす */
+    }
+
+    /* 本文列 */
+    .comment-main-column {
+        flex-grow: 1;
+        min-width: 0; /* はみ出し防止 */
+        padding-bottom: 5px;
+    }
+
+    /* 返信エリア（インデント） */
+    .comment-replies {
+        margin-left: 40px; /* アイコンの幅分ずらす */
+    }
+
+    /* 既存スタイルの調整 */
+    .comment-content {
+        margin-top: 2px;
+        padding: 0;
+        border: none;
+        background: none;
+        font-size: 0.95em;
+    }
+    
+    .comment-header {
+        margin-bottom: 2px;
+    }
+    
+    .reply-form-container {
+        margin-top: 5px;
+        padding-top: 0;
+        border-top: none;
+    }
+    /* ▲▲▲ ここまで ▲▲▲ */
+
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
