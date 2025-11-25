@@ -130,19 +130,33 @@
         word-break: break-word;
     }
 
-     .comment-content {
-        max-height: 100px;
-        overflow-y: auto;
-        padding: 1em;
+     /* 5. 表示される投稿・コメント本文の行間設定 (統一) */
+     .post-content, .comment-content {
+        /* 共通の見た目設定 */
+        max-height: none; /* コメントは全部見せる */
+        overflow-y: visible;
+        padding: 0.8em 1em;
         border: 1px solid #dee2e6;
         border-radius: 0.25rem;
-        margin-top: 10px;
+        background-color: #fdfdfd; /* 少し明るい背景色 */
+        margin-top: 5px;
+        margin-bottom: 5px;
         width: 100%;
         box-sizing: border-box;
         white-space: pre-wrap;
-        line-height: 1.0
+        line-height: 1.5; /* 読みやすい行間 */
         overflow-wrap: anywhere;
         word-break: break-word;
+        font-size: 1em; /* フォントサイズを統一 */
+        color: #333;
+     }
+
+     /* コメント固有の調整 */
+     .comment-content {
+         background-color: #fff; /* コメントは白背景 */
+         border: none; /* 枠線を消してスッキリさせる（ツリー表示の場合） */
+         padding: 0.5em 0; /* 上下の余白を詰める */
+         margin-top: 0;
      }
 
     /* 投稿された画像のスタイル */
@@ -912,11 +926,12 @@ a.tag-box:hover {
 
     /* アイコン列 */
     .comment-avatar-column {
+        position: relative;
+        width: 40px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        width: 40px;
-        flex-shrink: 0;
+        margin-right: 10px; /* 本文との距離 */
     }
 
     .comment-avatar-column .user-icon {
@@ -928,11 +943,13 @@ a.tag-box:hover {
 
     /* 縦線 */
     .thread-line {
-        width: 2px;
-        background-color: #cfd9de; /* Twitterっぽいグレー */
-        flex-grow: 1;
-        margin-top: 5px;
-        margin-bottom: -20px; /* 下の階層まで伸ばす */
+        position: absolute;
+        top: 40px;    /* アイコンの真下から */
+        bottom: -12px; /* 次の階層まで伸ばす */
+        left: 50%;    /* 真ん中に */
+        border-left: 2px solid #e1e8ed; /* 線を描画 */
+        width: 0;
+        z-index: 0;
     }
 
     /* 本文列 */
