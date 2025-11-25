@@ -143,7 +143,7 @@
                         </div>
                     </div>
                     
-                    <div class="comment-content">{{ mment-avatar-col.content | safe_markdown | safe }}</div>
+                    <div class="comment-content">{{ comment.content | safe_markdown | safe }}</div>
                     <div id="reply-form-{{ comment.id }}" class="reply-form-container hidden">
                         <form method="POST">
                             {{ comment_form.csrf_token }}
