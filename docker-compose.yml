@@ -16,10 +16,6 @@ services:
       - .:/app
     depends_on:
       - db
-    
-    # ▼▼▼ これを追加！ start.shを使わずに直接起動させます ▼▼▼
-    command: tail -f /dev/null
-    # ▲▲▲ ここまで ▲▲▲
 
   db:
     image: postgres:13

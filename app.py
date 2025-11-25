@@ -97,6 +97,14 @@ linker = Linker(callbacks=[lambda attrs, new: attrs.update({(None, 'target'): '_
 @app.template_filter('safe_markdown')
 def safe_markdown_filter(text):
     if not text: return ""
+    def replace_mention(match):
+        username = match.group(1)
+        # ユーザーが存在するか確認してからリンクにするのが親切ですが、
+        # 処理速度優先で「とりあえずリンクにする」形にします（存在しなければ404になるだけ）
+        return f'[@{username}]({url_for("user_profile", username=username)})'
+    
+    # 正規表現で @xxxx を探す
+    text = re.sub(r'@([a-zA-Z0-9_一-龠ぁ-んァ-ヶー]+)', replace_mention, text)
     html = md.convert(text)
     def add_target_blank(attrs, new=False):
         attrs[(None, 'target')] = '_blank'
@@ -262,6 +270,8 @@ class Comment(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id', ondelete="CASCADE"), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
+    parent_id = db.Column(db.Integer, db.ForeignKey('comment.id', ondelete="CASCADE"), nullable=True)
+    replies = db.relationship('Comment', backref=db.backref('parent', remote_side=[id]), lazy='dynamic', cascade="all, delete")
 
 class Bookmark(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -315,6 +325,59 @@ def send_onesignal_notification(user_ids, title, message, url=None):
     except Exception as e:
         print(f"OneSignal Error: {e}", flush=True)
 
+def process_mentions(content, source_obj):
+    """
+    本文からメンション(@ユーザー名)を抽出し、対象者に通知を送る
+    content: 投稿やコメントの本文
+    source_obj: Post または Comment オブジェクト
+    """
+    # 1. 本文からユーザー名を抽出 (正規表現)
+    # 重複を除去するために set() を使います
+    mentioned_names = set(re.findall(r'@([a-zA-Z0-9_一-龠ぁ-んァ-ヶー]+)', content))
+    
+    sender = current_user
+    
+    for name in mentioned_names:
+        # 2. ユーザーを検索
+        target_user = User.query.filter_by(username=name).first()
+        
+        # ユーザーが存在し、かつ自分自身ではない場合
+        if target_user and target_user != sender:
+            
+            # メッセージの作成
+            if isinstance(source_obj, Post):
+                # 投稿内でのメンション
+                message = f'{sender.username}さんが投稿であなたをメンションしました:「{source_obj.title}」'
+                link_url = url_for('post_detail', post_id=source_obj.id, _external=True)
+            elif isinstance(source_obj, Comment):
+                # コメント内でのメンション
+                message = f'{sender.username}さんがコメントであなたをメンションしました'
+                link_url = url_for('post_detail', post_id=source_obj.post_id, _external=True)
+            else:
+                continue
+
+            # 3. サイト内通知を作成
+            notification = Notification(recipient=target_user, message=message)
+            # リンク先情報を保存 (Notificationモデルの構造に合わせて調整)
+            if isinstance(source_obj, Post):
+                notification.post_id = source_obj.id
+            elif isinstance(source_obj, Comment):
+                notification.post_id = source_obj.post_id
+                
+            db.session.add(notification)
+            
+            # 4. プッシュ通知 (OneSignal)
+            # ※メンションは重要度が高いので、基本設定(push_notifications_enabled)がONなら送る
+            if target_user.push_notifications_enabled:
+                send_onesignal_notification(
+                    user_ids=[target_user.id],
+                    title="メンションされました",
+                    message=message,
+                    url=link_url
+                )
+                
+    db.session.commit()
+
 # Routes
 @app.route('/', defaults={'page': 1}, methods=['GET', 'POST'])
 @app.route('/page/<int:page>', methods=['GET', 'POST'])
@@ -328,6 +391,7 @@ def index(page):
         post.tags = get_or_create_tags_from_string(form.tags.data)
         db.session.add(post)
         db.session.commit()
+        process_mentions(post.content, post)
         return redirect(url_for('index'))
 
     posts_per_page = 40
@@ -373,38 +437,91 @@ def index(page):
     
     return render_template('index.html', form=form, posts=posts,  md=md, templates=templates, templates_for_js=json.dumps(templates), sort_by=sort_by)
 
+# app.py の post_detail 関数 (修正版)
+
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
     post = Post.query.get_or_404(post_id)
+    # コメントを新しい順に並び替え
     post.comments.sort(key=lambda c: c.created_at, reverse=True)
+    
     comment_form = CommentForm()
 
     if comment_form.validate_on_submit() and current_user.is_authenticated:
-        comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
+        # 親コメントIDの取得
+        parent_id = request.form.get('parent_id')
+        parent_id = int(parent_id) if parent_id else None
+        
+        comment = Comment(
+            content=comment_form.content.data, 
+            post=post, 
+            commenter=current_user,
+            parent_id=parent_id
+        )
         db.session.add(comment)
-        print(f"DEBUG: Comment by {current_user.id} on Post by {post.author.id}", flush=True)
-            # 投稿者が「コメント・いいね通知」をONにしている場合のみ作成
-        if post.author.notification_comment_like: 
-            notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
-            db.session.add(notification)
+        db.session.commit()
 
-            if post.author.push_notifications_enabled:
-                send_onesignal_notification(
-                    user_ids=[post.author.id],
-                    title="新しいコメント",
-                    message=f'投稿「{post.title}」にコメントが付きました',
-                    url=url_for('post_detail', post_id=post.id, _external=True)
-                )
-        for user in previous_commenters:
-            if user.id == current_user.id: continue
-            if user.id == post.author.id: continue
-            if comment.commenter == post.author:
-                notification = Notification(recipient=user, post=post, message="あなたがコメントした投稿に投稿者がコメントしました。")
-                db.session.add(notification)
-                if user.push_notifications_enabled:
-                    send_onesignal_notification(user_ids=[user.id], title="コメントの返信", message="あなたがコメントした投稿に新しいコメントがあります", url=url_for('post_detail', post_id=post.id, _external=True))
+        print(f"DEBUG: Comment by {current_user.id} on Post by {post.author.id}", flush=True)
+        
+        # --- 通知ロジック ---
+        
+        # A. 返信の場合 (親コメントがある)
+        if parent_id:
+            parent_comment = Comment.query.get(parent_id)
+            if parent_comment and parent_comment.commenter != current_user:
+                if parent_comment.commenter.notification_reply:
+                    message = f'{current_user.username}さんがあなたのコメントに返信しました'
+                    notification = Notification(recipient=parent_comment.commenter, post=post, message=message)
+                    db.session.add(notification)
+                    
+                    if parent_comment.commenter.push_notifications_enabled:
+                        send_onesignal_notification(
+                            user_ids=[parent_comment.commenter.id],
+                            title="コメントへの返信",
+                            message=message,
+                            url=url_for('post_detail', post_id=post.id, _external=True)
+                        )
+        
+        # B. 通常のコメントの場合 (親がない)
+        else:
+            if current_user != post.author:
+                if post.author.notification_comment_like:
+                    notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
+                    db.session.add(notification)
+    
+                    if post.author.push_notifications_enabled:
+                        send_onesignal_notification(
+                            user_ids=[post.author.id],
+                            title="新しいコメント",
+                            message=f'投稿「{post.title}」にコメントが付きました',
+                            url=url_for('post_detail', post_id=post.id, _external=True)
+                        )
+        
+        # メンション処理
+        process_mentions(comment.content, comment)
+        
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
+    
+    # ... (以下は変更なし) ...
+    japan_tz = timezone('Asia/Tokyo')
+    post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
+    if post.updated_at:
+        post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
+    else:
+        post.updated_at_jst = None
+
+    for c in post.comments:
+        c.created_at_jst = c.created_at.replace(tzinfo=utc).astimezone(japan_tz)
+    
+    if current_user.is_authenticated:
+        post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
+        post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
+    else:
+        post.is_bookmarked = False
+        post.is_liked = False
+    
+    return render_template('detail.html', post=post, comment_form=comment_form,  md=md)
     
     japan_tz = timezone('Asia/Tokyo')
     post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
@@ -418,10 +535,10 @@ def post_detail(post_id):
     
     if current_user.is_authenticated:
         post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
-        post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None # 追加
+        post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
     else:
         post.is_bookmarked = False
-        post.is_liked = False # 追加
+        post.is_liked = False
     
     return render_template('detail.html', post=post, comment_form=comment_form,  md=md)
 
