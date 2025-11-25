@@ -28,7 +28,6 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
-
 cloudinary.config(
     cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
     api_key = os.environ.get('CLOUDINARY_API_KEY'), 
@@ -45,7 +44,7 @@ migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# --- OneSignalの設定 (Renderの環境変数から読み込み) ---
+# --- OneSignalの設定 ---
 app.config['ONESIGNAL_APP_ID'] = os.environ.get('ONESIGNAL_APP_ID')
 app.config['ONESIGNAL_API_KEY'] = os.environ.get('ONESIGNAL_API_KEY')
 
@@ -99,11 +98,8 @@ def safe_markdown_filter(text):
     if not text: return ""
     def replace_mention(match):
         username = match.group(1)
-        # ユーザーが存在するか確認してからリンクにするのが親切ですが、
-        # 処理速度優先で「とりあえずリンクにする」形にします（存在しなければ404になるだけ）
         return f'[@{username}]({url_for("user_profile", username=username)})'
     
-    # 正規表現で @xxxx を探す
     text = re.sub(r'@([a-zA-Z0-9_一-龠ぁ-んァ-ヶー]+)', replace_mention, text)
     html = md.convert(text)
     def add_target_blank(attrs, new=False):
@@ -205,14 +201,12 @@ class KairanbanCheck(db.Model):
     user = db.relationship('User', backref='kairanban_checks')
     __table_args__ = (db.UniqueConstraint('user_id', 'kairanban_id', name='_user_kairanban_uc'),)
 
-# ▼▼▼ 新規追加: Likeモデル ▼▼▼
 class Like(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id', ondelete="CASCADE"), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     __table_args__ = (db.UniqueConstraint('user_id', 'post_id', name='_user_post_like_uc'),)
-# ▲▲▲ ここまで ▲▲▲
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -228,15 +222,14 @@ class User(db.Model, UserMixin):
     program = db.Column(db.String(100), nullable=True)
     major = db.Column(db.String(100), nullable=True)
     push_notifications_enabled = db.Column(db.Boolean, default=False)
-    notification_comment_like = db.Column(db.Boolean, default=True) # 自分の投稿への反応
-    notification_reply = db.Column(db.Boolean, default=True)        # 自分がコメントした投稿への反応
+    notification_comment_like = db.Column(db.Boolean, default=True)
+    notification_reply = db.Column(db.Boolean, default=True)
+    
     posts = db.relationship('Post', backref='author', lazy=True, cascade="all, delete")
     comments = db.relationship('Comment', backref='commenter', lazy=True, cascade="all, delete")
     bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic', cascade="all, delete")
     notifications = db.relationship('Notification', backref='recipient', lazy='dynamic', cascade="all, delete")
-    # ▼▼▼ 追加: いいねのリレーション ▼▼▼
     likes = db.relationship('Like', backref='user', lazy='dynamic', cascade="all, delete")
-    # ▲▲▲ ここまで ▲▲▲
     tags = db.relationship('Tag', secondary=user_tags, lazy='subquery', backref=db.backref('users', lazy=True), cascade="all, delete")
     
     def get_username_class(self): return 'admin-username' if self.is_admin else ''
@@ -253,9 +246,7 @@ class Post(db.Model):
     comments = db.relationship('Comment', backref='post', lazy=True, cascade="all, delete")
     bookmarks = db.relationship('Bookmark', backref='post', lazy='dynamic', cascade="all, delete")
     notifications = db.relationship('Notification', back_populates='post', lazy='dynamic', cascade="all, delete")
-    # ▼▼▼ 追加: いいねのリレーション ▼▼▼
     likes = db.relationship('Like', backref='post', lazy='dynamic', cascade="all, delete")
-    # ▲▲▲ ここまで ▲▲▲
     tags = db.relationship('Tag', secondary=post_tags, lazy='subquery', backref=db.backref('posts', lazy=True), cascade="all, delete")
 
 class UserSubscription(db.Model):
@@ -293,89 +284,52 @@ class Notification(db.Model):
 
 # --- OneSignal連携関数 ---
 def send_onesignal_notification(user_ids, title, message, url=None):
-    """OneSignalへプッシュ通知を送信 (requests版 - 一番安定)"""
+    """OneSignalへプッシュ通知を送信 (requests版)"""
     if not ONESIGNAL_APP_ID or not ONESIGNAL_API_KEY:
         print("OneSignal Error: Keys are missing.")
         return
 
-    # 新しいキー(os_v2...)でも Basic 認証で通ります
     header = {
         "Content-Type": "application/json; charset=utf-8",
         "Authorization": f"Basic {ONESIGNAL_API_KEY}"
     }
-
     target_external_user_ids = [f"user_{uid}" for uid in user_ids]
-
     payload = {
         "app_id": ONESIGNAL_APP_ID,
-        "include_aliases": {
-            "external_id": target_external_user_ids
-        },
+        "include_aliases": {"external_id": target_external_user_ids},
         "target_channel": "push",
         "headings": {"en": title},
         "contents": {"en": message},
         "url": url if url else ""
     }
-
     try:
         print(f"OneSignal Sending to: {target_external_user_ids}", flush=True)
-        # requestsを使って送信
         req = requests.post("https://onesignal.com/api/v1/notifications", headers=header, data=json.dumps(payload))
         print(f"OneSignal Response: {req.status_code} {req.text}", flush=True)
     except Exception as e:
         print(f"OneSignal Error: {e}", flush=True)
 
 def process_mentions(content, source_obj):
-    """
-    本文からメンション(@ユーザー名)を抽出し、対象者に通知を送る
-    content: 投稿やコメントの本文
-    source_obj: Post または Comment オブジェクト
-    """
-    # 1. 本文からユーザー名を抽出 (正規表現)
-    # 重複を除去するために set() を使います
     mentioned_names = set(re.findall(r'@([a-zA-Z0-9_一-龠ぁ-んァ-ヶー]+)', content))
-    
     sender = current_user
-    
     for name in mentioned_names:
-        # 2. ユーザーを検索
         target_user = User.query.filter_by(username=name).first()
-        
-        # ユーザーが存在し、かつ自分自身ではない場合
         if target_user and target_user != sender:
-            
-            # メッセージの作成
             if isinstance(source_obj, Post):
-                # 投稿内でのメンション
                 message = f'{sender.username}さんが投稿であなたをメンションしました:「{source_obj.title}」'
                 link_url = url_for('post_detail', post_id=source_obj.id, _external=True)
+                n_post_id = source_obj.id
             elif isinstance(source_obj, Comment):
-                # コメント内でのメンション
                 message = f'{sender.username}さんがコメントであなたをメンションしました'
                 link_url = url_for('post_detail', post_id=source_obj.post_id, _external=True)
-            else:
-                continue
+                n_post_id = source_obj.post_id
+            else: continue
 
-            # 3. サイト内通知を作成
-            notification = Notification(recipient=target_user, message=message)
-            # リンク先情報を保存 (Notificationモデルの構造に合わせて調整)
-            if isinstance(source_obj, Post):
-                notification.post_id = source_obj.id
-            elif isinstance(source_obj, Comment):
-                notification.post_id = source_obj.post_id
-                
+            notification = Notification(recipient=target_user, message=message, post_id=n_post_id)
             db.session.add(notification)
             
-            # 4. プッシュ通知 (OneSignal)
-            # ※メンションは重要度が高いので、基本設定(push_notifications_enabled)がONなら送る
             if target_user.push_notifications_enabled:
-                send_onesignal_notification(
-                    user_ids=[target_user.id],
-                    title="メンションされました",
-                    message=message,
-                    url=link_url
-                )
-                
+                send_onesignal_notification(user_ids=[target_user.id], title="メンションされました", message=message, url=link_url)
     db.session.commit()
 
 # Routes
@@ -395,77 +349,47 @@ def index(page):
         return redirect(url_for('index'))
 
     posts_per_page = 40
-    
-    # ▼▼▼ 並び替えロジックの追加 ▼▼▼
-    sort_by = request.args.get('sort_by', 'newest') # デフォルトは新しい順
-    
+    sort_by = request.args.get('sort_by', 'newest')
     query = Post.query
-    
     if sort_by == 'likes':
-        # いいねが多い順: Likeテーブルを結合してカウント
         query = query.outerjoin(Like).group_by(Post.id).order_by(func.count(Like.id).desc(), Post.created_at.desc())
     elif sort_by == 'bookmarks':
-        # ブックマークが多い順: Bookmarkテーブルを結合してカウント
         query = query.outerjoin(Bookmark).group_by(Post.id).order_by(func.count(Bookmark.id).desc(), Post.created_at.desc())
     else:
-        # デフォルト: 作成日(または更新日)の新しい順
         query = query.order_by(func.coalesce(Post.updated_at, Post.created_at).desc())
         
     posts = query.paginate(page=page, per_page=posts_per_page, error_out=False)
-    # ▲▲▲ ここまで ▲▲▲
-    
     japan_tz = timezone('Asia/Tokyo')
     for post in posts.items:
         post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
         if post.updated_at:
             post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
-        else:
-            post.updated_at_jst = None
-        
+        else: post.updated_at_jst = None
         if current_user.is_authenticated:
             post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
-            post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None # 追加
+            post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
         else:
             post.is_bookmarked = False
-            post.is_liked = False # 追加
+            post.is_liked = False
 
     templates = []
     if current_user.is_authenticated:
-        templates = [
-            {'name': 'UECreview', 'title': f'○年 ○期 {current_user.username}の授業review', 'body': '<span class="text-large">**ここに科目名を入力**</span> 成績:<span class="text-red text-large">**ここに成績を入力**</span> 担当教員:ここに担当教員名を入力\n本文を入力'}
-        ]
-    
+        templates = [{'name': 'UECreview', 'title': f'○年 ○期 {current_user.username}の授業review', 'body': '<span class="text-large">**ここに科目名を入力**</span> 成績:<span class="text-red text-large">**ここに成績を入力**</span> 担当教員:ここに担当教員名を入力\n本文を入力'}]
     return render_template('index.html', form=form, posts=posts,  md=md, templates=templates, templates_for_js=json.dumps(templates), sort_by=sort_by)
-
-# app.py の post_detail 関数 (修正版)
 
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
     post = Post.query.get_or_404(post_id)
-    # コメントを新しい順に並び替え
     post.comments.sort(key=lambda c: c.created_at, reverse=True)
-    
     comment_form = CommentForm()
-
     if comment_form.validate_on_submit() and current_user.is_authenticated:
-        # 親コメントIDの取得
         parent_id = request.form.get('parent_id')
         parent_id = int(parent_id) if parent_id else None
-        
-        comment = Comment(
-            content=comment_form.content.data, 
-            post=post, 
-            commenter=current_user,
-            parent_id=parent_id
-        )
+        comment = Comment(content=comment_form.content.data, post=post, commenter=current_user, parent_id=parent_id)
         db.session.add(comment)
         db.session.commit()
-
         print(f"DEBUG: Comment by {current_user.id} on Post by {post.author.id}", flush=True)
         
-        # --- 通知ロジック ---
-        
-        # A. 返信の場合 (親コメントがある)
         if parent_id:
             parent_comment = Comment.query.get(parent_id)
             if parent_comment and parent_comment.commenter != current_user:
@@ -473,46 +397,24 @@ def post_detail(post_id):
                     message = f'{current_user.username}さんがあなたのコメントに返信しました'
                     notification = Notification(recipient=parent_comment.commenter, post=post, message=message)
                     db.session.add(notification)
-                    
                     if parent_comment.commenter.push_notifications_enabled:
-                        send_onesignal_notification(
-                            user_ids=[parent_comment.commenter.id],
-                            title="コメントへの返信",
-                            message=message,
-                            url=url_for('post_detail', post_id=post.id, _external=True)
-                        )
-        
-        # B. 通常のコメントの場合 (親がない)
+                        send_onesignal_notification(user_ids=[parent_comment.commenter.id], title="コメントへの返信", message=message, url=url_for('post_detail', post_id=post.id, _external=True))
         else:
             if current_user != post.author:
                 if post.author.notification_comment_like:
                     notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
                     db.session.add(notification)
-    
                     if post.author.push_notifications_enabled:
-                        send_onesignal_notification(
-                            user_ids=[post.author.id],
-                            title="新しいコメント",
-                            message=f'投稿「{post.title}」にコメントが付きました',
-                            url=url_for('post_detail', post_id=post.id, _external=True)
-                        )
-        
-        # メンション処理
+                        send_onesignal_notification(user_ids=[post.author.id], title="新しいコメント", message=f'投稿「{post.title}」にコメントが付きました', url=url_for('post_detail', post_id=post.id, _external=True))
         process_mentions(comment.content, comment)
-        
         db.session.commit()
         return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
     
-    # ... (以下は変更なし) ...
     japan_tz = timezone('Asia/Tokyo')
     post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
-    if post.updated_at:
-        post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
-    else:
-        post.updated_at_jst = None
-
-    for c in post.comments:
-        c.created_at_jst = c.created_at.replace(tzinfo=utc).astimezone(japan_tz)
+    if post.updated_at: post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
+    else: post.updated_at_jst = None
+    for c in post.comments: c.created_at_jst = c.created_at.replace(tzinfo=utc).astimezone(japan_tz)
     
     if current_user.is_authenticated:
         post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
@@ -520,35 +422,13 @@ def post_detail(post_id):
     else:
         post.is_bookmarked = False
         post.is_liked = False
-    
-    return render_template('detail.html', post=post, comment_form=comment_form,  md=md)
-    
-    japan_tz = timezone('Asia/Tokyo')
-    post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
-    if post.updated_at:
-        post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
-    else:
-        post.updated_at_jst = None
-
-    for c in post.comments:
-        c.created_at_jst = c.created_at.replace(tzinfo=utc).astimezone(japan_tz)
-    
-    if current_user.is_authenticated:
-        post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
-        post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
-    else:
-        post.is_bookmarked = False
-        post.is_liked = False
-    
     return render_template('detail.html', post=post, comment_form=comment_form,  md=md)
 
 @app.route('/like/<int:post_id>', methods=['POST'])
 @login_required
 def toggle_like(post_id):
-    """いいねの切り替えAPI"""
     post = Post.query.get_or_404(post_id)
     like = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first()
-    
     if like:
         db.session.delete(like)
         is_liked = False
@@ -556,24 +436,14 @@ def toggle_like(post_id):
         like = Like(user_id=current_user.id, post_id=post.id)
         db.session.add(like)
         is_liked = True
-        
         if current_user != post.author:
-            # 投稿者が「コメント・いいね通知」をONにしている場合のみ
             if post.author.notification_comment_like:
                 message = f'あなたの投稿「{post.title}」にいいねが付きました。'
                 notification = Notification(recipient=post.author, post=post, message=message)
                 db.session.add(notification)
-                
                 if post.author.push_notifications_enabled:
-                    send_onesignal_notification(
-                        user_ids=[post.author.id],
-                        title="新しいいいね",
-                        message=message,
-                        url=url_for('post_detail', post_id=post.id, _external=True)
-                    )
-
+                    send_onesignal_notification(user_ids=[post.author.id], title="新しいいいね", message=message, url=url_for('post_detail', post_id=post.id, _external=True))
     db.session.commit()
-    
     return jsonify({'is_liked': is_liked, 'count': post.likes.count()})
 
 @app.route('/bookmark_post/<int:post_id>', methods=['POST'])
@@ -602,12 +472,10 @@ def show_bookmarks():
     japan_tz = timezone('Asia/Tokyo')
     for post in bookmarked_posts:
         post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
-        if post.updated_at:
-            post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
-        else:
-            post.updated_at_jst = None
+        if post.updated_at: post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
+        else: post.updated_at_jst = None
         post.is_bookmarked = True
-        post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None # 追加
+        post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
     return render_template('bookmarks.html', posts=bookmarked_posts, md=md)
 
 @app.route('/post/<int:post_id>/edit', methods=['GET', 'POST'])
@@ -707,11 +575,8 @@ def search():
     active_tab = request.args.get('active_tab', 'posts')
     post_page = request.args.get('post_page', 1, type=int)
     user_page = request.args.get('user_page', 1, type=int)
-    
-    # ▼▼▼ 並び替え対応 ▼▼▼
     sort_by = request.args.get('sort_by', 'newest') 
-    # ▲▲▲ ここまで ▲▲▲
-
+    
     if form.validate_on_submit():
         search_query = form.search_query.data
     elif request.method == 'GET' and request.args.get('search_query'):
@@ -724,46 +589,34 @@ def search():
     if search_query:
         tag_match = Tag.query.filter(Tag.name.ilike(search_query)).first()
         like_query = f'%{search_query}%'
-        
-        posts_query_builder = Post.query.filter(
-            (Post.title.like(like_query)) | (Post.content.like(like_query))
-        )
-        users_query_builder = User.query.filter(
-            or_(User.username.like(like_query), User.grade == search_query, User.category == search_query, User.user_class == search_query, User.program == search_query, User.major == search_query)
-        )
-
+        posts_query_builder = Post.query.filter((Post.title.like(like_query)) | (Post.content.like(like_query)))
+        users_query_builder = User.query.filter(or_(User.username.like(like_query), User.grade == search_query, User.category == search_query, User.user_class == search_query, User.program == search_query, User.major == search_query))
         if tag_match:
             post_tag_query = Post.query.join(post_tags).join(Tag).filter(Tag.id == tag_match.id)
             posts_query_builder = posts_query_builder.union(post_tag_query)
             user_tag_query = User.query.join(user_tags).join(Tag).filter(Tag.id == tag_match.id)
             users_query_builder = users_query_builder.union(user_tag_query)
 
-        # ▼▼▼ 並び替えロジック適用 ▼▼▼
         if sort_by == 'likes':
             posts = posts_query_builder.outerjoin(Like).group_by(Post.id).order_by(func.count(Like.id).desc(), Post.created_at.desc())
         elif sort_by == 'bookmarks':
             posts = posts_query_builder.outerjoin(Bookmark).group_by(Post.id).order_by(func.count(Bookmark.id).desc(), Post.created_at.desc())
         else:
             posts = posts_query_builder.order_by(Post.created_at.desc())
-        # ▲▲▲ ここまで ▲▲▲
 
         posts = posts.paginate(page=post_page, per_page=40, error_out=False)
         users = users_query_builder.order_by(User.username.asc()).paginate(page=user_page, per_page=40, error_out=False)
-
         japan_tz = timezone('Asia/Tokyo')
         for post in posts.items:
             post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
-            if post.updated_at:
-                post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
+            if post.updated_at: post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
             else: post.updated_at_jst = None
-            
             if current_user.is_authenticated:
                 post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
-                post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None # 追加
+                post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
             else:
                 post.is_bookmarked = False
-                post.is_liked = False # 追加
-    
+                post.is_liked = False
     else:
         posts = db.paginate(db.select(Post).where(False), page=post_page, per_page=40, error_out=False)
         users = db.paginate(db.select(User).where(False), page=user_page, per_page=40, error_out=False)
@@ -816,7 +669,7 @@ def user_profile(username):
         if post.updated_at: post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
         else: post.updated_at_jst = None
         post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False
-        post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False # 追加
+        post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None if current_user.is_authenticated else False 
     for comment in comments.items:
         comment.created_at_jst = comment.created_at.replace(tzinfo=utc).astimezone(japan_tz)
     return render_template('profile.html', user=user, posts=posts, comments=comments, active_tab=active_tab,  md=md)
@@ -859,6 +712,21 @@ def admin_delete_user(user_id):
     db.session.commit()
     flash('ユーザーを削除しました。')
     return redirect(url_for('admin_dashboard'))
+
+# ▼▼▼ 追加: 管理者付与用シークレットルート ▼▼▼
+@app.route('/make_me_admin/<string:secret>')
+def make_me_admin(secret):
+    if secret != os.environ.get('UPGRADE_SECRET_KEY', 'default_secret'):
+        abort(403)
+    
+    if not current_user.is_authenticated:
+        return "ログインしてください"
+    
+    user = User.query.get(current_user.id)
+    user.is_admin = True
+    db.session.commit()
+    return f"ユーザー {user.username} を管理者にしました！"
+# ▲▲▲ ここまで ▲▲▲
 
 @app.route('/notifications')
 @login_required
@@ -996,6 +864,8 @@ def settings():
         else: flash('プッシュ通知設定を有効にしました。')
         return redirect(url_for('settings', settings_open=1))
     form.enable_push.data = current_user.push_notifications_enabled
+    form.enable_comment_like.data = current_user.notification_comment_like
+    form.enable_reply.data = current_user.notification_reply
     return render_template('settings.html', form=form, settings_open=settings_open)
 
 @app.route('/OneSignalSDKWorker.js')
