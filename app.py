@@ -433,10 +433,20 @@ def toggle_like(post_id):
         db.session.add(like)
         is_liked = True
         
-        # 通知は不要との要望なのでスキップ
-        # if current_user != post.author:
-        #     notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にいいねが付きました。')
-        #     db.session.add(notification)
+        if current_user != post.author:
+            # 1. サイト内通知の作成
+            message = f'あなたの投稿「{post.title}」にいいねが付きました。'
+            notification = Notification(recipient=post.author, post=post, message=message)
+            db.session.add(notification)
+            
+            # 2. OneSignalプッシュ通知の送信
+            if post.author.push_notifications_enabled:
+                send_onesignal_notification(
+                    user_ids=[post.author.id],
+                    title="新しいいいね",
+                    message=message,
+                    url=url_for('post_detail', post_id=post.id, _external=True)
+                )
 
     db.session.commit()
     
