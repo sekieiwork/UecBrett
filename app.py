@@ -220,7 +220,8 @@ class User(db.Model, UserMixin):
     program = db.Column(db.String(100), nullable=True)
     major = db.Column(db.String(100), nullable=True)
     push_notifications_enabled = db.Column(db.Boolean, default=False)
-    
+    notification_comment_like = db.Column(db.Boolean, default=True) # 自分の投稿への反応
+    notification_reply = db.Column(db.Boolean, default=True)        # 自分がコメントした投稿への反応
     posts = db.relationship('Post', backref='author', lazy=True, cascade="all, delete")
     comments = db.relationship('Comment', backref='commenter', lazy=True, cascade="all, delete")
     bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic', cascade="all, delete")
@@ -382,12 +383,18 @@ def post_detail(post_id):
         comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
         db.session.add(comment)
         print(f"DEBUG: Comment by {current_user.id} on Post by {post.author.id}", flush=True)
-        if current_user != post.author:
+            # 投稿者が「コメント・いいね通知」をONにしている場合のみ作成
+        if post.author.notification_comment_like: 
             notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
             db.session.add(notification)
+
             if post.author.push_notifications_enabled:
-                send_onesignal_notification(user_ids=[post.author.id], title="新しいコメント", message=f'投稿「{post.title}」にコメントが付きました', url=url_for('post_detail', post_id=post.id, _external=True))
-        previous_commenters = db.session.query(User).join(Comment).filter(Comment.post_id == post.id).distinct().all()
+                send_onesignal_notification(
+                    user_ids=[post.author.id],
+                    title="新しいコメント",
+                    message=f'投稿「{post.title}」にコメントが付きました',
+                    url=url_for('post_detail', post_id=post.id, _external=True)
+                )
         for user in previous_commenters:
             if user.id == current_user.id: continue
             if user.id == post.author.id: continue
@@ -434,19 +441,19 @@ def toggle_like(post_id):
         is_liked = True
         
         if current_user != post.author:
-            # 1.サイト内通知の作成
-            message = f'あなたの投稿「{post.title}」にいいねが付きました。'
-            notification = Notification(recipient=post.author, post=post, message=message)
-            db.session.add(notification)
-            
-            # 2. OneSignalプッシュ通知の送信
-            if post.author.push_notifications_enabled:
-                send_onesignal_notification(
-                    user_ids=[post.author.id],
-                    title="新しいいいね",
-                    message=message,
-                    url=url_for('post_detail', post_id=post.id, _external=True)
-                )
+            # 投稿者が「コメント・いいね通知」をONにしている場合のみ
+            if post.author.notification_comment_like:
+                message = f'あなたの投稿「{post.title}」にいいねが付きました。'
+                notification = Notification(recipient=post.author, post=post, message=message)
+                db.session.add(notification)
+                
+                if post.author.push_notifications_enabled:
+                    send_onesignal_notification(
+                        user_ids=[post.author.id],
+                        title="新しいいいね",
+                        message=message,
+                        url=url_for('post_detail', post_id=post.id, _external=True)
+                    )
 
     db.session.commit()
     
@@ -862,6 +869,8 @@ def settings():
     if form.validate_on_submit():
         settings_open = True 
         current_user.push_notifications_enabled = form.enable_push.data
+        current_user.notification_comment_like = form.enable_comment_like.data
+        current_user.notification_reply = form.enable_reply.data
         db.session.commit()
         if not form.enable_push.data:
             UserSubscription.query.filter_by(user_id=current_user.id).delete()

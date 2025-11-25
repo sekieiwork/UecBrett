@@ -20,13 +20,28 @@
             </p>
             <form method="POST">
                 {{ form.csrf_token }}
-                <div class="form-field" style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5em; background: none; border: none; box-shadow: none; padding: 0;">
-                    {{ form.enable_push(style="width: auto; height: auto;") }}
-                    {{ form.enable_push.label(style="margin: 0; font-weight: normal;") }}
+                
+                <div class="form-field" style="display: flex; align-items: center; gap: 10px; margin-bottom: 1em; background: none; border: none; box-shadow: none; padding: 0;">
+                    {{ form.enable_push(style="width: auto; height: auto;", id="master-push-toggle") }}
+                    <label for="master-push-toggle" style="margin: 0; font-weight: bold; cursor: pointer;">{{ form.enable_push.label.text }}</label>
                 </div>
                 
-                <p style="font-size: 0.8em; color: var(--text-muted); margin-top: -1em; margin-bottom: 1.5em;">
-                    チェックを外すと、すべてのデバイスでのプッシュ通知が停止します。
+                <div id="detailed-settings" style="margin-left: 20px; margin-bottom: 1.5em; padding-left: 15px; border-left: 3px solid #eee; display: none;">
+                    <p style="font-size: 0.9em; color: var(--text-muted); margin-top: 0;">通知を受け取る項目を選択:</p>
+                    
+                    <div class="form-field" style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.5em; background: none; border: none; box-shadow: none; padding: 0;">
+                        {{ form.enable_comment_like(style="width: auto; height: auto;") }}
+                        {{ form.enable_comment_like.label(style="margin: 0; font-weight: normal; cursor: pointer;") }}
+                    </div>
+                    
+                    <div class="form-field" style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.5em; background: none; border: none; box-shadow: none; padding: 0;">
+                        {{ form.enable_reply(style="width: auto; height: auto;") }}
+                        {{ form.enable_reply.label(style="margin: 0; font-weight: normal; cursor: pointer;") }}
+                    </div>
+                </div>
+                
+                <p style="font-size: 0.8em; color: var(--text-muted); margin-top: 0em; margin-bottom: 1.5em;">
+                    ※チェックを外すと、すべてのデバイスでのプッシュ通知が停止します
                 </p>
                 {{ form.submit() }}
             </form>
@@ -57,7 +72,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-    // --- 1. 設定ページのトグル開閉機能 (既存のまま) ---
+    // --- 1. 設定ページのトグル開閉機能 (既存) ---
     const settingsToggle = document.getElementById('notification-settings-toggle');
     const settingsContent = document.getElementById('notification-settings-content');
     const toggleIcon = document.getElementById('toggle-icon');
@@ -69,7 +84,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- 2. デバイス別通知設定の制御 (修正版) ---
+    // ▼▼▼ 追加: 通知詳細設定の表示切り替え ▼▼▼
+    const masterToggle = document.getElementById('master-push-toggle');
+    const detailedSettings = document.getElementById('detailed-settings');
+
+    if (masterToggle && detailedSettings) {
+        // A. ページを開いたときの初期状態を設定
+        if (masterToggle.checked) {
+            detailedSettings.style.display = 'block';
+        } else {
+            detailedSettings.style.display = 'none';
+        }
+
+        // B. チェックボックスを切り替えたときの動作
+        masterToggle.addEventListener('change', function() {
+            if (this.checked) {
+                detailedSettings.style.display = 'block'; // ONなら表示
+            } else {
+                detailedSettings.style.display = 'none';  // OFFなら隠す
+            }
+        });
+    }
+    // ▲▲▲ ここまで追加 ▲▲▲
+
+
+    // --- 2. デバイス別通知設定の制御 (既存) ---
     const deviceToggle = document.getElementById('device-push-toggle');
     const deviceToggleLabel = deviceToggle ? deviceToggle.nextElementSibling : null;
 
@@ -101,11 +140,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if(deviceToggleLabel) deviceToggleLabel.textContent = "このデバイス（ブラウザ）で通知を受け取る";
             }
 
-            // ★ここが修正ポイント★
             // base_layout.html でのログイン処理(100ms〜500ms)が終わるのを待ってから確認する
             setTimeout(function() {
                 updateToggleState();
-            }, 1000); // 1秒待てば確実にログイン後の正しい状態が取れます
+            }, 1000);
 
             // チェックボックスが変更されたときの処理
             deviceToggle.addEventListener('change', async function() {
@@ -113,20 +151,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 try {
                     if (this.checked) {
-                        // OFF -> ON にする操作
                         console.log("User Action: ON");
                         await OneSignal.User.PushSubscription.optIn();
-                        //alert("通知を【ON】にしました。");
+                        // alert("通知を【ON】にしました。");
                     } else {
-                        // ON -> OFF にする操作
                         console.log("User Action: OFF");
                         await OneSignal.User.PushSubscription.optOut();
-                        //alert("通知を【OFF】にしました。");
+                        // alert("通知を【OFF】にしました。");
                     }
                 } catch (e) {
                     console.error("Change setting failed:", e);
                     alert("設定の変更に失敗しました。");
-                    // 失敗したらスイッチを元に戻す
                     deviceToggle.checked = !deviceToggle.checked;
                 } finally {
                     deviceToggle.disabled = false;
@@ -134,7 +169,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             
-            // 外部要因（ブラウザ設定など）で変わった場合も同期
             OneSignal.User.PushSubscription.addEventListener("change", function(event) {
                 updateToggleState();
             });

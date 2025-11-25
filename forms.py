@@ -140,3 +140,13 @@ class NotificationSettingsForm(FlaskForm):
     enable_push = BooleanField('プッシュ通知を有効にする')
     # (ここに 将来的に「コメントの通知」「回覧板の通知」などの個別トグルを追加できます)
     submit = SubmitField('設定を保存')
+
+class NotificationSettingsForm(FlaskForm):
+    enable_push = BooleanField('プッシュ通知を有効にする')
+    
+    # ▼▼▼ 追加: 詳細設定用のフィールド ▼▼▼
+    enable_comment_like = BooleanField('自分の投稿へのコメント・いいね')
+    enable_reply = BooleanField('コメントした投稿への投稿主からの返信')
+    # ▲▲▲ ここまで ▲▲▲
+    
+    submit = SubmitField('設定を保存')    

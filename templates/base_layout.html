@@ -125,7 +125,9 @@
         width: 100%;
         box-sizing: border-box;
         white-space: pre-wrap;
-        line-height: 1.5; /* <-- ▼▼▼ 1.0 から 1.5 に変更 (要望④) ▼▼▼ */
+        line-height: 1.0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
      .comment-content {
@@ -139,6 +141,8 @@
         box-sizing: border-box;
         white-space: pre-wrap;
         line-height: 1.0
+        overflow-wrap: anywhere;
+        word-break: break-word;
      }
 
     /* 投稿された画像のスタイル */
