@@ -104,43 +104,63 @@
                     {% endif %}
                 </div>
             </div>
-        <div class="content-width-limiter">
+        <div class="content-width-limiter" style="margin-bottom: 1em;">
+                <button id="toggle-comment-form-btn">
+                    コメントをする <i class="fas fa-plus"></i>
+                </button>
+            </div>
+
+            <div class="content-width-limiter">
+                <div id="comment-form-container" class="comment-container hidden">
+                    {% if current_user.is_authenticated %}
+                    <div class="comment-form">
+                        <form method="POST">
+                            {{ comment_form.csrf_token }}
+                            <div class="form-field">
+                            {{ comment_form.content.label }}<br>
+                            {{ comment_form.content(rows=5, class="comment-textarea") }}
+                            </div>
+                         {{ comment_form.submit }}
+                        </form>
+                    </div>
+                    {% else %}
+                    <div class="comment-form">
+                        <p>コメントするには<a href="{{ url_for('login') }}">ログイン</a>が必要です。</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="content-width-limiter">
                 <h3 id="comment-count-header">コメント ({{ post.comments|length }})</h3>
         
-                {# --- シンプルなループ表示に戻す --- #}
                 {% for comment in post.comments %}
                 <div class="comment-item" id="comment-{{ comment.id }}">
-                    <div class="comment-avatar-column">
-                        <a href="{{ url_for('user_profile', username=comment.commenter.username) }}">
-                            {% if comment.commenter.icon_url %}
-                                <img src="{{ comment.commenter.icon_url }}" alt="icon" class="user-icon">
-                            {% else %}
-                                <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="icon" class="user-icon">
-                            {% endif %}
-                        </a>
-                    </div>
-                    
-                    <div class="comment-main-column">
-                        <div class="comment-header">
+                    <div class="comment-header">
+                        <div style="display: flex; align-items: center;">
+                            <a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="user-icon-link">
+                                {% if comment.commenter.icon_url %}
+                                    <img src="{{ comment.commenter.icon_url }}" alt="icon" class="user-icon">
+                                {% else %}
+                                    <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="icon" class="user-icon">
+                                {% endif %}
+                            </a>
                             <div class="comment-meta">
                                 <strong><a href="{{ url_for('user_profile', username=comment.commenter.username) }}" class="{{ comment.commenter.get_username_class() }}" style="color: #333; text-decoration: none;">{{ comment.commenter.username }}</a></strong>
-                                <span style="color: #6c757d; font-size: 0.85em; margin-left: 5px;">{{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M') }}</span>
-                            </div>
-                            
-                            <div class="comment-menu-container">
-                                {% if current_user.is_authenticated and (current_user == comment.commenter or current_user == post.author or current_user.is_admin) %}
-                                    <button class="comment-menu-btn" onclick="toggleCommentMenu('{{ comment.id }}')">︙</button>
-                                    <div id="comment-menu-{{ comment.id }}" class="comment-menu-dropdown hidden">
-                                        <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="POST" style="margin:0;">
-                                            <button type="submit" class="menu-delete-btn" onclick="return confirm('本当に削除しますか？')">削除</button>
-                                        </form>
-                                    </div>
-                                {% endif %}
+                                <span style="color: #6c757d; font-size: 0.85em; margin-left: 10px;">{{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M') }}</span>
                             </div>
                         </div>
-                        
-                        <div class="comment-content">{{ comment.content | safe_markdown | safe }}</div>
+
+                        {% if current_user.is_authenticated and (current_user == comment.commenter or current_user == post.author or current_user.is_admin) %}
+                            <div class="comment-actions">
+                                <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="POST" style="margin:0;">
+                                    <button type="submit" class="delete-button" onclick="return confirm('本当に削除しますか？')">削除</button>
+                                </form>
+                            </div>
+                        {% endif %}
                     </div>
+                    
+                    <div class="comment-content">{{ comment.content | safe_markdown | safe }}</div>
                 </div>
                 {% endfor %}
             </div>

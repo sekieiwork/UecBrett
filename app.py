@@ -325,7 +325,12 @@ def process_mentions(content, source_obj):
                 n_post_id = source_obj.post_id
             else: continue
 
-            notification = Notification(recipient=target_user, message=message, post_id=n_post_id)
+            notification = Notification(
+                recipient=target_user, 
+                message=message, 
+                post_id=n_post_id,
+                is_read=False 
+            )
             db.session.add(notification)
             
             if target_user.push_notifications_enabled:
