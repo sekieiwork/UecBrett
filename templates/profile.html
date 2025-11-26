@@ -95,49 +95,58 @@
 
             <div class="post-content">{{ post.content | safe_markdown | safe }}</div>
             
-            <div class="post-meta">
-                <div>
-                    <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
-                    {% if post.updated_at %}
-                        <small style="color: gray;"> / 最終更新日時: {{ post.updated_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
-                    {% endif %}
-                </div>
+            <div class="post-meta" style="display: flex; flex-direction: column; gap: 5px;">
                 
-                {% if current_user.is_authenticated %}
-                <div style="display: flex; align-items: center;">
-                    {% if post.tags %}
-                        <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 20px; height: 20px; margin-right: 8px;">
-                    {% endif %}
-                    <form class="like-form" data-post-id="{{ post.id }}" style="margin: 0;">
-                            <button type="button" class="like-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em; color: #ff4d4f; display: flex; align-items: center; gap: 3px; padding: 0;">
-                                <span id="like-icon-{{ post.id }}">
-                                    {% if post.is_liked %}
-                                        <i class="fas fa-heart text-red"></i>
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <a href="{{ url_for('user_profile', username=post.author.username) }}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
+                        {% if post.author.icon_url %}
+                            <img src="{{ post.author.icon_url }}" alt="icon" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 5px;">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="icon" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 5px;">
+                        {% endif %}
+                        <span class="{{ post.author.get_username_class() }}">{{ post.author.username }}</span>
+                    </a>
+
+                    {% if current_user.is_authenticated %}
+                    <div style="display: flex; align-items: center;">
+                        {% if post.tags %}
+                            <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 20px; height: 20px; margin-right: 8px;">
+                        {% endif %}
+                        <form class="like-form" data-post-id="{{ post.id }}" style="margin: 0;">
+                                <button type="button" class="like-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em; color: #ff4d4f; display: flex; align-items: center; gap: 3px; padding: 0;">
+                                    <span id="like-icon-{{ post.id }}">
+                                        {% if post.is_liked %}
+                                            <i class="fas fa-heart text-red"></i>
+                                        {% else %}
+                                            <i class="far fa-heart"></i>
+                                        {% endif %}
+                                    </span>
+                                    <span id="like-count-{{ post.id }}" style="font-size: 0.8em; color: #666;">
+                                        {% if post.likes.count() > 0 %}{{ post.likes.count() }}{% endif %}
+                                    </span>
+                                </button>
+                            </form>
+                        <form class="bookmark-form" data-post-id="{{ post.id }}">
+                            <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
+                                <span id="bookmark-icon-{{ post.id }}">
+                                    {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
+                                    {% if is_bookmarked %}
+                                        <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
                                     {% else %}
-                                        <i class="far fa-heart"></i>
+                                        <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
                                     {% endif %}
-                                </span>
-                                <span id="like-count-{{ post.id }}" style="font-size: 0.8em; color: #666;">
-                                    {% if post.likes.count() > 0 %}{{ post.likes.count() }}{% endif %}
                                 </span>
                             </button>
                         </form>
-                    <form class="bookmark-form" data-post-id="{{ post.id }}">
-                        <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
-                            <span id="bookmark-icon-{{ post.id }}">
-                                {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
-                                {% if is_bookmarked %}
-                                    <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
-                                {% else %}
-                                    <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
-                                {% endif %}
-                            </span>
-                        </button>
-                    </form>
+                    </div> 
+                    {% endif %}
+                </div>
 
-                </div> {% endif %}
+                <div style="font-size: 0.9em; color: #6c757d;">
+                    投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}
+                </div>
             </div>
-        </div>
+            </div>
         {% endfor %}
         
         <div class="pagination content-width-limiter">
@@ -204,174 +213,4 @@
             {% endif %}
         </div>
     </div>
-{% endblock %}
-
-
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const collapseLongComments = () => {
-        const comments = document.querySelectorAll('.comment-content');
-        const LIMIT_HEIGHT = 160; // 折りたたむ基準の高さ
-
-        comments.forEach(comment => {
-            // すでにボタンがある場合は処理しない
-            if (comment.nextElementSibling && comment.nextElementSibling.classList.contains('read-more-btn')) {
-                return;
-            }
-
-            // 高さが基準を超えているかチェック
-            if (comment.scrollHeight > LIMIT_HEIGHT) {
-                // 1. クラスを追加して折りたたむ
-                comment.classList.add('collapsed');
-
-                // 2. 「全文を表示」ボタンを作成
-                const btn = document.createElement('button');
-                btn.innerText = '...全文を表示する ▽';
-                btn.className = 'read-more-btn';
-
-                // ▼▼▼ 修正箇所: 「戻す」ボタンのロジックを確実に実装 ▼▼▼
-                btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    
-                    if (comment.classList.contains('collapsed')) {
-                        // 閉じていたら開く
-                        comment.classList.remove('collapsed');
-                        this.innerText = '閉じる △'; // ボタンの文字を変更
-                    } else {
-                        // 開いていたら閉じる
-                        comment.classList.add('collapsed');
-                        this.innerText = '...全文を表示する ▽'; // ボタンの文字を戻す
-                    }
-                });
-
-                // 4. コメントの直後にボタンを挿入
-                comment.parentNode.insertBefore(btn, comment.nextSibling);
-            }
-        });
-    };
-
-    // ページ読み込み時に実行
-    collapseLongComments();
-    
-    // (画像読み込みなどで高さが変わる場合があるので、少し遅れてもう一度実行すると確実です)
-    setTimeout(collapseLongComments, 500);
-
-    // --- リンクカード生成機能 (修正版) ---
-    const contentAreas = document.querySelectorAll('.post-content, .comment-content');
-    
-    contentAreas.forEach(area => {
-        const links = area.querySelectorAll('a');
-        
-        for (const link of links) {
-            const url = link.href;
-
-            if (!url.startsWith('http://') && !url.startsWith('https://')) continue;
-            if (url.includes(window.location.hostname)) continue;
-            if (url.match(/\.(jpeg|jpg|gif|png|webp|heic|heif)$/i)) continue;
-
-            fetch(`/api/ogp?url=${encodeURIComponent(url)}`)
-                .then(response => {
-                    if (!response.ok) throw new Error(`Server returned ${response.status}`);
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.error) return;
-
-                    const card = document.createElement('a');
-                    card.href = data.url;
-                    card.className = 'link-card';
-                    card.target = '_blank';
-                    card.rel = 'noopener noreferrer';
-                    
-                    let imageHtml = '';
-                    if (data.image) {
-                        imageHtml = `<div class="link-card-image" style="background-image: url('${data.image}')"></div>`;
-                    }
-
-                    card.innerHTML = `
-                        ${imageHtml}
-                        <div class="link-card-content">
-                            <div class="link-card-title">${data.title}</div>
-                            <div class="link-card-desc">${data.description}</div>
-                            <div class="link-card-url">${new URL(data.url).hostname}</div>
-                        </div>
-                    `;
-
-                    const contentWrapper = link.closest('.post-content') || link.closest('.comment-content');
-                    if (contentWrapper) {
-                        let cardContainer = contentWrapper.nextElementSibling;
-                        if (!cardContainer || !cardContainer.classList.contains('link-card-container')) {
-                            cardContainer = document.createElement('div');
-                            cardContainer.className = 'link-card-container';
-                            contentWrapper.parentNode.insertBefore(cardContainer, contentWrapper.nextSibling);
-                        }
-                        
-                        if (cardContainer.children.length === 0) {
-                            cardContainer.appendChild(card);
-                        }
-                    }
-                })
-                .catch(err => {
-                    console.log('OGP fetch failed for:', url, err);
-                });
-            break; 
-        }
-    });
-
-    // いいねボタンの機能 (profileページ用)
-    document.querySelectorAll('.like-toggle-btn').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation(); 
-            const form = this.closest('.like-form');
-            const postId = form.dataset.postId;
-            const url = `/like/${postId}`;
-            
-            fetch(url, {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
-            })
-            .then(response => response.json())
-            .then(data => {
-                const iconSpan = document.getElementById(`like-icon-${postId}`);
-                const countSpan = document.getElementById(`like-count-${postId}`);
-                if (data.is_liked) {
-                    iconSpan.innerHTML = '<i class="fas fa-heart text-red"></i>';
-                } else {
-                    iconSpan.innerHTML = '<i class="far fa-heart"></i>';
-                }
-                if (countSpan) countSpan.textContent = data.count > 0 ? data.count : '';
-            })
-            .catch(error => console.error('Error:', error));
-        });
-    });
-    
-    // ブックマークボタンの機能 (profileページ用)
-    document.querySelectorAll('.bookmark-toggle-btn').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const form = this.closest('.bookmark-form');
-            const postId = form.dataset.postId;
-            // FlaskのURL生成ロジックに合わせる
-            const urlBase = "{{ url_for('bookmark_post', post_id=0) }}".slice(0, -1); 
-            const url = urlBase + postId;
-
-            fetch(url, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' } })
-            .then(response => response.json())
-            .then(data => {
-                const iconSpan = document.getElementById(`bookmark-icon-${postId}`);
-                if (iconSpan) {
-                    if (data.is_bookmarked) {
-                        iconSpan.innerHTML = '<img src="{{ url_for("static", filename="icons/bookmarked.png") }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">';
-                    } else {
-                        iconSpan.innerHTML = '<img src="{{ url_for("static", filename="icons/bookmark.png") }}" alt="ブックマーク" style="width: 20px; height: 20px;">';
-                    }
-                }
-            })
-            .catch(error => console.error('Error:', error));
-        });
-    });
-});
-</script>
 {% endblock %}

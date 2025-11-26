@@ -25,9 +25,12 @@
                         {% endfor %}
                 </div>
             {% endif %}
-            <div class="post-meta">
-                <div style="display: flex; align-items: center;">
-                    <a href="{{ url_for('user_profile', username=post.author.username) }}" style="display: flex; align-items: center; text-decoration: none; color: inherit; margin-right: 10px;">
+            
+            <div class="post-meta" style="display: flex; flex-direction: column; gap: 5px;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    
+                    <a href="{{ url_for('user_profile', username=post.author.username) }}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
                         {% if post.author.icon_url %}
                             <img src="{{ post.author.icon_url }}" alt="icon" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 5px;">
                         {% else %}
@@ -35,47 +38,54 @@
                         {% endif %}
                         <span class="{{ post.author.get_username_class() }}">{{ post.author.username }}</span>
                     </a>
-                    <small style="color: #6c757d;">| {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
-                </div>
-    
-                {% if current_user.is_authenticated %}
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    {% if post.tags %}
-                        <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 20px; height: 20px; margin-right: 0px;">
-                    {% endif %}
-                    <form class="like-form" data-post-id="{{ post.id }}" style="margin: 0;">
-                        <button type="button" class="like-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em; color: #ff4d4f; display: flex; align-items: center; gap: 3px; padding: 0;">
-                            <span id="like-icon-{{ post.id }}">
-                                {% if post.is_liked %} <i class="fas fa-heart text-red"></i> {% else %} <i class="far fa-heart"></i> {% endif %}
-                            </span>
-                            <span id="like-count-{{ post.id }}" style="font-size: 0.8em; color: #666;">
-                            {% if post.likes.count() > 0 %}{{ post.likes.count() }}{% endif %}
-                            </span>
-                        </button>
-                    </form>
-                    <form class="bookmark-form" data-post-id="{{ post.id }}" style="margin: 0;">
-                        <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em; padding: 0; display: flex; align-items: center;">
-                            <span id="bookmark-icon-{{ post.id }}">
-                                {% if post.is_bookmarked %}
-                                    <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
-                                {% else %}
-                                    <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
-                                {% endif %}
-                            </span>
-                        </button>
-                    </form>
         
-                    {% if post.author == current_user or current_user.is_admin %}
-                        <a href="{{ url_for('edit_post', post_id=post.id) }}" class="delete-button yellow" style="text-decoration: none; display: inline-block;">編集</a>
-                        
-                        <form action="{{ url_for('delete_post', post_id=post.id) }}" method="POST" style="margin: 0;">
-                            <button type="submit" class="delete-button" onclick="return confirm('本当にこの投稿を削除しますか？');">削除</button>
+                    {% if current_user.is_authenticated %}
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        {% if post.tags %}
+                            <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 20px; height: 20px; margin-right: 0px;">
+                        {% endif %}
+                        <form class="like-form" data-post-id="{{ post.id }}" style="margin: 0;">
+                            <button type="button" class="like-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em; color: #ff4d4f; display: flex; align-items: center; gap: 3px; padding: 0;">
+                                <span id="like-icon-{{ post.id }}">
+                                    {% if post.is_liked %} <i class="fas fa-heart text-red"></i> {% else %} <i class="far fa-heart"></i> {% endif %}
+                                </span>
+                                <span id="like-count-{{ post.id }}" style="font-size: 0.8em; color: #666;">
+                                {% if post.likes.count() > 0 %}{{ post.likes.count() }}{% endif %}
+                                </span>
+                            </button>
                         </form>
-                    {% endif %}
+                        <form class="bookmark-form" data-post-id="{{ post.id }}" style="margin: 0;">
+                            <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em; padding: 0; display: flex; align-items: center;">
+                                <span id="bookmark-icon-{{ post.id }}">
+                                    {% if post.is_bookmarked %}
+                                        <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
+                                    {% else %}
+                                        <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
+                                    {% endif %}
+                                </span>
+                            </button>
+                        </form>
+            
+                        {% if post.author == current_user or current_user.is_admin %}
+                            <a href="{{ url_for('edit_post', post_id=post.id) }}" class="delete-button yellow" style="text-decoration: none; display: inline-block;">編集</a>
+                            
+                            <form action="{{ url_for('delete_post', post_id=post.id) }}" method="POST" style="margin: 0;">
+                                <button type="submit" class="delete-button" onclick="return confirm('本当にこの投稿を削除しますか？');">削除</button>
+                            </form>
+                        {% endif %}
                     </div> 
-                {% endif %}
+                    {% endif %}
+                </div>
+
+                <div style="font-size: 0.9em; color: #6c757d;">
+                    {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}
+                    {% if post.updated_at %}
+                        <span style="margin-left: 0.5em;">(更新: {{ post.updated_at_jst.strftime('%Y-%m-%d %H:%M:%S') }})</span>
+                    {% endif %}
+                </div>
+
             </div>
-        </div> 
+            </div> 
     </div> 
         
             <div class="content-width-limiter" style="margin-bottom: 1em;">
