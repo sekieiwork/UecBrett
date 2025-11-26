@@ -101,7 +101,7 @@
                 </div>
             </div>
 
-            <div class="comments-header content-width-limiter" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em; margin-top: 1.5em;">
+<div class="comments-header content-width-limiter" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em; margin-top: 1.5em;">
                 <h3 style="margin: 0;">コメント ({{ post.comments|length }})</h3>
 
                 <div>
@@ -110,7 +110,8 @@
                         <option value="newest" {% if sort_comments == 'newest' %}selected{% endif %}>新しい順</option>
                     </select>
                 </div>
-        
+            </div> 
+            <div class="content-width-limiter">
                 {% for comment in post.comments %}
                 <div class="comment-item" id="comment-{{ comment.id }}">
                     <div class="comment-header">
