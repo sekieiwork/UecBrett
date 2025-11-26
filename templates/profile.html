@@ -172,7 +172,7 @@
                     </a>
                     へのコメント ({{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M') }})
                 </p>
-                <div class="comment-content" style="max-height: 100px; overflow-y: auto;">
+                <div class="comment-content">
                     {{ comment.content | safe_markdown | safe }}
                 </div>
             </div>

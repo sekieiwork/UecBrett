@@ -130,14 +130,29 @@
          overflow-y: visible;
      }
 
-    /* --- B. コメント本文の設定 --- */
+    /* --- B. コメント本文の設定--- */
      .comment-content {
-         /* コメントはスクロールさせない（JSで折りたたむため） */
+         /* JSで折りたたむので、CSSでのスクロールは無効化 */
          max-height: none;
          overflow-y: visible;
-         padding: 0;
-         border: none;
-         background: none;
+         
+         /* ▼▼▼ 枠線と背景を復活させる設定 ▼▼▼ */
+         border: 1px solid #dee2e6;
+         border-radius: 0.25rem;
+         background-color: #ffffff;
+         padding: 0.8em 1em; /* 内側の余白 */
+         /* ▲▲▲ ここまで ▲▲▲ */
+         
+         margin-top: 5px;
+         margin-bottom: 5px;
+         width: 100%;
+         box-sizing: border-box;
+         white-space: pre-wrap;
+         line-height: 1.6; 
+         overflow-wrap: anywhere;
+         word-break: break-word;
+         font-size: 1em;
+         color: #333;
      }
 
      /* 共通のベース設定 */
