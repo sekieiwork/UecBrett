@@ -66,9 +66,13 @@
                     </form>
         
                     {% if post.author == current_user or current_user.is_admin %}
-                        <a href="{{ url_for('edit_post', post_id=post.id) }}" style="font-size: 0.9em; margin-left: 5px;">編集</a>
+                        <a href="{{ url_for('edit_post', post_id=post.id) }}" class="delete-button yellow" style="text-decoration: none; display: inline-block;">編集</a>
+                        
+                        <form action="{{ url_for('delete_post', post_id=post.id) }}" method="POST" style="margin: 0;">
+                            <button type="submit" class="delete-button" onclick="return confirm('本当にこの投稿を削除しますか？');">削除</button>
+                        </form>
                     {% endif %}
-                </div> 
+                    </div> 
                 {% endif %}
             </div>
         </div> 
@@ -101,7 +105,7 @@
                 </div>
             </div>
 
-<div class="comments-header content-width-limiter" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em; margin-top: 1.5em;">
+            <div class="comments-header content-width-limiter" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em; margin-top: 1.5em;">
                 <h3 style="margin: 0;">コメント ({{ post.comments|length }})</h3>
 
                 <div>
@@ -110,7 +114,8 @@
                         <option value="newest" {% if sort_comments == 'newest' %}selected{% endif %}>新しい順</option>
                     </select>
                 </div>
-            </div> 
+            </div>
+
             <div class="content-width-limiter">
                 {% for comment in post.comments %}
                 <div class="comment-item" id="comment-{{ comment.id }}">
