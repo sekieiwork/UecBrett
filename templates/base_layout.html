@@ -912,6 +912,73 @@ a.tag-box:hover {
         .link-card-title { font-size: 0.9em; }
     }
 
+    /* ▼▼▼ 画像拡大モーダル用CSS ▼▼▼ */
+    #image-modal {
+        display: none; /* デフォルト非表示 */
+        position: fixed;
+        z-index: 2000; /* ヘッダーより上 */
+        padding-top: 0;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: rgba(0,0,0,0.9); /* 黒背景（少し透過） */
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+    }
+
+    /* 拡大画像 */
+    .modal-content-img {
+        margin: auto;
+        display: block;
+        width: auto;
+        height: auto;
+        max-width: 95%;
+        max-height: 95%;
+        object-fit: contain;
+        animation-name: zoom;
+        animation-duration: 0.3s;
+    }
+
+    /* ズームアニメーション */
+    @keyframes zoom {
+        from {transform:scale(0.8); opacity: 0;}
+        to {transform:scale(1); opacity: 1;}
+    }
+
+    /* 閉じるボタン */
+    #close-modal {
+        position: absolute;
+        top: 20px;
+        right: 30px;
+        color: #f1f1f1;
+        font-size: 40px;
+        font-weight: bold;
+        transition: 0.3s;
+        cursor: pointer;
+        z-index: 2001;
+        background: rgba(0, 0, 0, 0.5);
+        width: 50px;
+        height: 50px;
+        line-height: 50px;
+        text-align: center;
+        border-radius: 50%;
+    }
+
+    #close-modal:hover,
+    #close-modal:focus {
+        color: #bbb;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    
+    /* カーソルをズームインに変更（投稿画像） */
+    .post-image {
+        cursor: zoom-in;
+    }
+
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
@@ -2015,6 +2082,48 @@ document.addEventListener('DOMContentLoaded', function() {
             break; 
         }
     });
+
+    // ▼▼▼ 画像拡大（ライトボックス）機能 ▼▼▼
+    
+    // 1. モーダルのHTMLをbodyに追加
+    const modalHtml = `
+        <div id="image-modal">
+            <span id="close-modal">&times;</span>
+            <img class="modal-content-img" id="expanded-image">
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    const modal = document.getElementById('image-modal');
+    const modalImg = document.getElementById('expanded-image');
+    const closeSpan = document.getElementById('close-modal');
+
+    // 2. 画像クリックでモーダルを表示 (Event Delegationを使用)
+    document.addEventListener('click', function(e) {
+        // .post-image クラスを持つ要素がクリックされたら実行
+        if (e.target && e.target.classList.contains('post-image')) {
+            e.preventDefault(); // リンク化されていた場合の遷移を防ぐ
+            modal.style.display = "flex"; // Flexboxで中央寄せ
+            modalImg.src = e.target.src; // クリックした画像のURLをセット
+        }
+    });
+
+    // 3. 閉じる処理 (×ボタン)
+    if (closeSpan) {
+        closeSpan.onclick = function() {
+            modal.style.display = "none";
+        }
+    }
+
+    // 4. 閉じる処理 (画像の背景部分をクリック)
+    if (modal) {
+        modal.onclick = function(e) {
+            if (e.target === modal) { // 画像そのものではなく、背景をクリックした場合
+                modal.style.display = "none";
+            }
+        }
+    }
+    // ▲▲▲ 画像拡大機能 ここまで ▲▲▲
 });
 
 // ▼▼▼いいねボタンの機能 ▼▼▼

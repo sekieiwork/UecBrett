@@ -178,7 +178,7 @@ def parse_review_for_editing(content):
     return subjects if subjects else None
 
 def save_picture(form_picture):
-    upload_result = cloudinary.uploader.upload(form_picture, folder="post_images", width=500, height=500, crop="limit")
+    upload_result = cloudinary.uploader.upload(form_picture, folder="post_images", width=2048, height=2048, crop="limit")
     return upload_result.get('secure_url')
 
 def save_icon(form_icon):
