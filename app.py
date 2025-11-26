@@ -758,20 +758,6 @@ def admin_delete_user(user_id):
     flash('ユーザーを削除しました。')
     return redirect(url_for('admin_dashboard'))
 
-# ▼▼▼ 追加: 管理者付与用シークレットルート ▼▼▼
-@app.route('/make_me_admin/<string:secret>')
-def make_me_admin(secret):
-    if secret != os.environ.get('UPGRADE_SECRET_KEY', 'default_secret'):
-        abort(403)
-    
-    if not current_user.is_authenticated:
-        return "ログインしてください"
-    
-    user = User.query.get(current_user.id)
-    user.is_admin = True
-    db.session.commit()
-    return f"ユーザー {user.username} を管理者にしました！"
-# ▲▲▲ ここまで ▲▲▲
 
 @app.route('/notifications')
 @login_required
