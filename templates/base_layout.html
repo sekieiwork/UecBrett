@@ -116,18 +116,38 @@
     
     /* 5. 表示される投稿・コメント本文の行間設定 */
     .post-content {
-        max-height: 100px;
-        overflow-y: auto;
+        max-height: 300px; /* 高さが300pxを超えたらスクロール */
+        overflow-y: auto;  /* スクロールバーを表示 */
         padding: 1em;
         border: 1px solid #dee2e6;
         border-radius: 0.25rem;
         margin-top: 10px;
+        background-color: #ffffff; /* 白背景 */
         width: 100%;
         box-sizing: border-box;
         white-space: pre-wrap;
-        line-height: 1.0;
+        line-height: 1.5;
         overflow-wrap: anywhere;
         word-break: break-word;
+        font-size: 1em;
+        color: #333;
+    }
+
+    /* --- コメント本文 (全表示・スクロールなし) --- */
+    .comment-content {
+        /* height指定なし = 中身に合わせて伸び縮みする (1行なら1行分) */
+        padding: 0;
+        margin: 0;
+        border: none; /* 枠線なし */
+        background: none; /* 背景なし */
+        width: 100%;
+        box-sizing: border-box;
+        white-space: pre-wrap;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        font-size: 1em;
+        color: #333;
     }
 
      /* 5. 表示される投稿・コメント本文の行間設定 (統一) */
@@ -138,7 +158,7 @@
         padding: 0.8em 1em;
         border: 1px solid #dee2e6;
         border-radius: 0.25rem;
-        background-color: #fdfdfd; /* 少し明るい背景色 */
+        background-color: #ffffff;
         margin-top: 5px;
         margin-bottom: 5px;
         width: 100%;
@@ -155,6 +175,45 @@
          margin-top: 0;
          margin-bottom: 0.3em; /* ここを 0 にすれば完全に詰まります。お好みで調整 */
      }
+
+     /* ▼▼▼ 長文コメントの省略表示用CSS ▼▼▼ */
+    
+    /* 折りたたまれた状態 */
+    .comment-content.collapsed {
+        max-height: 125px; /* ここで高さを制限 (約6~7行分) */
+        overflow: hidden;
+        position: relative;
+    }
+    
+    /* 下の方をふんわり白くぼかすエフェクト */
+    .comment-content.collapsed::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 60px; /* グラデーションの高さ */
+        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1) 90%);
+        pointer-events: none; /* クリックを邪魔しない */
+    }
+
+    /* 「全文を表示」ボタンのスタイル */
+    .read-more-btn {
+        display: block;
+        margin-top: 5px;
+        margin-left: auto; /* 右寄せ */
+        background: none;
+        border: none;
+        color: #007bff; /* リンクっぽい青色 */
+        font-size: 0.9em;
+        font-weight: bold;
+        cursor: pointer;
+        padding: 5px;
+    }
+    
+    .read-more-btn:hover {
+        text-decoration: underline;
+    }
 
     /* 投稿された画像のスタイル */
     .post-image {
@@ -1846,6 +1905,47 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+        const collapseLongComments = () => {
+        const comments = document.querySelectorAll('.comment-content');
+        const LIMIT_HEIGHT = 160; // 折りたたむ基準の高さ (CSSのmax-heightより少し大きめに)
+
+        comments.forEach(comment => {
+            // すでにボタンがある場合は処理しない（二重防止）
+            if (comment.nextElementSibling && comment.nextElementSibling.classList.contains('read-more-btn')) {
+                return;
+            }
+
+            // 高さが基準を超えているかチェック
+            if (comment.scrollHeight > LIMIT_HEIGHT) {
+                // 1. クラスを追加して折りたたむ
+                comment.classList.add('collapsed');
+
+                // 2. 「全文を表示」ボタンを作成
+                const btn = document.createElement('button');
+                btn.innerText = '...全文を表示する ▽';
+                btn.className = 'read-more-btn';
+
+                // 3. ボタンクリック時の動作
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    // 折りたたみクラスを外す
+                    comment.classList.remove('collapsed');
+                    // ボタン自体を消す
+                    this.remove();
+                });
+
+                // 4. コメントの直後にボタンを挿入
+                comment.parentNode.insertBefore(btn, comment.nextSibling);
+            }
+        });
+    };
+
+    // ページ読み込み時に実行
+    collapseLongComments();
+    
+    // (画像読み込みなどで高さが変わる場合があるので、少し遅れてもう一度実行すると確実です)
+    setTimeout(collapseLongComments, 500);
+
     // --- リンクカード生成機能 (修正版: 1つだけ表示 & エラーハンドリング強化) ---
     const contentAreas = document.querySelectorAll('.post-content, .comment-content');
     
