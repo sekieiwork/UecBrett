@@ -26,31 +26,34 @@
                 </div>
             {% endif %}
             <div class="post-meta">
-                <div>
-                    <small>投稿者: <a href="{{ url_for('user_profile', username=post.author.username) }}" class="{{ post.author.get_username_class() }}">{{ post.author.username }}</a></small> | 
-                    <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
-                    {% if post.updated_at %}
-                        <small>/ 最終更新日時: {{ post.updated_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
-                    {% endif %}
+                <div style="display: flex; align-items: center;">
+                    <a href="{{ url_for('user_profile', username=post.author.username) }}" style="display: flex; align-items: center; text-decoration: none; color: inherit; margin-right: 10px;">
+                        {% if post.author.icon_url %}
+                            <img src="{{ post.author.icon_url }}" alt="icon" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 5px;">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="icon" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 5px;">
+                        {% endif %}
+                        <span class="{{ post.author.get_username_class() }}">{{ post.author.username }}</span>
+                    </a>
+                    <small style="color: #6c757d;">| {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
                 </div>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    {% if current_user.is_authenticated %}
-                    
+    
+                {% if current_user.is_authenticated %}
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    {% if post.tags %}
+                        <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 20px; height: 20px; margin-right: 0px;">
+                    {% endif %}
                     <form class="like-form" data-post-id="{{ post.id }}" style="margin: 0;">
                         <button type="button" class="like-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em; color: #ff4d4f; display: flex; align-items: center; gap: 3px; padding: 0;">
                             <span id="like-icon-{{ post.id }}">
-                                {% if post.is_liked %}
-                                    <i class="fas fa-heart text-red"></i>
-                                {% else %}
-                                    <i class="far fa-heart"></i>
-                                {% endif %}
+                                {% if post.is_liked %} <i class="fas fa-heart text-red"></i> {% else %} <i class="far fa-heart"></i> {% endif %}
                             </span>
                             <span id="like-count-{{ post.id }}" style="font-size: 0.8em; color: #666;">
-                                {% if post.likes.count() > 0 %}{{ post.likes.count() }}{% endif %}
+                            {% if post.likes.count() > 0 %}{{ post.likes.count() }}{% endif %}
                             </span>
                         </button>
                     </form>
-                    <form class="bookmark-form" data-post-id="{{ post.id }}" style="margin-bottom: 0;">
+                    <form class="bookmark-form" data-post-id="{{ post.id }}" style="margin: 0;">
                         <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em; padding: 0; display: flex; align-items: center;">
                             <span id="bookmark-icon-{{ post.id }}">
                                 {% if post.is_bookmarked %}
@@ -61,22 +64,15 @@
                             </span>
                         </button>
                     </form>
+        
+                    {% if post.author == current_user or current_user.is_admin %}
+                        <a href="{{ url_for('edit_post', post_id=post.id) }}" style="font-size: 0.9em; margin-left: 5px;">編集</a>
                     {% endif %}
-
-                    {% if current_user.is_authenticated and current_user == post.author %}
-                        <a href="{{ url_for('edit_post', post_id=post.id) }}" class="delete-button yellow" style="text-decoration: none;">編集</a>
-                    {% endif %}
-                    {% if current_user.is_authenticated and (current_user == post.author or current_user.is_admin) %}
-                        <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" style="margin-bottom: 0;">
-                            <input type="submit" value="削除" onclick="return confirm('本当に削除しますか？');" class="delete-button">
-                        </form>
-                    {% endif %}
-                </div>
+                </div> 
+                {% endif %}
             </div>
-            <hr>
-
-            </div> 
         </div> 
+    </div> 
         
             <div class="content-width-limiter" style="margin-bottom: 1em;">
                 <button id="toggle-comment-form-btn">
@@ -105,8 +101,15 @@
                 </div>
             </div>
 
-            <div class="content-width-limiter">
-                <h3 id="comment-count-header">コメント ({{ post.comments|length }})</h3>
+            <div class="comments-header content-width-limiter" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em; margin-top: 1.5em;">
+                <h3 style="margin: 0;">コメント ({{ post.comments|length }})</h3>
+
+                <div>
+                    <select id="comment-sort-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9em;">
+                        <option value="oldest" {% if sort_comments == 'oldest' %}selected{% endif %}>古い順</option>
+                        <option value="newest" {% if sort_comments == 'newest' %}selected{% endif %}>新しい順</option>
+                    </select>
+                </div>
         
                 {% for comment in post.comments %}
                 <div class="comment-item" id="comment-{{ comment.id }}">
@@ -138,4 +141,18 @@
                 </div>
                 {% endfor %}
             </div>
+
+            <script>
+                // コメント並び替え
+                const commentSortSelect = document.getElementById('comment-sort-select');
+                if (commentSortSelect) {
+                    commentSortSelect.addEventListener('change', function() {
+                        const selectedSort = this.value;
+                        const currentUrl = new URL(window.location.href);
+                        currentUrl.searchParams.set('sort_comments', selectedSort);
+                        window.location.href = currentUrl.toString();
+                    });
+                }
+            </script>
+            
 {% endblock %}

@@ -108,11 +108,34 @@ linker = Linker(callbacks=[lambda attrs, new: attrs.update({(None, 'target'): '_
 @app.template_filter('safe_markdown')
 def safe_markdown_filter(text):
     if not text: return ""
+
     def replace_mention(match):
-        username = match.group(1)
-        return f'[@{username}]({url_for("user_profile", username=username)})'
+        original_text = match.group(0) # 例: @二酸化ケイ素さん
+        candidate = match.group(1)     # 例: 二酸化ケイ素さん
+        
+        # 1. そのままの名前でユーザーが存在するかチェック
+        user = User.query.filter_by(username=candidate).first()
+        if user:
+            return f'[@{candidate}]({url_for("user_profile", username=candidate)})'
+        
+        # 2. 存在しない場合、末尾から1文字ずつ削ってチェックする (敬称対策)
+        # 例: "二酸化ケイ素さん" -> "二酸化ケイ素" -> ヒット！
+        for i in range(1, len(candidate)):
+            sub_candidate = candidate[:-i]
+            suffix = candidate[-i:] # 削った部分 (例: "さん")
+            
+            # 念のため1文字以下のユーザー名は無視するなどの制限も可能ですが、一旦そのまま検索
+            user = User.query.filter_by(username=sub_candidate).first()
+            if user:
+                # ユーザー名部分はリンクにし、削った部分(敬称)はそのままテキストとして後ろにつける
+                return f'[@{sub_candidate}]({url_for("user_profile", username=sub_candidate)}){suffix}'
+
+        # 3. 結局見つからなければそのまま表示
+        return original_text
     
+    # 正規表現で @(...) をキャッチ
     text = re.sub(r'@([a-zA-Z0-9_一-龠ぁ-んァ-ヶー]+)', replace_mention, text)
+    
     html = md.convert(text)
     def add_target_blank(attrs, new=False):
         attrs[(None, 'target')] = '_blank'
@@ -397,7 +420,16 @@ def index(page):
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
     post = Post.query.get_or_404(post_id)
-    post.comments.sort(key=lambda c: c.created_at, reverse=True)
+    
+    # クエリパラメータでソート順を取得 (デフォルトは 'oldest')
+    sort_comments = request.args.get('sort_comments', 'oldest')
+    
+    # コメントの並び替え
+    if sort_comments == 'newest':
+        post.comments.sort(key=lambda c: c.created_at, reverse=True) # 新しい順
+    else:
+        post.comments.sort(key=lambda c: c.created_at, reverse=False) # 古い順 (デフォルト)
+
     comment_form = CommentForm()
     if comment_form.validate_on_submit() and current_user.is_authenticated:
         comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
@@ -433,7 +465,9 @@ def post_detail(post_id):
     else:
         post.is_bookmarked = False
         post.is_liked = False
-    return render_template('detail.html', post=post, comment_form=comment_form,  md=md)
+    
+    # テンプレートに sort_comments を渡す
+    return render_template('detail.html', post=post, comment_form=comment_form, md=md, sort_comments=sort_comments)
 
 @app.route('/like/<int:post_id>', methods=['POST'])
 @login_required

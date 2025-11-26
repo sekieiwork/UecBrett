@@ -42,7 +42,17 @@
                     <div class="post-content">{{ post.content | safe_markdown | safe }}</div>
                     <div class="post-meta">
                         <div>
-                            <small>投稿者: <a href="{{ url_for('user_profile', username=post.author.username) }}" class="{{ post.author.get_username_class() }}">{{ post.author.username }}</a></small> | 
+                            <div style="display: flex; align-items: center;">
+                                <a href="{{ url_for('user_profile', username=post.author.username) }}" style="display: flex; align-items: center; text-decoration: none; color: inherit; margin-right: 10px;">
+                                    {% if post.author.icon_url %}
+                                        <img src="{{ post.author.icon_url }}" alt="icon" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 5px;">
+                                    {% else %}
+                                        <img src="{{ url_for('static', filename='icons/default_icon.png') }}" alt="icon" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 5px;">
+                                    {% endif %}
+                                    <span class="{{ post.author.get_username_class() }}">{{ post.author.username }}</span>
+                                </a>
+                                <small style="color: #6c757d;">| {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                            </div>| 
                             <small>投稿日時: {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}</small>
                         </div>
                         {% if current_user.is_authenticated %}
