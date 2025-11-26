@@ -165,8 +165,10 @@
         <h3 class="content-width-limiter">コメント履歴</h3>
         {% if comments.items %}
             {% for comment in comments.items %}
-            <div class="comment-item content-width-limiter" style="margin-bottom: 1em; background-color: #fff; padding: 1.5em; border: 1px solid #dee2e6; border-radius: 0.25rem;">
-            <p style="font-size: 0.9em; color: #6c757d; margin-top: 0;">
+            
+            <div class="comment-item content-width-limiter" style="margin-bottom: 1em; background-color: #fff; padding: 1em; border: 1px solid #dee2e6; border-radius: 0.25rem;">
+            
+                <p style="font-size: 0.9em; color: #6c757d; margin-top: 0;">
                     <a href="{{ url_for('post_detail', post_id=comment.post.id, _anchor='comment-' + comment.id|string) }}">
                         <strong>「{{ comment.post.title }}」</strong>
                     </a>

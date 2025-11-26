@@ -169,6 +169,8 @@
         word-break: break-word;
         font-size: 1em;
         color: #333;
+        min-height: 0; 
+        height: auto;
      }
 
     .post-content p, .comment-content p {
@@ -1913,13 +1915,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.innerText = '...全文を表示する ▽';
                 btn.className = 'read-more-btn';
 
-                // 3. ボタンクリック時の動作
+                // ▼▼▼ 3. ボタンクリック時の動作 ▼▼▼
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
-                    // 折りたたみクラスを外す
-                    comment.classList.remove('collapsed');
-                    // ボタン自体を消す
-                    this.remove();
+                    
+                    if (comment.classList.contains('collapsed')) {
+                        // 閉じていたら開く
+                        comment.classList.remove('collapsed');
+                        this.innerText = '閉じる △'; // ボタンの文字を変更
+                    } else {
+                        // 開いていたら閉じる
+                        comment.classList.add('collapsed');
+                        this.innerText = '...全文を表示する ▽'; // ボタンの文字を戻す
+                    }
                 });
 
                 // 4. コメントの直後にボタンを挿入
