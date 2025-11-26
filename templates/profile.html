@@ -65,7 +65,7 @@
                 </div>
             {% endif %}
             {% if user.bio %}
-             <div class="post-content" style="border:none; padding:0; background:transparent; min-height:0;">{{ user.bio | safe_markdown | safe }}</div>
+             <div class="post-content">{{ user.bio | safe_markdown | safe }}</div>
             {% endif %}
         </div>
     {% endif %}
