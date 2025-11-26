@@ -168,14 +168,14 @@
             
             <div class="comment-item content-width-limiter" style="margin-bottom: 1em; background-color: #fff; padding: 1em; border: 1px solid #dee2e6; border-radius: 0.25rem;">
             
-                <p style="font-size: 0.9em; color: #6c757d; margin-top: 0;">
+                <p style="font-size: 0.9em; color: #6c757d; margin-top: 0; margin-bottom: 5px;">
                     <a href="{{ url_for('post_detail', post_id=comment.post.id, _anchor='comment-' + comment.id|string) }}">
                         <strong>「{{ comment.post.title }}」</strong>
                     </a>
                     へのコメント ({{ comment.created_at_jst.strftime('%Y-%m-%d %H:%M') }})
                 </p>
                 
-                <div class="comment-content" style="min-height: 0;">
+                <div class="comment-content" style="min-height: 0; margin-top: 0; padding: 0.5em 1em;">
                     {{ comment.content | safe_markdown | safe }}
                 </div>
             </div>
