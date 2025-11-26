@@ -36,13 +36,25 @@ cloudinary.config(
 )
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key'
+import secrets
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(16))
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
 db = SQLAlchemy(app)
 md = markdown.Markdown(extensions=['nl2br'])
 migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+@app.after_request
+def add_header(response):
+    """
+    ブラウザやサーバーにページをキャッシュさせない設定。
+    これにより、Aさんの画面がBさんに表示される事故を防ぎます。
+    """
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
 
 # --- OneSignalの設定 ---
 app.config['ONESIGNAL_APP_ID'] = os.environ.get('ONESIGNAL_APP_ID')
