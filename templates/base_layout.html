@@ -115,61 +115,46 @@
     }
     
     /* 5. 表示される投稿・コメント本文の行間設定 */
-    .post-content {
-        max-height: 300px; /* 高さが300pxを超えたらスクロール */
-        overflow-y: auto;  /* スクロールバーを表示 */
-        padding: 1em;
-        border: 1px solid #dee2e6;
-        border-radius: 0.25rem;
-        margin-top: 10px;
-        background-color: #ffffff; /* 白背景 */
-        width: 100%;
-        box-sizing: border-box;
-        white-space: pre-wrap;
-        line-height: 1.5;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-        font-size: 1em;
-        color: #333;
-    }
+    /* --- A. 投稿本文の設定 --- */
+     .post-content {
+         /* 一覧ページでは高さを制限してスクロールさせる */
+         max-height: 200px; /* 200pxを超えたらスクロール */
+         overflow-y: auto;  /* スクロールバーを出す */
+         border: 1px solid #dee2e6;
+         border-radius: 0.25rem;
+     }
 
-    /* --- コメント本文 (全表示・スクロールなし) --- */
-    .comment-content {
-        /* height指定なし = 中身に合わせて伸び縮みする (1行なら1行分) */
-        padding: 0;
-        margin: 0;
-        border: none; /* 枠線なし */
-        background: none; /* 背景なし */
-        width: 100%;
-        box-sizing: border-box;
-        white-space: pre-wrap;
-        line-height: 1.5;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-        font-size: 1em;
-        color: #333;
-    }
+     /* 詳細ページ(.post-detail)の中にある投稿本文だけは、全表示する */
+     .post-detail .post-content {
+         max-height: none;
+         overflow-y: visible;
+     }
 
-     /* 5. 表示される投稿・コメント本文の行間設定 (統一) */
+    /* --- B. コメント本文の設定 --- */
+     .comment-content {
+         /* コメントはスクロールさせない（JSで折りたたむため） */
+         max-height: none;
+         overflow-y: visible;
+         padding: 0;
+         border: none;
+         background: none;
+     }
+
+     /* 共通のベース設定 */
      .post-content, .comment-content {
-        /* 共通の見た目設定 */
-        max-height: none; /* コメントは全部見せる */
-        overflow-y: visible;
         padding: 0.8em 1em;
-        border: 1px solid #dee2e6;
-        border-radius: 0.25rem;
         background-color: #ffffff;
         margin-top: 5px;
         margin-bottom: 5px;
         width: 100%;
         box-sizing: border-box;
         white-space: pre-wrap;
-        line-height: 1.5; /* 読みやすい行間 */
+        line-height: 1.6; 
         overflow-wrap: anywhere;
         word-break: break-word;
-        font-size: 1em; /* フォントサイズを統一 */
+        font-size: 1em;
         color: #333;
-    }
+     }
 
     .post-content p, .comment-content p {
          margin-top: 0;
@@ -184,31 +169,19 @@
         overflow: hidden;
         position: relative;
     }
-    
-    /* 下の方をふんわり白くぼかすエフェクト */
-    .comment-content.collapsed::after {
-        content: "";
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        height: 60px; /* グラデーションの高さ */
-        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1) 90%);
-        pointer-events: none; /* クリックを邪魔しない */
-    }
 
     /* 「全文を表示」ボタンのスタイル */
     .read-more-btn {
         display: block;
-        margin-top: 5px;
-        margin-left: auto; /* 右寄せ */
+        margin-top: 2px;
+        margin-left: auto;
         background: none;
         border: none;
-        color: #007bff; /* リンクっぽい青色 */
-        font-size: 0.9em;
+        color: #007bff;
+        font-size: 0.85em;
         font-weight: bold;
         cursor: pointer;
-        padding: 5px;
+        padding: 2px 5px;
     }
     
     .read-more-btn:hover {
