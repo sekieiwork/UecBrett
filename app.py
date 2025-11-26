@@ -178,7 +178,14 @@ def parse_review_for_editing(content):
     return subjects if subjects else None
 
 def save_picture(form_picture):
-    upload_result = cloudinary.uploader.upload(form_picture, folder="post_images", width=2048, height=2048, crop="limit")
+    upload_result = cloudinary.uploader.upload(
+        form_picture, 
+        folder="post_images", 
+        width=2048, height=2048,
+        crop="limit",
+        quality="auto",       # 画質を人間の目に劣化がわからないレベルで自動調整
+        fetch_format="auto"   # ブラウザに合わせて最適な形式(WebPなど)に変換
+    )
     return upload_result.get('secure_url')
 
 def save_icon(form_icon):
@@ -380,6 +387,12 @@ def index(page):
     if form.validate_on_submit() and current_user.is_authenticated:
         image_url_str = None 
         if form.image.data:
+            file_size = len(form.image.data.read())
+            form.image.data.seek(0) # 読み込んだカーソルを先頭に戻す（重要）
+            
+            if file_size > 500 * 1024:
+                flash('画像サイズが大きすぎます(上限500KB)。圧縮してアップロードしてください。')
+                return redirect(url_for('index'))
             image_url_str = save_picture(form.image.data)
         post = Post(title=form.title.data, content=form.content.data, author=current_user, image_url=image_url_str)
         post.tags = get_or_create_tags_from_string(form.tags.data)
@@ -535,6 +548,12 @@ def edit_post(post_id):
         post.tags.clear()
         post.tags = get_or_create_tags_from_string(form.tags.data)
         if form.image.data:
+            file_size = len(form.image.data.read())
+            form.image.data.seek(0)
+            
+            if file_size > 500 * 1024:
+                flash('画像サイズが大きすぎます(上限500KB)。')
+                return redirect(url_for('edit_post', post_id=post.id))
             if post.image_url: delete_from_cloudinary(post.image_url)
             image_url_str = save_picture(form.image.data)
             post.image_url = image_url_str

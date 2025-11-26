@@ -1405,6 +1405,12 @@ allEditableTextareas.forEach(textarea => {
         const filenameDisplay = document.getElementById('image-filename-display');
         const editFilenameDisplay = document.getElementById('edit-image-filename-display');
         imageInput.addEventListener('change', function() {
+            if (file && file.size > 500 * 1024) {
+                alert('画像サイズが大きすぎます（上限: 500KB）。\nサイズを小さくするか、別の画像を選択してください。');
+                this.value = ''; // 入力をリセット
+                if (filenameDisplay) filenameDisplay.textContent = '';
+                return;
+            }
             const file = this.files[0];
             const filename = file ? file.name : '';
             if (filenameDisplay) { filenameDisplay.textContent = filename; }
