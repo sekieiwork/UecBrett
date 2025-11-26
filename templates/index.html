@@ -105,7 +105,7 @@
             
             <div class="post-content">{{ post.content | safe_markdown | safe }}</div>
             
-            <div class="post-meta" style="display: flex; flex-direction: column; gap: 5px;">
+            <div class="post-meta" style="display: flex; flex-direction: column; gap: 5px; align-items: flex-start;">
                 
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                     <a href="{{ url_for('user_profile', username=post.author.username) }}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
@@ -157,7 +157,7 @@
                 </div>
 
             </div>
-            </div>
+        </div>
     </div>
 {% endfor %}
     <div class="content-width-limiter">

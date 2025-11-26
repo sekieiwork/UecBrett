@@ -95,7 +95,7 @@
 
             <div class="post-content">{{ post.content | safe_markdown | safe }}</div>
             
-            <div class="post-meta" style="display: flex; flex-direction: column; gap: 5px;">
+            <div class="post-meta" style="display: flex; flex-direction: column; gap: 5px; align-items: flex-start;">
                 
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                     <a href="{{ url_for('user_profile', username=post.author.username) }}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
@@ -129,8 +129,7 @@
                         <form class="bookmark-form" data-post-id="{{ post.id }}">
                             <button type="button" class="bookmark-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">
                                 <span id="bookmark-icon-{{ post.id }}">
-                                    {% set is_bookmarked = post.bookmarks.filter_by(user_id=current_user.id).first() %}
-                                    {% if is_bookmarked %}
+                                    {% if post.is_bookmarked %}
                                         <img src="{{ url_for('static', filename='icons/bookmarked.png') }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">
                                     {% else %}
                                         <img src="{{ url_for('static', filename='icons/bookmark.png') }}" alt="ブックマーク" style="width: 20px; height: 20px;">
