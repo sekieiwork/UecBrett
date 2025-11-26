@@ -149,6 +149,11 @@
         word-break: break-word;
         font-size: 1em; /* フォントサイズを統一 */
         color: #333;
+    }
+
+    .post-content p, .comment-content p {
+         margin-top: 0;
+         margin-bottom: 0.3em; /* ここを 0 にすれば完全に詰まります。お好みで調整 */
      }
 
     /* 投稿された画像のスタイル */
@@ -614,7 +619,6 @@
         .notification-icon { margin-right: 3px; }
         .user-icon { width: 40px; height: 40px; }
         .dropdown-content { right: 10px; top: 50px; min-width: 150px; }
-        .comment-content { max-height: 80px; }
         .header-right div {
             font-size: 0.9em; /* 文字サイズを少し小さくする */
         }
