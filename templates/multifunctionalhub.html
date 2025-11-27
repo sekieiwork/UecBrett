@@ -132,6 +132,7 @@
     .hourly-pop { color: #007bff; font-size: 0.8em; font-weight: bold; }
     .hourly-temp { font-weight: bold; font-size: 1.1em; }
 
+    /* ▼▼▼ 修正: 週間予報レイアウト ▼▼▼ */
     .daily-forecast { display: flex; flex-direction: column; gap: 10px; }
     .daily-row {
         display: flex;
@@ -140,9 +141,21 @@
         padding: 5px 0;
         font-size: 1em;
     }
-    .daily-day { width: 50px; font-weight: bold; text-align: left; }
-    .daily-icon-area { width: 40px; text-align: center; font-size: 1.2em; }
-    .daily-pop { width: 40px; color: #007bff; font-size: 0.8em; text-align: left; }
+    .daily-day { width: 40px; font-weight: bold; text-align: left; font-size: 0.9em; }
+    
+    /* アイコンエリア (2つ並び対応) */
+    .daily-icon-area { 
+        width: 60px;
+        text-align: center; 
+        font-size: 1.2em; 
+        display: flex;
+        justify-content: center;
+        gap: 3px;
+    }
+    .daily-icon-area.double-icon { font-size: 0.9em; }
+
+    .daily-pop { width: 35px; color: #007bff; font-size: 0.8em; text-align: right; }
+    
     .daily-temp-bar { 
         flex-grow: 1; 
         display: flex; 
@@ -153,6 +166,7 @@
     }
     .temp-low { color: #666; width: 30px; text-align: right;}
     .temp-high { font-weight: bold; width: 30px; text-align: right;}
+    /* ▲▲▲ 修正ここまで ▲▲▲ */
     
     /* PDF画像プレビュー */
     #pdf-preview-area {
@@ -274,17 +288,15 @@
     <div class="hub-card" data-id="study">
         <div class="drag-handle"><i class="fas fa-bars"></i></div>
         <h3 style="margin-top:0; border-bottom: none;">
-            <i class="fas fa-pen text-green"></i> 学習・活動記録
+            <i class="fas fa-pen text-green"></i> 活動記録
         </h3>
         <p>日々の学習や活動時間を記録してモチベーションを管理します。</p>
         
-        <div style="text-align: center; padding: 20px; background-color: #f9f9f9; border-radius: 8px; color: #666;">
-            <div style="margin-bottom: 10px;">
-                <button class="file-upload-btn" style="background-color: #28a745; opacity: 0.6; cursor: not-allowed;" disabled>
-                    記録を残す・見る
-                </button>
-            </div>
-            <i class="fas fa-tools"></i> 現在、別ページにて機能開発中です。
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+            <a href="{{ url_for('activity_log_page') }}" class="file-upload-btn" style="background-color: #28a745; text-decoration: none; display: inline-block;">
+                活動を記録する
+            </a>
+            <span style="font-size: 0.8em; color: #999;">※自分だけの非公開ログです</span>
         </div>
     </div>
 
@@ -303,7 +315,8 @@
             <i class="fas fa-tools"></i> 現在、別ページにて機能開発中です。
         </div>
     </div>
-    </div>
+
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -328,7 +341,211 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- 2. PDF変換機能 ---
+    // --- 2. 天気予報 (独自ロジック版) ---
+    
+    // 天気コード定義
+    const WEATHER_CODE_MAP = {
+        0: { icon: 'fa-sun', color: '#f39c12', desc: '快晴' },
+        1: { icon: 'fa-sun', color: '#f39c12', desc: '晴れ' },
+        2: { icon: 'fa-cloud-sun', color: '#95a5a6', desc: '一部曇' },
+        3: { icon: 'fa-cloud', color: '#7f8c8d', desc: '曇り' },
+        45: { icon: 'fa-smog', color: '#bdc3c7', desc: '霧' },
+        48: { icon: 'fa-smog', color: '#bdc3c7', desc: '霧氷' },
+        51: { icon: 'fa-cloud-rain', color: '#3498db', desc: '霧雨' },
+        53: { icon: 'fa-cloud-rain', color: '#3498db', desc: '霧雨' },
+        55: { icon: 'fa-cloud-rain', color: '#3498db', desc: '霧雨' },
+        61: { icon: 'fa-umbrella', color: '#3498db', desc: '小雨' },
+        63: { icon: 'fa-umbrella', color: '#2980b9', desc: '雨' },
+        65: { icon: 'fa-umbrella', color: '#2980b9', desc: '大雨' },
+        71: { icon: 'fa-snowflake', color: '#ecf0f1', desc: '小雪' },
+        73: { icon: 'fa-snowflake', color: '#ecf0f1', desc: '雪' },
+        75: { icon: 'fa-snowflake', color: '#ecf0f1', desc: '大雪' },
+        80: { icon: 'fa-cloud-showers-heavy', color: '#2980b9', desc: 'にわか雨' },
+        81: { icon: 'fa-cloud-showers-heavy', color: '#2980b9', desc: 'にわか雨' },
+        82: { icon: 'fa-cloud-showers-heavy', color: '#2980b9', desc: '激しい雨' },
+        95: { icon: 'fa-bolt', color: '#f1c40f', desc: '雷雨' },
+        96: { icon: 'fa-bolt', color: '#f1c40f', desc: '雷雨' },
+        99: { icon: 'fa-bolt', color: '#f1c40f', desc: '激しい雷雨' }
+    };
+
+    // 天気グループ定義 (集計用)
+    const WEATHER_GROUPS = {
+        'Sunny': { codes: [0, 1], icon: 'fa-sun', color: '#f39c12', priority: 1 },
+        'Cloudy': { codes: [2, 3, 45, 48], icon: 'fa-cloud', color: '#7f8c8d', priority: 2 },
+        'Rain': { codes: [51, 53, 55, 61, 63, 65, 80, 81, 82], icon: 'fa-umbrella', color: '#3498db', priority: 3 },
+        'Snow': { codes: [71, 73, 75, 77, 85, 86], icon: 'fa-snowflake', color: '#ecf0f1', priority: 4 },
+        'Thunder': { codes: [95, 96, 99], icon: 'fa-bolt', color: '#f1c40f', priority: 5 }
+    };
+
+    function getWeatherIcon(code) {
+        return WEATHER_CODE_MAP[code] || { icon: 'fa-question', color: '#ccc', desc: '不明' };
+    }
+
+    // コードからグループ名を取得
+    function getGroupName(code) {
+        for (const [name, group] of Object.entries(WEATHER_GROUPS)) {
+            if (group.codes.includes(code)) return name;
+        }
+        return 'Cloudy'; // デフォルト
+    }
+
+    function fetchWeather() {
+        const url = 'https://api.open-meteo.com/v1/forecast?latitude=35.650&longitude=139.540&current=temperature_2m,weather_code,apparent_temperature&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FTokyo';
+
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('weather-loading').style.display = 'none';
+                document.getElementById('weather-content').style.display = 'block';
+
+                const current = data.current;
+                const daily = data.daily;
+                const hourly = data.hourly;
+                
+                // 現在の天気表示
+                const weatherInfo = getWeatherIcon(current.weather_code);
+                document.getElementById('current-icon').innerHTML = `<i class="fas ${weatherInfo.icon}" style="color: ${weatherInfo.color};"></i>`;
+                document.getElementById('current-desc').textContent = weatherInfo.desc;
+                document.getElementById('current-temp').textContent = Math.round(current.temperature_2m);
+                document.getElementById('today-high').textContent = Math.round(daily.temperature_2m_max[0]);
+                document.getElementById('today-low').textContent = Math.round(daily.temperature_2m_min[0]);
+
+                // --- 1時間ごとの予報 ---
+                const hourlyContainer = document.getElementById('hourly-forecast-container');
+                const now = new Date();
+                const jstNow = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
+                const currentHourStr = jstNow.toISOString().slice(0, 13); // "YYYY-MM-DDTHH"
+                
+                let startIndex = hourly.time.findIndex(t => t.startsWith(currentHourStr));
+                if (startIndex === -1) startIndex = 0;
+
+                let hourlyHTML = '';
+                for (let i = startIndex; i < startIndex + 24; i++) {
+                    if (!hourly.time[i]) break;
+                    
+                    const timeStr = hourly.time[i];
+                    const dateObj = new Date(timeStr);
+                    const h = dateObj.getHours();
+                    const code = hourly.weather_code[i];
+                    const temp = Math.round(hourly.temperature_2m[i]);
+                    const pop = hourly.precipitation_probability[i];
+                    const wInfo = getWeatherIcon(code);
+                    const label = (i === startIndex) ? '現在' : `${h}:00`;
+
+                    hourlyHTML += `
+                        <div class="hourly-item">
+                            <div class="hourly-time">${label}</div>
+                            <div class="hourly-icon"><i class="fas ${wInfo.icon}" style="color: ${wInfo.color};"></i></div>
+                            <div class="hourly-pop">${pop > 0 ? pop + '%' : ''}</div>
+                            <div class="hourly-temp">${temp}°</div>
+                        </div>
+                    `;
+                }
+                hourlyContainer.innerHTML = hourlyHTML;
+
+                // --- 週間予報 (独自集計ロジック) ---
+                const dailyContainer = document.getElementById('daily-forecast-container');
+                let dailyHTML = '';
+                const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
+                const displayDays = Math.min(daily.time.length, 7);
+
+                for (let i = 0; i < displayDays; i++) {
+                    const dateStr = daily.time[i]; // "YYYY-MM-DD"
+                    const dateObj = new Date(dateStr);
+                    const dayName = (i === 0) ? '今日' : weekDays[dateObj.getDay()];
+                    
+                    // ▼▼▼ ここから独自集計 ▼▼▼
+                    // その日の hourly データを集める
+                    const dayCodes = [];
+                    hourly.time.forEach((t, index) => {
+                        if (t.startsWith(dateStr)) {
+                            dayCodes.push(hourly.weather_code[index]);
+                        }
+                    });
+
+                    // グループごとに集計
+                    const counts = {};
+                    let totalHours = 0;
+                    dayCodes.forEach(code => {
+                        const group = getGroupName(code);
+                        counts[group] = (counts[group] || 0) + 1;
+                        totalHours++;
+                    });
+
+                    // 多い順にソート
+                    const sortedGroups = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+                    const topGroup = sortedGroups[0];
+                    const topCount = counts[topGroup];
+                    
+                    let iconHTML = '';
+                    let iconClass = '';
+
+                    // 【判定】 1位が8割(0.8)以上かどうか
+                    if (totalHours > 0 && (topCount / totalHours) >= 0.8) {
+                        // 8割以上なら単独表示
+                        const info = WEATHER_GROUPS[topGroup];
+                        iconHTML = `<i class="fas ${info.icon}" style="color: ${info.color};"></i>`;
+                    } else {
+                        // それ以下なら、上位2つを表示 (例: 晴れ + くもり)
+                        const first = WEATHER_GROUPS[sortedGroups[0]];
+                        const second = sortedGroups.length > 1 ? WEATHER_GROUPS[sortedGroups[1]] : first;
+                        
+                        iconHTML = `<i class="fas ${first.icon}" style="color: ${first.color};"></i>`;
+                        if (first !== second) {
+                            iconHTML += `<i class="fas ${second.icon}" style="color: ${second.color};"></i>`;
+                        }
+                        iconClass = 'double-icon'; // CSSでサイズ調整
+                    }
+                    // ▲▲▲ ここまで ▲▲▲
+
+                    const maxT = Math.round(daily.temperature_2m_max[i]);
+                    const minT = Math.round(daily.temperature_2m_min[i]);
+                    const pop = daily.precipitation_probability_max[i];
+
+                    dailyHTML += `
+                        <div class="daily-row">
+                            <div class="daily-day">${dayName}</div>
+                            <div class="daily-icon-area ${iconClass}">${iconHTML}</div>
+                            <div class="daily-pop">${pop > 0 ? pop + '%' : ''}</div>
+                            <div class="daily-temp-bar">
+                                <span class="temp-low">${minT}°</span>
+                                <div style="flex-grow:1; height:4px; background:#eee; margin:0 10px; border-radius:2px; position:relative;">
+                                    <div style="position:absolute; left:0; right:0; top:0; bottom:0; background: linear-gradient(90deg, #a8e063, #56ab2f); opacity:0.3;"></div>
+                                </div>
+                                <span class="temp-high">${maxT}°</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                dailyContainer.innerHTML = dailyHTML;
+
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('weather-loading').innerHTML = '<span style="color:red;">天気の取得に失敗しました</span>';
+            });
+    }
+
+    fetchWeather();
+
+    // 左右スクロールボタン
+    const scrollAmount = 200;
+    const scrollContainer = document.getElementById('hourly-forecast-container');
+    const btnLeft = document.getElementById('scroll-left');
+    const btnRight = document.getElementById('scroll-right');
+
+    if (btnLeft && scrollContainer) {
+        btnLeft.addEventListener('click', () => {
+            scrollContainer.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        });
+    }
+    if (btnRight && scrollContainer) {
+        btnRight.addEventListener('click', () => {
+            scrollContainer.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        });
+    }
+
+    // --- 3. PDF変換機能 ---
     const { jsPDF } = window.jspdf;
     const pdfInput = document.getElementById('pdf-images');
     const pdfPreviewArea = document.getElementById('pdf-preview-area');
@@ -506,148 +723,6 @@ document.addEventListener('DOMContentLoaded', function() {
             reader.onload = () => resolve(reader.result);
             reader.onerror = reject;
             reader.readAsDataURL(file);
-        });
-    }
-
-
-    // --- 3. 天気予報 ---
-    const WEATHER_CODE_MAP = {
-        0: { icon: 'fa-sun', color: '#f39c12', desc: '快晴' },
-        1: { icon: 'fa-sun', color: '#f39c12', desc: '晴れ' },
-        2: { icon: 'fa-cloud-sun', color: '#95a5a6', desc: '一部曇り' },
-        3: { icon: 'fa-cloud', color: '#7f8c8d', desc: '曇り' },
-        45: { icon: 'fa-smog', color: '#bdc3c7', desc: '霧' },
-        48: { icon: 'fa-smog', color: '#bdc3c7', desc: '霧氷' },
-        51: { icon: 'fa-cloud-rain', color: '#3498db', desc: '霧雨' },
-        53: { icon: 'fa-cloud-rain', color: '#3498db', desc: '霧雨' },
-        55: { icon: 'fa-cloud-rain', color: '#3498db', desc: '霧雨' },
-        61: { icon: 'fa-umbrella', color: '#3498db', desc: '小雨' },
-        63: { icon: 'fa-umbrella', color: '#2980b9', desc: '雨' },
-        65: { icon: 'fa-umbrella', color: '#2980b9', desc: '大雨' },
-        71: { icon: 'fa-snowflake', color: '#ecf0f1', desc: '小雪' },
-        73: { icon: 'fa-snowflake', color: '#ecf0f1', desc: '雪' },
-        75: { icon: 'fa-snowflake', color: '#ecf0f1', desc: '大雪' },
-        80: { icon: 'fa-cloud-showers-heavy', color: '#2980b9', desc: 'にわか雨' },
-        81: { icon: 'fa-cloud-showers-heavy', color: '#2980b9', desc: 'にわか雨' },
-        82: { icon: 'fa-cloud-showers-heavy', color: '#2980b9', desc: '激しい雨' },
-        95: { icon: 'fa-bolt', color: '#f1c40f', desc: '雷雨' },
-        96: { icon: 'fa-bolt', color: '#f1c40f', desc: '雷雨' },
-        99: { icon: 'fa-bolt', color: '#f1c40f', desc: '激しい雷雨' }
-    };
-
-    function getWeatherIcon(code) {
-        return WEATHER_CODE_MAP[code] || { icon: 'fa-question', color: '#ccc', desc: '不明' };
-    }
-
-    function fetchWeather() {
-        const url = 'https://api.open-meteo.com/v1/forecast?latitude=35.650&longitude=139.540&current=temperature_2m,weather_code,apparent_temperature&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FTokyo';
-
-        fetch(url)
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('weather-loading').style.display = 'none';
-                document.getElementById('weather-content').style.display = 'block';
-
-                const current = data.current;
-                const daily = data.daily;
-                const weatherInfo = getWeatherIcon(current.weather_code);
-                
-                document.getElementById('current-icon').innerHTML = `<i class="fas ${weatherInfo.icon}" style="color: ${weatherInfo.color};"></i>`;
-                document.getElementById('current-desc').textContent = weatherInfo.desc;
-                document.getElementById('current-temp').textContent = Math.round(current.temperature_2m);
-                document.getElementById('today-high').textContent = Math.round(daily.temperature_2m_max[0]);
-                document.getElementById('today-low').textContent = Math.round(daily.temperature_2m_min[0]);
-
-                const hourlyContainer = document.getElementById('hourly-forecast-container');
-                const hourly = data.hourly;
-                const now = new Date();
-                const jstNow = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
-                const year = jstNow.getFullYear();
-                const month = String(jstNow.getMonth() + 1).padStart(2, '0');
-                const day = String(jstNow.getDate()).padStart(2, '0');
-                const hour = String(jstNow.getHours()).padStart(2, '0');
-                const targetPrefix = `${year}-${month}-${day}T${hour}`;
-                
-                let startIndex = hourly.time.findIndex(t => t.startsWith(targetPrefix));
-                if (startIndex === -1) startIndex = 0;
-
-                let hourlyHTML = '';
-                for (let i = startIndex; i < startIndex + 24; i++) {
-                    if (!hourly.time[i]) break;
-                    
-                    const timeStr = hourly.time[i];
-                    const dateObj = new Date(timeStr);
-                    const h = dateObj.getHours();
-                    const code = hourly.weather_code[i];
-                    const temp = Math.round(hourly.temperature_2m[i]);
-                    const pop = hourly.precipitation_probability[i];
-                    const wInfo = getWeatherIcon(code);
-                    const label = (i === startIndex) ? '現在' : `${h}:00`;
-
-                    hourlyHTML += `
-                        <div class="hourly-item">
-                            <div class="hourly-time">${label}</div>
-                            <div class="hourly-icon"><i class="fas ${wInfo.icon}" style="color: ${wInfo.color};"></i></div>
-                            <div class="hourly-pop">${pop > 0 ? pop + '%' : ''}</div>
-                            <div class="hourly-temp">${temp}°</div>
-                        </div>
-                    `;
-                }
-                hourlyContainer.innerHTML = hourlyHTML;
-
-                const dailyContainer = document.getElementById('daily-forecast-container');
-                let dailyHTML = '';
-                const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
-                const displayDays = Math.min(daily.time.length, 7);
-
-                for (let i = 0; i < displayDays; i++) {
-                    const dateObj = new Date(daily.time[i]);
-                    const dayName = (i === 0) ? '今日' : weekDays[dateObj.getDay()];
-                    const code = daily.weather_code[i];
-                    const maxT = Math.round(daily.temperature_2m_max[i]);
-                    const minT = Math.round(daily.temperature_2m_min[i]);
-                    const pop = daily.precipitation_probability_max[i];
-                    const wInfo = getWeatherIcon(code);
-
-                    dailyHTML += `
-                        <div class="daily-row">
-                            <div class="daily-day">${dayName}</div>
-                            <div class="daily-icon-area"><i class="fas ${wInfo.icon}" style="color: ${wInfo.color};"></i></div>
-                            <div class="daily-pop">${pop > 0 ? pop + '%' : ''}</div>
-                            <div class="daily-temp-bar">
-                                <span class="temp-low">${minT}°</span>
-                                <div style="flex-grow:1; height:4px; background:#eee; margin:0 10px; border-radius:2px; position:relative;">
-                                    <div style="position:absolute; left:0; right:0; top:0; bottom:0; background: linear-gradient(90deg, #a8e063, #56ab2f); opacity:0.3;"></div>
-                                </div>
-                                <span class="temp-high">${maxT}°</span>
-                            </div>
-                        </div>
-                    `;
-                }
-                dailyContainer.innerHTML = dailyHTML;
-
-            })
-            .catch(err => {
-                console.error(err);
-                document.getElementById('weather-loading').innerHTML = '<span style="color:red;">天気の取得に失敗しました</span>';
-            });
-    }
-
-    fetchWeather();
-
-    const scrollAmount = 200;
-    const scrollContainer = document.getElementById('hourly-forecast-container');
-    const btnLeft = document.getElementById('scroll-left');
-    const btnRight = document.getElementById('scroll-right');
-
-    if (btnLeft && scrollContainer) {
-        btnLeft.addEventListener('click', () => {
-            scrollContainer.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-        });
-    }
-    if (btnRight && scrollContainer) {
-        btnRight.addEventListener('click', () => {
-            scrollContainer.scrollBy({ left: scrollAmount, behavior: 'smooth' });
         });
     }
 

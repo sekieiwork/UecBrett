@@ -1,0 +1,511 @@
+{% extends "base_layout.html" %}
+
+{% block title %}活動記録{% endblock %}
+
+{% block content %}
+<style>
+    body { overflow: hidden; }
+    .activity-container {
+        height: calc(100vh - 80px); 
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        padding-bottom: 10px;
+        box-sizing: border-box;
+    }
+
+    /* --- 上半分: 目標・進行度 --- */
+    .top-section {
+        flex: 4;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        color: white;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        position: relative;
+    }
+    
+    .settings-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        color: rgba(255,255,255,0.8);
+        font-size: 1.2em;
+        cursor: pointer;
+        z-index: 10;
+    }
+    .settings-btn:hover { color: #fff; transform: rotate(30deg); transition: 0.3s; }
+
+    .progress-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-top: 10px;
+    }
+    .progress-item {
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 10px;
+        position: relative;
+    }
+    .p-label { font-size: 0.8em; opacity: 0.9; margin-bottom: 3px; display: block;}
+    .p-value { font-size: 1.1em; font-weight: bold; }
+    .p-sub { font-size: 0.75em; opacity: 0.8; }
+
+    .achievement-check {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background-color: #28a745;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 24px;
+        font-size: 0.9em;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        display: none;
+    }
+    
+    /* --- 下半分: フォーム --- */
+    .bottom-section {
+        flex: 6;
+        background: #fff;
+        border-radius: 15px;
+        border: 1px solid #dee2e6;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .tabs-header { display: flex; border-bottom: 1px solid #eee; background: #f8f9fa; }
+    .tab-btn { flex: 1; padding: 12px 0; text-align: center; cursor: pointer; font-weight: bold; color: #666; border-bottom: 3px solid transparent; }
+    .tab-btn.active { color: #007bff; border-bottom: 3px solid #007bff; background: #fff; }
+    .tab-content { flex: 1; padding: 15px; overflow-y: auto; display: none; }
+    .tab-content.active { display: block; }
+
+    .form-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+    .log-list { margin-top: 10px; border-top: 1px dashed #eee; padding-top: 10px; }
+    
+    .log-item { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+        padding: 8px 0; 
+        border-bottom: 1px solid #f9f9f9; 
+        font-size: 0.9em;
+        position: relative; 
+    }
+    
+    .log-menu-btn {
+        background: none; border: none; color: #999; font-size: 1.1em; cursor: pointer; padding: 0 10px;
+    }
+    .log-delete-action {
+        display: none;
+        position: absolute;
+        right: 35px;
+        top: 50%;
+        transform: translateY(-50%);
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 0.85em;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        white-space: nowrap;
+    }
+
+    .todo-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+    .todo-item.completed span { text-decoration: line-through; color: #aaa; }
+    
+    /* ToDo日付表示 */
+    .todo-date-badge {
+        font-size: 0.75em;
+        color: #fff;
+        background-color: #6c757d;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 8px;
+        white-space: nowrap;
+    }
+    
+    .todo-delete {
+        background: none; border: none; color: #dc3545; cursor: pointer;
+        font-size: 1.5em; padding: 0 15px; margin-left: auto; line-height: 1;
+    }
+
+    .finance-summary-badge {
+        font-size: 0.85em; background: #eee; color: #333; padding: 2px 8px; border-radius: 4px; margin-left: 10px; font-weight: normal;
+    }
+
+    input[type="text"], input[type="number"] { padding: 8px; border: 1px solid #ced4da; border-radius: 5px; }
+    @media (max-width: 768px) { .activity-container { height: calc(100vh - 140px); } }
+    
+    /* カレンダーアイコンのスタイル */
+    .calendar-picker-wrapper {
+        position: relative;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .calendar-picker-wrapper img {
+        width: 24px;
+        height: 24px;
+        opacity: 0.6;
+        transition: 0.2s;
+    }
+    .calendar-picker-wrapper:hover img,
+    .calendar-picker-wrapper.has-date img {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+    /* 透明なDate入力 */
+    .calendar-input {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+    /* 選択済みの日付表示 */
+    .selected-date-label {
+        font-size: 0.8em;
+        color: #28a745;
+        font-weight: bold;
+        display: none;
+        white-space: nowrap;
+    }
+</style>
+
+<div class="content-width-limiter activity-container">
+
+    <div class="top-section">
+        <a href="{{ url_for('activity_settings') }}" class="settings-btn" title="目標設定">
+            <i class="fas fa-cog"></i>
+        </a>
+
+        <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 5px;">
+            <i class="fas fa-chart-pie"></i> 今月の進捗 
+            <span id="current-date-display" style="font-size: 0.8em; font-weight: normal; margin-left: 10px; opacity: 0.9;"></span>
+        </div>
+
+        <div class="progress-grid">
+            <div class="progress-item" id="block-study">
+                <span class="achievement-check"><i class="fas fa-check"></i></span>
+                <span class="p-label"><i class="fas fa-pen"></i> 学習時間</span>
+                <div class="p-value">
+                    <span id="p-study-current">0</span> <span style="font-size:0.7em">/</span> <span id="p-study-target">0</span> 時間
+                </div>
+            </div>
+            <div class="progress-item" id="block-finance">
+                <span class="achievement-check"><i class="fas fa-check"></i></span>
+                <span class="p-label"><i class="fas fa-yen-sign"></i> 財務 (目標/資産)</span>
+                <div class="p-value" style="font-size:0.9em;">
+                    残: <span id="p-finance-bal">0</span> / 目: <span id="p-finance-target">0</span>
+                </div>
+                <div class="p-sub">総資産: <span id="p-finance-total">0</span>円</div>
+            </div>
+            <div class="progress-item">
+                <span class="p-label"><i class="fas fa-fire"></i> 継続日数</span>
+                <div class="p-value"><span id="p-streak">0</span> 日</div>
+            </div>
+            <div class="progress-item">
+                <span class="p-label"><i class="fas fa-check-square"></i> ToDo消化</span>
+                <div class="p-value">
+                    <span id="p-todo-done">0</span> / <span id="p-todo-total">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-section">
+        <div class="tabs-header">
+            <div class="tab-btn active" onclick="switchTab('study')"><i class="fas fa-pen"></i> 学習</div>
+            <div class="tab-btn" onclick="switchTab('finance')"><i class="fas fa-yen-sign"></i> 財務</div>
+            <div class="tab-btn" onclick="switchTab('todo')"><i class="fas fa-check-square"></i> ToDo</div>
+        </div>
+
+        <div id="tab-study" class="tab-content active">
+            <h4 style="margin-top:0;">学習・活動を記録</h4>
+            <form id="study-form" class="form-row">
+                <input type="text" id="study-subject" placeholder="科目" required style="flex:2;">
+                <input type="number" id="study-duration" placeholder="分" required style="flex:1;">
+                <button type="submit" class="file-upload-btn" style="background:#28a745;">記録</button>
+            </form>
+            <div id="study-list" class="log-list">Loading...</div>
+        </div>
+
+        <div id="tab-finance" class="tab-content">
+            <h4 style="margin-top:0;">
+                収支を記録
+                <span id="finance-month-total" class="finance-summary-badge">今月: ¥0</span>
+            </h4>
+            <div style="display:flex; justify-content:center; gap:10px; margin-bottom:10px;">
+                <label><input type="radio" name="ftype" value="expense" checked> 支出</label>
+                <label><input type="radio" name="ftype" value="income"> 収入</label>
+            </div>
+            <form id="finance-form" class="form-row">
+                <input type="text" id="finance-item" placeholder="項目" required style="flex:2;">
+                <input type="number" id="finance-amount" placeholder="円" required style="flex:1;">
+                <button type="submit" class="file-upload-btn" style="background:#007bff;">記録</button>
+            </form>
+            <div id="finance-list" class="log-list">Loading...</div>
+        </div>
+
+        <div id="tab-todo" class="tab-content">
+            <h4 style="margin-top:0;">リスト</h4>
+            <form id="todo-form" class="form-row">
+                <input type="text" id="todo-task" placeholder="タスク..." required style="flex:1;">
+                
+                <div class="calendar-picker-wrapper" title="期限を設定">
+                    <img src="{{ url_for('static', filename='icons/calender.png') }}" alt="カレンダー">
+                    <input type="date" id="todo-date" class="calendar-input">
+                </div>
+                <span id="todo-date-display" class="selected-date-label"></span>
+                <button type="submit" class="file-upload-btn" style="background:#ffc107; color:black;">追加</button>
+            </form>
+            <div id="todo-list" class="log-list">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        document.getElementById('tab-' + tabName).classList.add('active');
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('current-date-display').textContent = dateStr;
+
+        // --- ToDo日付ピッカーの表示制御 ---
+        const dateInput = document.getElementById('todo-date');
+        const dateDisplay = document.getElementById('todo-date-display');
+        const calendarWrapper = document.querySelector('.calendar-picker-wrapper');
+
+        dateInput.addEventListener('change', function() {
+            if (this.value) {
+                // 日付を短く表示 (MM/DD)
+                const d = new Date(this.value);
+                const md = (d.getMonth()+1) + '/' + d.getDate();
+                dateDisplay.textContent = md;
+                dateDisplay.style.display = 'inline';
+                calendarWrapper.classList.add('has-date');
+            } else {
+                dateDisplay.style.display = 'none';
+                calendarWrapper.classList.remove('has-date');
+            }
+        });
+
+        // --- サマリー取得 ---
+        function loadSummary() {
+            fetch('/api/activity_summary')
+            .then(r => r.json())
+            .then(data => {
+                const studyHours = (data.study.current / 60).toFixed(1);
+                document.getElementById('p-study-current').textContent = studyHours;
+                document.getElementById('p-study-target').textContent = data.study.target;
+                if(data.study.target > 0 && parseFloat(studyHours) >= data.study.target) {
+                    document.querySelector('#block-study .achievement-check').style.display = 'block';
+                } else {
+                    document.querySelector('#block-study .achievement-check').style.display = 'none';
+                }
+                
+                document.getElementById('p-finance-bal').textContent = data.finance.month_balance.toLocaleString();
+                document.getElementById('p-finance-target').textContent = Number(data.finance.target).toLocaleString();
+                document.getElementById('p-finance-total').textContent = data.finance.total_assets.toLocaleString();
+                if(data.finance.target > 0 && data.finance.month_balance >= data.finance.target) {
+                    document.querySelector('#block-finance .achievement-check').style.display = 'block';
+                } else {
+                    document.querySelector('#block-finance .achievement-check').style.display = 'none';
+                }
+                
+                document.getElementById('p-streak').textContent = data.streak;
+                document.getElementById('p-todo-done').textContent = data.todo.done;
+                document.getElementById('p-todo-total').textContent = data.todo.total;
+            });
+        }
+
+        // --- 学習記録 ---
+        const studyForm = document.getElementById('study-form');
+        const studyList = document.getElementById('study-list');
+        function loadStudy() {
+            fetch('/api/study_log')
+            .then(r => r.json())
+            .then(data => {
+                let html = '';
+                data.logs.forEach(l => {
+                    html += `
+                    <div class="log-item" id="study-item-${l.id}">
+                        <div>
+                            <span>${l.subject}</span>
+                            <span style="margin-left:10px;">${l.duration}分</span>
+                            <small style="color:#aaa; margin-left:5px;">(${l.date})</small>
+                        </div>
+                        <div>
+                            <button class="log-delete-action" onclick="deleteStudy(${l.id})">削除</button>
+                            <button class="log-menu-btn" onclick="toggleDeleteMenu(this)">︙</button>
+                        </div>
+                    </div>`;
+                });
+                studyList.innerHTML = html || '<p style="color:#ccc; text-align:center;">記録なし</p>';
+                loadSummary();
+            });
+        }
+        studyForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const subject = document.getElementById('study-subject').value;
+            const duration = document.getElementById('study-duration').value;
+            fetch('/api/study_log', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({subject, duration})
+            }).then(() => {
+                document.getElementById('study-subject').value = '';
+                document.getElementById('study-duration').value = '';
+                loadStudy();
+            });
+        });
+        window.deleteStudy = (id) => {
+            if(!confirm('本当に削除しますか？')) return;
+            fetch('/api/study_log', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'delete', id: id})
+            }).then(loadStudy);
+        };
+
+        // --- 財務記録 ---
+        const financeForm = document.getElementById('finance-form');
+        const financeList = document.getElementById('finance-list');
+        const financeTotalBadge = document.getElementById('finance-month-total');
+        function loadFinance() {
+            fetch('/api/finance')
+            .then(r => r.json())
+            .then(data => {
+                const total = data.month_total;
+                financeTotalBadge.textContent = `今月: ¥${total.toLocaleString()}`;
+                financeTotalBadge.style.color = total >= 0 ? '#28a745' : '#dc3545';
+                let html = '';
+                data.logs.forEach(l => {
+                    const color = l.type === 'income' ? '#28a745' : '#dc3545';
+                    const sign = l.type === 'income' ? '+' : '-';
+                    html += `
+                    <div class="log-item" id="finance-item-${l.id}">
+                        <div>
+                            <span>${l.item}</span>
+                            <span style="color:${color}; font-weight:bold; margin-left:10px;">${sign}¥${l.amount.toLocaleString()}</span>
+                            <small style="color:#aaa; margin-left:5px;">(${l.date})</small>
+                        </div>
+                        <div>
+                            <button class="log-delete-action" onclick="deleteFinance(${l.id})">削除</button>
+                            <button class="log-menu-btn" onclick="toggleDeleteMenu(this)">︙</button>
+                        </div>
+                    </div>`;
+                });
+                financeList.innerHTML = html || '<p style="color:#ccc; text-align:center;">記録なし</p>';
+                loadSummary();
+            });
+        }
+        financeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const item_name = document.getElementById('finance-item').value;
+            const amount = document.getElementById('finance-amount').value;
+            const type = document.querySelector('input[name="ftype"]:checked').value;
+            fetch('/api/finance', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({item_name, amount, type})
+            }).then(() => {
+                document.getElementById('finance-item').value = '';
+                document.getElementById('finance-amount').value = '';
+                loadFinance();
+            });
+        });
+        window.deleteFinance = (id) => {
+            if(!confirm('本当に削除しますか？')) return;
+            fetch('/api/finance', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'delete', id: id})
+            }).then(loadFinance);
+        };
+
+        // --- ToDo ---
+        const todoForm = document.getElementById('todo-form');
+        const todoList = document.getElementById('todo-list');
+        function loadTodo() {
+            fetch('/api/todo')
+            .then(r => r.json())
+            .then(data => {
+                let html = '';
+                data.forEach(t => {
+                    const checked = t.is_completed ? 'checked' : '';
+                    const cls = t.is_completed ? 'completed' : '';
+                    // 日付バッジ作成
+                    let dateBadge = '';
+                    if (t.date) {
+                        dateBadge = `<span class="todo-date-badge">${t.date.slice(5)}まで</span>`; // YYYY/をカットしてMM/DDのみ表示
+                    }
+                    
+                    html += `<div class="todo-item ${cls}">
+                        <input type="checkbox" ${checked} onchange="toggleTodo(${t.id})" style="margin-right:10px; transform:scale(1.2);">
+                        <span style="flex:1;">${t.task} ${dateBadge}</span>
+                        <button class="todo-delete" onclick="deleteTodo(${t.id})">&times;</button>
+                    </div>`;
+                });
+                todoList.innerHTML = html || '<p style="color:#ccc; text-align:center;">タスクなし</p>';
+                loadSummary();
+            });
+        }
+        todoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const task = document.getElementById('todo-task').value;
+            // ▼▼▼ 日付も送信 ▼▼▼
+            const date = document.getElementById('todo-date').value;
+            fetch('/api/todo', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'add', task, date})
+            }).then(() => {
+                document.getElementById('todo-task').value = '';
+                // 日付リセット
+                document.getElementById('todo-date').value = '';
+                document.getElementById('todo-date-display').style.display = 'none';
+                document.querySelector('.calendar-picker-wrapper').classList.remove('has-date');
+                loadTodo();
+            });
+        });
+        window.toggleTodo = (id) => {
+            fetch('/api/todo', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'toggle', id}) }).then(loadTodo);
+        };
+        window.deleteTodo = (id) => {
+            if(!confirm('削除しますか？')) return;
+            fetch('/api/todo', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'delete', id}) }).then(loadTodo);
+        };
+
+        window.toggleDeleteMenu = function(btn) {
+            document.querySelectorAll('.log-delete-action').forEach(el => {
+                if(el !== btn.previousElementSibling) el.style.display = 'none';
+            });
+            const deleteBtn = btn.previousElementSibling;
+            if (deleteBtn.style.display === 'block') { deleteBtn.style.display = 'none'; } 
+            else { deleteBtn.style.display = 'block'; }
+        };
+        
+        document.addEventListener('click', function(e) {
+            if(!e.target.closest('.log-menu-btn') && !e.target.closest('.log-delete-action')) {
+                document.querySelectorAll('.log-delete-action').forEach(el => el.style.display = 'none');
+            }
+        });
+
+        loadStudy(); loadFinance(); loadTodo();
+    });
+</script>
+{% endblock %}

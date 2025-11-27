@@ -16,10 +16,9 @@ try:
 except ImportError:
     pass # 本番環境（Render）ではエラーを無視する
 from flask_wtf.file import FileField, FileAllowed
-from forms import PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm, KairanbanForm
 from forms import (PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm, KairanbanForm, 
                    GRADE_CHOICES, CATEGORY_CHOICES, CLASS_CHOICES, PROGRAM_CHOICES, MAJOR_CHOICES,
-                   BooleanField)
+                   BooleanField, NotificationSettingsForm, GoalForm)
 import markdown
 import re
 import json
@@ -349,6 +348,30 @@ class StudyLog(db.Model):
     
     user = db.relationship('User', backref='study_logs')
 
+class FinanceLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
+    item_name = db.Column(db.String(100), nullable=False) # 項目名
+    amount = db.Column(db.Integer, nullable=False) # 金額
+    type = db.Column(db.String(10), nullable=False) # 'expense' (支出) or 'income' (収入)
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    user = db.relationship('User', backref='finance_logs')
+
+class Goal(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
+    study_goal = db.Column(db.Integer, default=0) # 月間目標時間(分)
+    savings_goal = db.Column(db.Integer, default=0) # 月間貯金目標(円)
+    user = db.relationship('User', backref=db.backref('goal', uselist=False, cascade="all, delete"))
+
+class ToDoItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
+    task = db.Column(db.String(200), nullable=False)
+    is_completed = db.Column(db.Boolean, default=False)
+    due_date = db.Column(db.Date, nullable=True) 
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    user = db.relationship('User', backref='todos')
 # --- OneSignal連携関数 ---
 def send_onesignal_notification(user_ids, title, message, url=None):
     """OneSignalへプッシュ通知を送信 (requests版)"""
@@ -982,11 +1005,24 @@ def get_ogp():
         return jsonify({'error': 'Failed to fetch'}), 400
     
 # ▼▼▼ 学習記録機能用のルート ▼▼▼
+# ▼▼▼ 学習記録API (削除機能を追加) ▼▼▼
 @app.route('/api/study_log', methods=['GET', 'POST'])
 @login_required
 def api_study_log():
     if request.method == 'POST':
         data = request.get_json()
+        
+        # 削除アクションの場合
+        if data.get('action') == 'delete':
+            log_id = data.get('id')
+            log = StudyLog.query.get(log_id)
+            if log and log.user_id == current_user.id:
+                db.session.delete(log) # これで完全に消えます
+                db.session.commit()
+                return jsonify({'status': 'success'})
+            return jsonify({'error': 'Not found'}), 404
+
+        # 登録アクションの場合
         subject = data.get('subject')
         duration = data.get('duration')
         
@@ -994,7 +1030,6 @@ def api_study_log():
             return jsonify({'error': 'Invalid data'}), 400
             
         try:
-            # durationを数値に変換
             duration_int = int(duration)
             new_log = StudyLog(user_id=current_user.id, subject=subject, duration=duration_int)
             db.session.add(new_log)
@@ -1004,20 +1039,187 @@ def api_study_log():
             return jsonify({'error': 'Invalid duration'}), 400
 
     elif request.method == 'GET':
-        # 直近10件の記録を取得
-        logs = StudyLog.query.filter_by(user_id=current_user.id).order_by(StudyLog.timestamp.desc()).limit(10).all()
-        # 今日の合計時間を計算
+        # 直近20件を取得
+        logs = StudyLog.query.filter_by(user_id=current_user.id).order_by(StudyLog.timestamp.desc()).limit(20).all()
+        
         today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         today_logs = StudyLog.query.filter(StudyLog.user_id == current_user.id, StudyLog.timestamp >= today_start).all()
         total_minutes = sum(log.duration for log in today_logs)
         
         log_list = [{
+            'id': log.id, # 削除用にIDも返す
             'subject': log.subject,
             'duration': log.duration,
             'date': log.timestamp.replace(tzinfo=utc).astimezone(timezone('Asia/Tokyo')).strftime('%m/%d %H:%M')
         } for log in logs]
         
         return jsonify({'logs': log_list, 'total_today': total_minutes})
+
+@app.route('/activity_log')
+@login_required
+def activity_log_page():
+    return render_template('activity_log.html')
+
+# ▼▼▼ToDo API ▼▼▼
+@app.route('/api/todo', methods=['GET', 'POST'])
+@login_required
+def api_todo():
+    if request.method == 'POST':
+        data = request.get_json()
+        action = data.get('action')
+        
+        if action == 'add':
+            task_content = data.get('task')
+            date_str = data.get('date') # 日付文字列 (YYYY-MM-DD)
+            
+            # 日付変換処理
+            due_date_obj = None
+            if date_str:
+                try:
+                    due_date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    pass # 日付形式がおかしい場合は無視（None）
+
+            new_todo = ToDoItem(user_id=current_user.id, task=task_content, due_date=due_date_obj)
+            db.session.add(new_todo)
+            
+        elif action == 'toggle':
+            todo = ToDoItem.query.get(data.get('id'))
+            if todo and todo.user_id == current_user.id:
+                todo.is_completed = not todo.is_completed
+        elif action == 'delete':
+            todo = ToDoItem.query.get(data.get('id'))
+            if todo and todo.user_id == current_user.id:
+                db.session.delete(todo)
+                
+        db.session.commit()
+        return jsonify({'status': 'success'})
+
+    # GET
+    todos = ToDoItem.query.filter_by(user_id=current_user.id).order_by(ToDoItem.timestamp.desc()).all()
+    return jsonify([{
+        'id': t.id, 
+        'task': t.task, 
+        'is_completed': t.is_completed,
+        # 日付があれば文字列化して返す
+        'date': t.due_date.strftime('%Y/%m/%d') if t.due_date else None
+    } for t in todos])
+
+# ▼▼▼目標設定ページ ▼▼▼
+@app.route('/activity_log/settings', methods=['GET', 'POST'])
+@login_required
+def activity_settings():
+    # ユーザーの目標を取得、なければ作成
+    goal = current_user.goal
+    if not goal:
+        goal = Goal(user_id=current_user.id)
+        db.session.add(goal)
+        db.session.commit()
+    
+    form = GoalForm(obj=goal)
+    if form.validate_on_submit():
+        goal.study_goal = form.study_goal.data
+        goal.savings_goal = form.savings_goal.data
+        db.session.commit()
+        flash('目標を更新しました！')
+        return redirect(url_for('activity_log_page'))
+        
+    return render_template('activity_settings.html', form=form)
+
+# ▼▼▼  活動状況のサマリーAPI (トップ部分用) ▼▼▼
+@app.route('/api/activity_summary')
+@login_required
+def api_activity_summary():
+    # 1. 今月の学習時間
+    start_of_month = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    study_logs = StudyLog.query.filter(StudyLog.user_id == current_user.id, StudyLog.timestamp >= start_of_month).all()
+    current_study_min = sum(log.duration for log in study_logs)
+    
+    # 2. 財務 (今月の収支 & 全期間の総資産)
+    finance_logs_month = FinanceLog.query.filter(FinanceLog.user_id == current_user.id, FinanceLog.timestamp >= start_of_month).all()
+    month_income = sum(l.amount for l in finance_logs_month if l.type == 'income')
+    month_expense = sum(l.amount for l in finance_logs_month if l.type == 'expense')
+    month_balance = month_income - month_expense
+    
+    all_finance = FinanceLog.query.filter_by(user_id=current_user.id).all()
+    total_income = sum(l.amount for l in all_finance if l.type == 'income')
+    total_expense = sum(l.amount for l in all_finance if l.type == 'expense')
+    total_assets = total_income - total_expense
+
+    # 3. 継続日数 (簡易的に「記録があるユニークな日数」または「最終更新からの連続」など。ここでは今月の記録日数)
+    # 学習または財務の記録がある日を数える
+    active_days = set()
+    for l in study_logs: active_days.add(l.timestamp.date())
+    for l in finance_logs_month: active_days.add(l.timestamp.date())
+    streak_days = len(active_days)
+
+    # 4. ToDo消化率
+    todos = ToDoItem.query.filter_by(user_id=current_user.id).all()
+    total_todos = len(todos)
+    done_todos = len([t for t in todos if t.is_completed])
+    
+    # 目標取得
+    goal = current_user.goal
+    study_target = goal.study_goal if goal else 0
+    savings_target = goal.savings_goal if goal else 0
+
+    return jsonify({
+        'study': {'current': current_study_min, 'target': study_target},
+        'finance': {'month_balance': month_balance, 'total_assets': total_assets, 'target': savings_target},
+        'streak': streak_days,
+        'todo': {'done': done_todos, 'total': total_todos}
+    })
+
+# ▼▼▼ 財務API ▼▼▼
+@app.route('/api/finance', methods=['GET', 'POST'])
+@login_required
+def api_finance():
+    if request.method == 'POST':
+        data = request.get_json()
+        
+        # 削除アクション
+        if data.get('action') == 'delete':
+            log_id = data.get('id')
+            log = FinanceLog.query.get(log_id)
+            if log and log.user_id == current_user.id:
+                db.session.delete(log) # これで完全に消えます
+                db.session.commit()
+                return jsonify({'status': 'success'})
+            return jsonify({'error': 'Not found'}), 404
+
+        # 登録アクション
+        try:
+            amount = int(data.get('amount'))
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid amount'}), 400
+
+        new_log = FinanceLog(
+            user_id=current_user.id,
+            item_name=data.get('item_name'),
+            amount=amount,
+            type=data.get('type')
+        )
+        db.session.add(new_log)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+    
+    # GET
+    start_of_month = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    monthly_logs = FinanceLog.query.filter(FinanceLog.user_id == current_user.id, FinanceLog.timestamp >= start_of_month).all()
+    m_income = sum(l.amount for l in monthly_logs if l.type == 'income')
+    m_expense = sum(l.amount for l in monthly_logs if l.type == 'expense')
+    month_total = m_income - m_expense
+
+    logs = FinanceLog.query.filter_by(user_id=current_user.id).order_by(FinanceLog.timestamp.desc()).limit(20).all()
+    log_list = [{
+        'id': l.id, # 削除用にIDも返す
+        'item': l.item_name, 'amount': l.amount, 'type': l.type,
+        'date': l.timestamp.replace(tzinfo=utc).astimezone(timezone('Asia/Tokyo')).strftime('%m/%d')
+    } for l in logs]
+    
+    return jsonify({'logs': log_list, 'month_total': month_total})
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

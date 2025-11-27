@@ -149,4 +149,18 @@ class NotificationSettingsForm(FlaskForm):
     enable_reply = BooleanField('コメントした投稿への投稿主からの返信')
     # ▲▲▲ ここまで ▲▲▲
     
-    submit = SubmitField('設定を保存')    
+    submit = SubmitField('設定を保存')
+
+class GoalForm(FlaskForm):
+    study_goal = StringField('今月の学習目標 (時間)', default='0') # 数字のみ入力させる前提
+    savings_goal = StringField('今月の貯金目標 (円)', default='0')
+    submit = SubmitField('目標を保存')
+    
+    # バリデーション等は必要に応じて追加
+    def validate_study_goal(self, field):
+        try: int(field.data)
+        except: raise ValidationError('半角数字で入力してください')
+
+    def validate_savings_goal(self, field):
+        try: int(field.data)
+        except: raise ValidationError('半角数字で入力してください')

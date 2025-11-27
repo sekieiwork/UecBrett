@@ -1,0 +1,36 @@
+{% extends "base_layout.html" %}
+
+{% block title %}目標設定{% endblock %}
+
+{% block content %}
+<div class="content-width-limiter">
+    <div class="post-form">
+        <h3 style="margin-top:0;">目標設定</h3>
+        <p style="font-size:0.9em; color:#666;">今月の目標を設定しましょう。</p>
+        
+        <form method="POST">
+            {{ form.csrf_token }}
+            
+            <div class="form-field">
+                <label>📚 {{ form.study_goal.label }}</label><br>
+                {{ form.study_goal(placeholder="例: 50") }}
+                <small style="color:#999;">※分ではなく「時間」で入力してください</small>
+            </div>
+
+            <div class="form-field">
+                <label>💰 {{ form.savings_goal.label }}</label><br>
+                {{ form.savings_goal(placeholder="例: 10000") }}
+                <small style="color:#999;">※今月貯めたい金額を入力してください</small>
+            </div>
+
+            <div style="margin-top:20px;">
+                {{ form.submit(class="file-upload-btn", style="background-color:#007bff; width:100%;") }}
+            </div>
+        </form>
+        
+        <div style="margin-top:15px; text-align:center;">
+            <a href="{{ url_for('activity_log_page') }}" style="color:#666;">戻る</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
