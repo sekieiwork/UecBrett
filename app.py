@@ -406,55 +406,50 @@ def check_todo_deadlines():
     毎日実行される定期処理。
     全ユーザーの未完了ToDoをチェックし、期限に基づいて通知を送る。
     """
+
+    site_url = os.environ.get('RENDER_EXTERNAL_URL', 'https://uecbrett.onrender.com')
+    
     with app.app_context():
-        # 日本時間の「今日」を取得
-        today = datetime.now(timezone('Asia/Tokyo')).date()
-        
-        # 未完了かつ期限が設定されているタスクを全て取得
-        todos = ToDoItem.query.filter(ToDoItem.is_completed == False, ToDoItem.due_date != None).all()
-        
-        for todo in todos:
-            # 期限までの日数を計算
-            days_left = (todo.due_date - today).days
+        # ▼▼▼ 修正: 「このURLで動いていることにしてね」と指定する ▼▼▼
+        with app.test_request_context(base_url=site_url):
             
-            # 過去のタスク(マイナス)は通知しない場合は >= 0 を条件にする
-            if days_left < 0:
-                continue
-
-            message = None
-            title = "タスク期限のお知らせ"
-
-            # ロジック判定
-            if days_left == 7:
-                # 1週間前
-                message = f'「{todo.task}」の期限まであと1週間です。'
-            elif days_left in [3, 1, 0]: 
-                # 3日前、1日前(明日)、0日前(今日)
-                message = f'「{todo.task}」の期限が近づいています。'
+            # 日本時間の「今日」を取得
+            today = datetime.now(timezone('Asia/Tokyo')).date()
             
-            # メッセージが決まったら送信
-            if message:
-                if todo.user.push_notifications_enabled:
-                    # タスクの所有者に通知
-                    send_onesignal_notification(
-                        user_ids=[todo.user.id],
-                        title=title,
-                        message=message,
-                        url=url_for('activity_log_page', _external=True) # 活動記録ページへ飛ぶ
-                    )
-                    print(f"Notification sent for task {todo.id}: {message}", flush=True)
+            # 未完了かつ期限が設定されているタスクを全て取得
+            todos = ToDoItem.query.filter(ToDoItem.is_completed == False, ToDoItem.due_date != None).all()
+            
+            for todo in todos:
+                # 期限までの日数を計算
+                days_left = (todo.due_date - today).days
+                
+                # 過去のタスク(マイナス)は通知しない場合は >= 0 を条件にする
+                if days_left < 0:
+                    continue
 
-# ▼▼▼ 3. スケジューラーの起動 (if __name__ == '__main__': の直前に追加) ▼▼▼
-# サーバー起動時にスケジューラーを開始
-scheduler = BackgroundScheduler()
-# 毎日 朝8:00 (JST) に実行するように設定
-# ※ Renderのサーバー時間はUTCなので、UTC 23:00 = JST 08:00 ですが、
-#   APSchedulerでtimezoneを指定すれば直感的に書けます。
-scheduler.add_job(func=check_todo_deadlines, trigger="cron", hour=8, minute=0, timezone=timezone('Asia/Tokyo'))
-scheduler.start()
+                message = None
+                title = "タスク期限のお知らせ"
 
-# アプリ終了時にスケジューラーも落とすおまじない
-atexit.register(lambda: scheduler.shutdown())
+                # ロジック判定
+                if days_left == 7:
+                    # 1週間前
+                    message = f'「{todo.task}」の期限まであと1週間です。'
+                elif days_left in [3, 1, 0]: 
+                    # 3日前、1日前(明日)、0日前(今日)
+                    message = f'「{todo.task}」の期限が近づいています。'
+                
+                # メッセージが決まったら送信
+                if message:
+                    if todo.user.push_notifications_enabled:
+                        # タスクの所有者に通知
+                        send_onesignal_notification(
+                            user_ids=[todo.user.id],
+                            title=title,
+                            message=message,
+                            url=url_for('activity_log_page', _external=True) # 活動記録ページへ飛ぶ
+                        )
+                        print(f"Notification sent for task {todo.id}: {message}", flush=True)
+
 
 def process_mentions(content, source_obj):
     mentioned_names = set(re.findall(r'@([a-zA-Z0-9_一-龠ぁ-んァ-ヶー]+)', content))
@@ -1276,6 +1271,17 @@ def api_finance():
     
     return jsonify({'logs': log_list, 'month_total': month_total})
 
+# ▼▼▼ 3. スケジューラーの起動 (if __name__ == '__main__': の直前に追加) ▼▼▼
+# サーバー起動時にスケジューラーを開始
+scheduler = BackgroundScheduler()
+# 毎日 朝8:00 (JST) に実行するように設定
+# ※ Renderのサーバー時間はUTCなので、UTC 23:00 = JST 08:00 ですが、
+#   APSchedulerでtimezoneを指定すれば直感的に書けます。
+scheduler.add_job(func=check_todo_deadlines, trigger="cron", hour=8, minute=0, timezone=timezone('Asia/Tokyo'))
+scheduler.start()
+
+# アプリ終了時にスケジューラーも落とすおまじない
+atexit.register(lambda: scheduler.shutdown())
 
 
 if __name__ == '__main__':
