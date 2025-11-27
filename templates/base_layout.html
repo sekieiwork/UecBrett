@@ -1063,7 +1063,7 @@ a.tag-box:hover {
         </div>
     </main>
 
-            <nav class="desktop-nav">
+        <nav class="desktop-nav">
             <ul>
                 <li>
                     <a href="{{ url_for('index') }}" title="ホーム">
@@ -1078,8 +1078,8 @@ a.tag-box:hover {
                     </a>
                 </li>
                 <li>
-                    <a href="{{ url_for('mailbox_index') }}" title="メールボックス">
-                        <img src="{{ url_for('static', filename='icons/mailbox.png') }}" alt="メールボックス">
+                    <a href="{{ url_for('hub_index') }}" title="便利機能">
+                        <img src="{{ url_for('static', filename='icons/development.png') }}" alt="便利機能">
                     </a>
                 </li>
             </ul>
@@ -1088,9 +1088,9 @@ a.tag-box:hover {
         <nav class="mobile-nav">
             <ul>
                 <li>
-                    <a href="{{ url_for('mailbox_index') }}">
-                        <img src="{{ url_for('static', filename='icons/mailbox.png') }}" alt="メールボックス">
-                        <span>メール</span>
+                    <a href="{{ url_for('hub_index') }}">
+                        <img src="{{ url_for('static', filename='icons/development.png') }}" alt="便利機能">
+                        <span>機能</span>
                     </a>
                 </li>
                 <li>

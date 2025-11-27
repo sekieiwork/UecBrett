@@ -10,6 +10,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from pytz import timezone, utc
 import os
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass # 本番環境（Render）ではエラーを無視する
 from flask_wtf.file import FileField, FileAllowed
 from forms import PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm, KairanbanForm
 from forms import (PostForm, CommentForm, RegisterForm, LoginForm, SearchForm, ProfileForm, KairanbanForm, 
@@ -323,6 +328,26 @@ class Notification(db.Model):
     kairanban_id = db.Column(db.Integer, db.ForeignKey('kairanban.id', ondelete="CASCADE"), nullable=True)
     post = db.relationship('Post', back_populates='notifications')
     kairanban = db.relationship('Kairanban', back_populates='notifications')
+
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    is_read = db.Column(db.Boolean, default=False)
+
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_messages')
+
+class StudyLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
+    subject = db.Column(db.String(100), nullable=False) # 科目名
+    duration = db.Column(db.Integer, nullable=False) # 分単位
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='study_logs')
 
 # --- OneSignal連携関数 ---
 def send_onesignal_notification(user_ids, title, message, url=None):
@@ -862,9 +887,11 @@ def kairanban_index():
     status_tags = {'grade': {c[0] for c in GRADE_CHOICES if c[0]}, 'category': {c[0] for c in CATEGORY_CHOICES if c[0]}, 'class': {c[0] for c in CLASS_CHOICES if c[0]}, 'program': {c[0] for c in PROGRAM_CHOICES if c[0]}, 'major': {c[0] for c in MAJOR_CHOICES if c[0]}}
     return render_template('kairanban.html', form=form, kairanbans=kairanbans, checked_ids=checked_ids,japan_tz=japan_tz,utc=utc, show_all=show_all,status_tags=status_tags)
 
-@app.route('/mailbox')
+@app.route('/hub')
 @login_required
-def mailbox_index(): return render_template('mailbox.html')
+def hub_index():
+    # 天気予報や学習記録のデータがあればここで取得して渡す
+    return render_template('multifunctionalhub.html')
 
 @app.route('/kairanban/check/<int:kairanban_id>', methods=['POST'])
 @login_required
@@ -953,6 +980,44 @@ def get_ogp():
     except Exception as e:
         print(f"OGP Fetch Error: {e}")
         return jsonify({'error': 'Failed to fetch'}), 400
+    
+# ▼▼▼ 学習記録機能用のルート ▼▼▼
+@app.route('/api/study_log', methods=['GET', 'POST'])
+@login_required
+def api_study_log():
+    if request.method == 'POST':
+        data = request.get_json()
+        subject = data.get('subject')
+        duration = data.get('duration')
+        
+        if not subject or not duration:
+            return jsonify({'error': 'Invalid data'}), 400
+            
+        try:
+            # durationを数値に変換
+            duration_int = int(duration)
+            new_log = StudyLog(user_id=current_user.id, subject=subject, duration=duration_int)
+            db.session.add(new_log)
+            db.session.commit()
+            return jsonify({'status': 'success', 'message': '記録しました'})
+        except ValueError:
+            return jsonify({'error': 'Invalid duration'}), 400
+
+    elif request.method == 'GET':
+        # 直近10件の記録を取得
+        logs = StudyLog.query.filter_by(user_id=current_user.id).order_by(StudyLog.timestamp.desc()).limit(10).all()
+        # 今日の合計時間を計算
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_logs = StudyLog.query.filter(StudyLog.user_id == current_user.id, StudyLog.timestamp >= today_start).all()
+        total_minutes = sum(log.duration for log in today_logs)
+        
+        log_list = [{
+            'subject': log.subject,
+            'duration': log.duration,
+            'date': log.timestamp.replace(tzinfo=utc).astimezone(timezone('Asia/Tokyo')).strftime('%m/%d %H:%M')
+        } for log in logs]
+        
+        return jsonify({'logs': log_list, 'total_today': total_minutes})
 
 if __name__ == '__main__':
     app.run(debug=True)
