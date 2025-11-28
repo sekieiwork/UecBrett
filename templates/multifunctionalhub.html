@@ -302,7 +302,27 @@
         </div>
     </div>
 
-
+    {% if current_user.username == '二酸化ケイ素' %}
+    <div class="hub-card" data-id="debug" style="border-left: 5px solid #6610f2;">
+        <h3 style="margin-top:0; border-bottom: none;">
+            <i class="fas fa-tools" style="color: #6610f2;"></i> 通知デバッグ
+        </h3>
+        <p style="font-size:0.9em; color:#666;">スマホが正しく登録されているか確認します。</p>
+        
+        <div id="debug-output" style="background:#f8f9fa; padding:10px; border:1px solid #ddd; border-radius:5px; font-family:monospace; margin-bottom:10px; min-height:60px; font-size:0.85em; overflow-wrap: break-word;">
+            ボタンを押して状態をチェックしてください...
+        </div>
+        
+        <div style="display:flex; gap:10px;">
+            <button id="check-onesignal-btn" class="file-upload-btn" style="background-color: #6610f2; flex:1;">
+                状態チェック
+            </button>
+            <button id="force-permission-btn" class="file-upload-btn" style="background-color: #fd7e14; flex:1;">
+                許可を求める
+            </button>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <script>
@@ -724,6 +744,53 @@ document.addEventListener('DOMContentLoaded', function() {
             scrollContainer.scrollBy({ left: scrollAmount, behavior: 'smooth' });
         });
     }
+
+    // ▼▼▼ 通知デバッグ機能 ▼▼▼
+    const debugOut = document.getElementById('debug-output');
+    
+    document.getElementById('check-onesignal-btn').addEventListener('click', function() {
+        debugOut.innerHTML = "確認中...";
+        
+        if (!window.OneSignalDeferred) {
+            debugOut.innerHTML = "OneSignal SDKが見つかりません";
+            return;
+        }
+
+        window.OneSignalDeferred.push(async function(OneSignal) {
+            try {
+                // 1. ブラウザの通知権限
+                const permission = Notification.permission;
+                
+                // 2. OneSignal上の登録状況
+                const isOptedIn = OneSignal.User.PushSubscription.optedIn;
+                const subId = OneSignal.User.PushSubscription.id;     // 端末ID
+                const extId = OneSignal.User.getExternalId();         // user_XX (これが大事)
+                
+                let html = `<strong>権限:</strong> ${permission}<br>`;
+                html += `<strong>有効:</strong> ${isOptedIn ? 'YES' : 'NO'}<br>`;
+                html += `<strong>User ID:</strong> ${extId || '未設定'}<br>`;
+                html += `<strong>Device ID:</strong> ${subId ? 'あり' : 'なし'}`;
+                
+                debugOut.innerHTML = html;
+                
+            } catch (e) {
+                debugOut.innerHTML = "エラー: " + e;
+            }
+        });
+    });
+
+    document.getElementById('force-permission-btn').addEventListener('click', function() {
+        window.OneSignalDeferred.push(async function(OneSignal) {
+            try {
+                // 通知の許可プロンプトを強制表示
+                await OneSignal.Slidedown.promptPush();
+                debugOut.innerHTML = "許可プロンプトを表示しました";
+            } catch(e) {
+                debugOut.innerHTML = "プロンプト表示エラー: " + e;
+            }
+        });
+    });
+    // ▲▲▲ ここまで ▲▲▲
 
 });
 </script>
