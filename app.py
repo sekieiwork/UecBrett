@@ -847,17 +847,18 @@ def admin_dashboard():
     all_comments = Comment.query.all()
     return render_template('admin_dashboard.html', users=all_users, posts=all_posts, comments=all_comments)
 
-@app.route('/admin/trigger_notifications')
+
+@app.route('/admin/test_todo_notifications', methods=['POST'])
 @login_required
-def trigger_notifications():
-    # 管理者（二酸化ケイ素）以外は実行不可
+def admin_test_todo_notifications():
     if not current_user.is_admin:
         abort(403)
     
-    # ここで通知チェック関数を直接呼び出す
+    # 定期実行用の関数を、ここで無理やり手動実行する
     check_todo_deadlines()
     
-    return "通知チェックを実行しました。ログを確認してください。", 200
+    flash('ToDo期限通知のチェックを強制実行しました。', 'success')
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/delete_comment/<int:comment_id>', methods=['POST'])
 @login_required
