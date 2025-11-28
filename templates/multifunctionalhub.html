@@ -414,11 +414,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 const hourlyContainer = document.getElementById('hourly-forecast-container');
                 const now = new Date();
                 const jstNow = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
-                const currentHourStr = jstNow.toISOString().slice(0, 13); // "YYYY-MM-DDTHH"
                 
-                let startIndex = hourly.time.findIndex(t => t.startsWith(currentHourStr));
-                if (startIndex === -1) startIndex = 0;
-
+                const y = jstNow.getFullYear();
+                const m = String(jstNow.getMonth() + 1).padStart(2, '0');
+                const d = String(jstNow.getDate()).padStart(2, '0');
+                const h = String(jstNow.getHours()).padStart(2, '0');
+                
+                // 完全一致用の文字列を作成 (例: 2025-11-28T20:00)
+                const targetTime = `${y}-${m}-${d}T${h}:00`;
+                
+                // 完全一致で検索 (indexOfを使用)
+                let startIndex = hourly.time.indexOf(targetTime);
+                
+                if (startIndex === -1) startIndex = 0; // 見つからなければ先頭
                 let hourlyHTML = '';
                 for (let i = startIndex; i < startIndex + 24; i++) {
                     if (!hourly.time[i]) break;

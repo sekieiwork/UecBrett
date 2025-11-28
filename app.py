@@ -847,6 +847,18 @@ def admin_dashboard():
     all_comments = Comment.query.all()
     return render_template('admin_dashboard.html', users=all_users, posts=all_posts, comments=all_comments)
 
+@app.route('/admin/trigger_notifications')
+@login_required
+def trigger_notifications():
+    # 管理者（二酸化ケイ素）以外は実行不可
+    if not current_user.is_admin:
+        abort(403)
+    
+    # ここで通知チェック関数を直接呼び出す
+    check_todo_deadlines()
+    
+    return "通知チェックを実行しました。ログを確認してください。", 200
+
 @app.route('/admin/delete_comment/<int:comment_id>', methods=['POST'])
 @login_required
 def admin_delete_comment(comment_id):
