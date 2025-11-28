@@ -48,12 +48,22 @@
     </div>
 
     <div class="post-form" style="margin-bottom: 20px; border-left: 5px solid #ffc107;">
-    <h3>🔧 開発者用ツール</h3>
-    <p>ToDoの期限通知ロジックを強制的に実行します（対象ユーザーに実際に通知が飛びます）。</p>
-    <form action="{{ url_for('admin_test_todo_notifications') }}" method="POST">
-        <button type="submit" class="file-upload-btn" style="background-color: #ffc107; color: #000;">
-            <i class="fas fa-bell"></i> 通知テストを実行
-        </button>
-    </form>
-</div>
+        <h3>🔧 開発者用ツール</h3>
+        <p>ToDoの期限通知ロジックを強制的に実行します（対象ユーザーに実際に通知が飛びます）。</p>
+        <form action="{{ url_for('admin_test_todo_notifications') }}" method="POST">
+            <button type="submit" class="file-upload-btn" style="background-color: #ffc107; color: #000;">
+                <i class="fas fa-bell"></i> 通知テストを実行
+            </button>
+        </form>
+    </div>
+
+    <div style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 15px;">
+        <p style="margin-bottom: 5px;"><strong>初回ガイドの表示テスト</strong><br>
+        自分の「ガイド既読」状態をリセットして、トップページへ移動します。</p>
+        <form action="{{ url_for('admin_reset_guide_status') }}" method="POST">
+            <button type="submit" class="file-upload-btn" style="background-color: #17a2b8; color: #fff;">
+                <i class="fas fa-undo"></i> リセットして確認
+            </button>
+        </form>
+    </div>
 {% endblock %}

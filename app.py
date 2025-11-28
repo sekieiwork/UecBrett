@@ -272,7 +272,7 @@ class User(db.Model, UserMixin):
     push_notifications_enabled = db.Column(db.Boolean, default=False)
     notification_comment_like = db.Column(db.Boolean, default=True)
     notification_reply = db.Column(db.Boolean, default=True)
-    
+    has_seen_guide = db.Column(db.Boolean, default=False)
     posts = db.relationship('Post', backref='author', lazy=True, cascade="all, delete")
     comments = db.relationship('Comment', backref='commenter', lazy=True, cascade="all, delete")
     bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic', cascade="all, delete")
@@ -529,6 +529,27 @@ def index(page):
     if current_user.is_authenticated:
         templates = [{'name': 'UECreview', 'title': f'○年 ○期 {current_user.username}の授業review', 'body': '<span class="text-large">**ここに科目名を入力**</span> 成績:<span class="text-red text-large">**ここに成績を入力**</span> 担当教員:ここに担当教員名を入力\n本文を入力'}]
     return render_template('index.html', form=form, posts=posts,  md=md, templates=templates, templates_for_js=json.dumps(templates), sort_by=sort_by)
+
+@app.route('/api/mark_guide_seen', methods=['POST'])
+@login_required
+def mark_guide_seen():
+    current_user.has_seen_guide = True
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
+@app.route('/admin/reset_guide_status', methods=['POST'])
+@login_required
+def admin_reset_guide_status():
+    if not current_user.is_admin:
+        abort(403)
+    
+    # 自分（管理者）の既読フラグを未読に戻す
+    current_user.has_seen_guide = False
+    db.session.commit()
+    
+    flash('ガイドの既読状態をリセットしました。', 'success')
+    # そのままトップページへ飛ばしてガイドを表示させる
+    return redirect(url_for('index'))
 
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
@@ -1290,7 +1311,7 @@ scheduler = BackgroundScheduler()
 # 毎日 朝8:00 (JST) に実行するように設定
 # ※ Renderのサーバー時間はUTCなので、UTC 23:00 = JST 08:00 ですが、
 #   APSchedulerでtimezoneを指定すれば直感的に書けます。
-scheduler.add_job(func=check_todo_deadlines, trigger="cron", hour=8, minute=0, timezone=timezone('Asia/Tokyo'))
+scheduler.add_job(func=check_todo_deadlines, trigger="cron", hour=7, minute=0, timezone=timezone('Asia/Tokyo'))
 scheduler.start()
 
 # アプリ終了時にスケジューラーも落とすおまじない
