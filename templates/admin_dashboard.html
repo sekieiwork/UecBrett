@@ -46,4 +46,14 @@
         {% endfor %}
         </ul>
     </div>
+
+    <div class="post-form" style="margin-bottom: 20px; border-left: 5px solid #ffc107;">
+    <h3>🔧 開発者用ツール</h3>
+    <p>ToDoの期限通知ロジックを強制的に実行します（対象ユーザーに実際に通知が飛びます）。</p>
+    <form action="{{ url_for('admin_test_todo_notifications') }}" method="POST">
+        <button type="submit" class="file-upload-btn" style="background-color: #ffc107; color: #000;">
+            <i class="fas fa-bell"></i> 通知テストを実行
+        </button>
+    </form>
+</div>
 {% endblock %}
