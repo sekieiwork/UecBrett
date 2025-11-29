@@ -8,7 +8,7 @@
         {% for post in posts %}
         <div class="post content-width-limiter">
         <h3>
-                <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a>
+                <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title | format_review_title(post.tags) | safe }}</a>
                 {% if post.updated_at and post.created_at_jst.strftime('%Ym%d%H%M%S') != post.updated_at_jst.strftime('%Ym%d%H%M%S') %}
                     <small style="color: gray; font-size: 0.3em;">(編集済み)</small>
                 {% endif %}

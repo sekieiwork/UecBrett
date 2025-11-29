@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func, or_, desc
+from sqlalchemy import func, or_, desc, case
 from flask_migrate import Migrate, upgrade
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, TextAreaField, SubmitField
@@ -182,6 +182,16 @@ def parse_review_for_editing(content):
             body = '' if body == placeholders[2] else body
             subjects.append({'subject': subject.strip(), 'grade': grade.strip(), 'teacher': teacher.strip(), 'body': body.strip()})
     return subjects if subjects else None
+
+@app.template_filter('format_review_title')
+def format_review_title_filter(title, tags):
+    # reviewタグが含まれていない場合は何もしない
+    if not tags or not any(tag.name == 'review' for tag in tags):
+        return title
+    
+    # "前期" または "後期" の後ろにある半角スペースを <br> に置換する
+    # 例: "2025年度 1年 前期 二酸化ケイ素..." -> "2025年度 1年 前期<br>二酸化ケイ素..."
+    return re.sub(r'(前期|後期)[ \u3000]*', r'\1<br>', title)
 
 def save_picture(form_picture):
     upload_result = cloudinary.uploader.upload(
@@ -772,16 +782,45 @@ def search():
     users = None
     
     if search_query:
-        tag_match = Tag.query.filter(Tag.name.ilike(search_query)).first()
-        like_query = f'%{search_query}%'
-        posts_query_builder = Post.query.filter((Post.title.like(like_query)) | (Post.content.like(like_query)))
-        users_query_builder = User.query.filter(or_(User.username.like(like_query), User.grade == search_query, User.category == search_query, User.user_class == search_query, User.program == search_query, User.major == search_query))
-        if tag_match:
-            post_tag_query = Post.query.join(post_tags).join(Tag).filter(Tag.id == tag_match.id)
-            posts_query_builder = posts_query_builder.union(post_tag_query)
-            user_tag_query = User.query.join(user_tags).join(Tag).filter(Tag.id == tag_match.id)
-            users_query_builder = users_query_builder.union(user_tag_query)
+        # 1. キーワードを分割 (半角スペース, 全角スペース, カンマ, 読点)
+        keywords = re.split(r'[ \u3000,、]+', search_query.strip())
+        keywords = [k for k in keywords if k] # 空文字を除去
 
+        # --- 投稿の検索ロジック (2-out-of-N) ---
+        if keywords:
+            # 閾値の設定: キーワードが3個以上なら2個一致、それ以外なら全一致(AND)
+            threshold = 2 if len(keywords) >= 3 else len(keywords)
+            
+            # 各キーワードごとの一致判定式を作成
+            match_scores = []
+            for k in keywords:
+                pattern = f"%{k}%"
+                # タイトル OR 本文 OR タグ名 に一致したら 1点、そうでなければ 0点
+                # func.maxを使うことで、同じ投稿内で複数回ヒットしても1点とする（重複加算防止）
+                match_condition = or_(
+                    Post.title.ilike(pattern),
+                    Post.content.ilike(pattern),
+                    Tag.name.ilike(pattern) # タグも部分一致でヒットさせる
+                )
+                match_scores.append(func.max(case((match_condition, 1), else_=0)))
+            
+            # 合計スコア
+            total_score = sum(match_scores)
+
+            # サブクエリ: 条件を満たす投稿IDを抽出
+            # PostとTagを結合し、Post.idでグループ化してスコアを集計
+            matched_ids_query = db.session.query(Post.id)\
+                .outerjoin(Post.tags)\
+                .group_by(Post.id)\
+                .having(total_score >= threshold)
+            
+            # メインクエリ: IDに基づいて投稿を取得
+            posts_query_builder = Post.query.filter(Post.id.in_(matched_ids_query))
+        else:
+            # キーワードがない場合（区切り文字だけ入力など）
+            posts_query_builder = Post.query.filter(False)
+
+        # 並び替え
         if sort_by == 'likes':
             posts = posts_query_builder.outerjoin(Like).group_by(Post.id).order_by(func.count(Like.id).desc(), Post.created_at.desc())
         elif sort_by == 'bookmarks':
@@ -789,8 +828,41 @@ def search():
         else:
             posts = posts_query_builder.order_by(Post.created_at.desc())
 
+        # ページネーション
         posts = posts.paginate(page=post_page, per_page=40, error_out=False)
+        
+        # --- ユーザーの検索ロジック (簡易的なOR検索) ---
+        # ユーザー検索は「いずれかのキーワードが含まれるユーザー」を表示します
+        if keywords:
+            user_conditions = []
+            for k in keywords:
+                pattern = f"%{k}%"
+                user_conditions.append(or_(
+                    User.username.ilike(pattern),
+                    User.grade.ilike(pattern),
+                    User.category.ilike(pattern),
+                    User.user_class.ilike(pattern),
+                    User.program.ilike(pattern),
+                    User.major.ilike(pattern)
+                ))
+            # 複数のキーワード条件を OR で結合 (どれか1つでも引っかかればOK)
+            # ※もしユーザー検索もANDにしたい場合は or_(*user_conditions) を and_(*user_conditions) に変えてください
+            users_query_builder = User.query.filter(or_(*user_conditions))
+            
+            # タグでのユーザー検索も考慮 (user_tagsテーブル結合)
+            # キーワードに完全一致するタグを持っているユーザーも追加
+            tag_match_ids = db.session.query(user_tags.c.user_id).join(Tag).filter(Tag.name.in_(keywords)).all()
+            tag_user_ids = [uid[0] for uid in tag_match_ids]
+            
+            if tag_user_ids:
+                users_query_builder = users_query_builder.union(User.query.filter(User.id.in_(tag_user_ids)))
+                
+        else:
+            users_query_builder = User.query.filter(False)
+
         users = users_query_builder.order_by(User.username.asc()).paginate(page=user_page, per_page=40, error_out=False)
+
+        # 表示用データ整形
         japan_tz = timezone('Asia/Tokyo')
         for post in posts.items:
             post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)

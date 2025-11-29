@@ -5,8 +5,13 @@
 {% block content %}
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <h1>投稿編集</h1>
-        
-        </div>
+    </div>
+
+    <script>
+        // 既にreviewタグがついているか、もしくはUECreviewデータがあるか
+        const IS_REVIEW_POST = {{ 'true' if 'review' in post.tags|map(attribute='name')|list or uec_review_data_json else 'false' }};
+        const CURRENT_USERNAME = "{{ current_user.username }}";
+    </script>
 
     <form method="POST" enctype="multipart/form-data" class="post-form" style="padding-top: 4em;">
         {{ form.csrf_token }}
@@ -28,6 +33,35 @@
             {% endif %}
         </div>
 
+        <div class="form-field">
+            {{ form.title.label }}<br>
+            {{ form.title() }}
+
+            <div id="uec-review-options" class="hidden" style="margin-top: 5px; gap: 10px; align-items: center; background-color: #f1f8ff; padding: 5px 10px; border-radius: 4px; flex-wrap: wrap;">
+                <select id="uec-year-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9em;">
+                    </select>
+                <select id="uec-grade-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9em;">
+                    <option value="">(学年なし)</option>
+                    <option value="1年">1年</option>
+                    <option value="2年">2年</option>
+                    <option value="3年">3年</option>
+                    <option value="4年">4年</option>
+                </select>
+                <select id="uec-term-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9em;">
+                    <option value="">(学期なし)</option>
+                    <option value="前期">前期</option>
+                    <option value="後期">後期</option>
+                </select>
+                <span style="font-size: 0.8em; color: #666;">変更するとタイトルに反映されます</span>
+            </div>
+            </div>
+
+        <div id="fixed-tag-area" class="hidden" style="margin-bottom: 10px;">
+            <span class="tag-box" style="background-color: #e9ecef; color: #495057; border-color: #ced4da; cursor: not-allowed; user-select: none;">
+                <i class="fas fa-tag"></i> review (自動付与)
+            </span>
+        </div>
+
         <div id="tag-form-container" class="form-field hidden" style="position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em;">
                 <label for="tags-input-field">タグ (カンマ区切りで入力)</label>
@@ -39,10 +73,7 @@
                 </div>
             {{ form.tags(id="tags-input-field", placeholder="例: nクラス, review, B2") }}
         </div>
-        <div class="form-field">
-            {{ form.title.label }}<br>
-            {{ form.title() }}
-        </div>
+
         <div class="form-field" id="content-field-original"> 
 	    {{ form.content.label }}<br>
             {{ form.content(cols=40, rows=5, class="auto-resize-textarea") }}
@@ -82,23 +113,100 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Flask-WTFによって生成されるであろうIDを使って要素を取得します
-            // タイトル入力欄のIDは 'title', 本文入力欄のIDは 'content' になるのが一般的です
-            const titleInput = document.getElementById('title');
-            const contentTextarea = document.getElementById('content');
+            // --- 既存のエンターキー制御 ---
+            const titleInput = document.querySelector('input[name="title"]'); 
+            const contentTextarea = document.querySelector('textarea[name="content"]');
 
-            // 要素が両方とも存在する場合のみ、処理を実行します
             if (titleInput && contentTextarea) {
                 titleInput.addEventListener('keydown', function(event) {
-                    // 押されたキーが 'Enter' だったら
                     if (event.key === 'Enter') {
-                        // 1. フォームが送信されるのを防ぎます
                         event.preventDefault();
-                        // 2. 本文のテキストエリアにフォーカスを移動させます
                         contentTextarea.focus();
+                    }
+                });
+            }
+
+            // --- UECreview用ロジック ---
+            const uecOptions = document.getElementById('uec-review-options');
+            const yearSelect = document.getElementById('uec-year-select');
+            const gradeSelect = document.getElementById('uec-grade-select');
+            const termSelect = document.getElementById('uec-term-select');
+            const fixedTagArea = document.getElementById('fixed-tag-area');
+            const tagsInput = document.getElementById('tags-input-field');
+            const contentFieldOriginal = document.getElementById('content-field-original');
+            const uecReviewContainer = document.getElementById('uecreview-form-container');
+
+            // 1. 年度の生成
+            if (yearSelect) {
+                const currentYear = new Date().getFullYear();
+                yearSelect.innerHTML = '<option value="">(年度なし)</option>';
+                for (let y = currentYear - 2; y <= currentYear; y++) {
+                    const opt = document.createElement('option');
+                    opt.value = y + '年度';
+                    opt.textContent = y + '年度';
+                    yearSelect.appendChild(opt);
+                }
+            }
+
+            // 2. 初期表示制御 (レビュー投稿かどうかで判断)
+            if (IS_REVIEW_POST) {
+                // JSで明示的にflexにする
+                uecOptions.classList.remove('hidden');
+                uecOptions.style.display = 'flex';
+                fixedTagArea.classList.remove('hidden');
+                
+                // タグ入力欄から 'review' を削除して表示
+                if (tagsInput) {
+                    let tags = tagsInput.value.split(',').map(t => t.trim());
+                    tags = tags.filter(t => t !== 'review' && t !== '');
+                    tagsInput.value = tags.join(', ');
+                }
+
+                // もしUECreviewデータがあるなら、通常本文を隠してフォームを表示 (base_layout.htmlのスクリプトと連携)
+                {% if uec_review_data_json %}
+                    if(contentFieldOriginal) contentFieldOriginal.classList.add('hidden');
+                    if(uecReviewContainer) uecReviewContainer.classList.remove('hidden');
+                {% endif %}
+            }
+
+            // 3. タイトル更新ロジック
+            function updateReviewTitle() {
+                if (!titleInput) return;
+                const year = yearSelect.value;
+                const grade = gradeSelect.value;
+                const term = termSelect.value;
+                const baseTitle = `${CURRENT_USERNAME}の授業review`;
+                
+                let prefix = '';
+                if (year) prefix += year + ' ';
+                if (grade) prefix += grade + ' ';
+                if (term) prefix += term + ' ';
+                
+                titleInput.value = prefix + baseTitle;
+            }
+
+            if (yearSelect && gradeSelect && termSelect) {
+                yearSelect.addEventListener('change', updateReviewTitle);
+                gradeSelect.addEventListener('change', updateReviewTitle);
+                termSelect.addEventListener('change', updateReviewTitle);
+            }
+
+            // 4. 送信時のタグ付与
+            const form = document.querySelector('form.post-form');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    if (!fixedTagArea.classList.contains('hidden')) {
+                        if (tagsInput.value.trim() === '') {
+                            tagsInput.value = 'review';
+                        } else {
+                            const current = tagsInput.value.split(',').map(t => t.trim());
+                            if (!current.includes('review')) {
+                                tagsInput.value += ',review';
+                            }
+                        }
                     }
                 });
             }
         });
     </script>
-    {% endblock %}
+{% endblock %}

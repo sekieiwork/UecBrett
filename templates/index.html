@@ -6,121 +6,36 @@
 
 {% if current_user.is_authenticated and not current_user.has_seen_guide %}
 <style>
-    /* ガイド用スタイル */
-    #guide-modal {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.85); z-index: 9999;
-        display: flex; justify-content: center; align-items: center; flex-direction: column;
-    }
-    
-    .guide-content-wrapper {
-        position: relative;
-        max-width: 90%;
-        max-height: 80vh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    #guide-image {
-        max-width: 100%;
-        max-height: 70vh;
-        border-radius: 8px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.5);
-        transition: transform 0.2s ease; /* スワイプ時の動き用 */
-        /* スマホでのスワイプ誤動作防止 */
-        touch-action: pan-y; 
-        -webkit-user-drag: none;
-    }
-
-    /* PC用カウンター (左上) */
-    #guide-counter {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        color: white;
-        font-weight: bold;
-        font-size: 1.2em;
-        background: rgba(0,0,0,0.5);
-        padding: 5px 12px;
-        border-radius: 20px;
-        z-index: 10;
-        pointer-events: none;
-    }
-
-    /* ボタンエリア */
-    .guide-btn-area {
-        margin-top: 20px;
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        width: 100%;
-        min-height: 40px; /* ボタンが消えても高さを確保しない */
-    }
-
-    /* インジケーター (点) */
-    #guide-dots {
-        margin-top: 15px;
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-    }
-    .guide-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background-color: white;
-        opacity: 0.4;
-        transition: all 0.3s;
-    }
-    .guide-dot.active {
-        opacity: 1;
-        transform: scale(1.4); /* アクティブ時は大きく */
-    }
-
-    /* ▼▼▼ スマホ用調整 (幅768px以下) ▼▼▼ */
-    @media (max-width: 768px) {
-        /* カウンターを隠す */
-        #guide-counter { display: none; }
-        
-        /* 「前へ」「次へ」ボタンを隠す */
-        #guide-prev, #guide-next { display: none !important; }
-        
-        /* 「始める」ボタンは表示するが、マージン調整 */
-        #guide-finish { width: 80%; }
-        
-        /* ドットを少し大きくして見やすく */
-        .guide-dot { width: 12px; height: 12px; }
-    }
+    #guide-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+    .guide-content-wrapper { position: relative; max-width: 90%; max-height: 80vh; display: flex; flex-direction: column; align-items: center; }
+    #guide-image { max-width: 100%; max-height: 70vh; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); touch-action: pan-y; -webkit-user-drag: none; }
+    #guide-counter { position: absolute; top: 10px; left: 10px; color: white; font-weight: bold; font-size: 1.2em; background: rgba(0,0,0,0.5); padding: 5px 12px; border-radius: 20px; z-index: 10; pointer-events: none; }
+    .guide-btn-area { margin-top: 20px; display: flex; justify-content: center; gap: 20px; width: 100%; min-height: 40px; }
+    #guide-dots { margin-top: 15px; display: flex; gap: 10px; justify-content: center; }
+    .guide-dot { width: 10px; height: 10px; border-radius: 50%; background-color: white; opacity: 0.4; transition: all 0.3s; }
+    .guide-dot.active { opacity: 1; transform: scale(1.4); }
+    @media (max-width: 768px) { #guide-counter { display: none; } #guide-prev, #guide-next { display: none !important; } #guide-finish { width: 80%; } .guide-dot { width: 12px; height: 12px; } }
 </style>
-
 <div id="guide-modal">
     <div class="guide-content-wrapper">
-        <div id="guide-counter">1 / 3</div>
-
+        <div id="guide-counter">1 / 4</div>
         <img id="guide-image" src="" alt="ガイド">
-        
         <div class="guide-btn-area">
             <button id="guide-prev" class="file-upload-btn" style="background-color: #6c757d; min-width: 100px; display: none;">前へ</button>
             <button id="guide-next" class="file-upload-btn" style="background-color: #007bff; min-width: 100px;">次へ</button>
             <button id="guide-finish" class="file-upload-btn" style="background-color: #28a745; min-width: 100px; display: none;">始める！</button>
         </div>
-        
         <div id="guide-dots"></div>
     </div>
 </div>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    
-    // 画像リスト (横長画像のみ使用)
     const guideImages = [
         "{{ url_for('static', filename='images/guide_1.png') }}",
         "{{ url_for('static', filename='images/guide_2.png') }}",
         "{{ url_for('static', filename='images/guide_3.png') }}",
         "{{ url_for('static', filename='images/guide_4.png') }}"
     ];
-
     let currentIndex = 0;
     const modal = document.getElementById('guide-modal');
     const imgEl = document.getElementById('guide-image');
@@ -130,100 +45,52 @@ document.addEventListener('DOMContentLoaded', function() {
     const dotsContainer = document.getElementById('guide-dots');
     const counterEl = document.getElementById('guide-counter');
     
-    // インジケーター生成
     guideImages.forEach((_, idx) => {
         const dot = document.createElement('div');
         dot.className = 'guide-dot' + (idx === 0 ? ' active' : '');
         dotsContainer.appendChild(dot);
     });
-
     function updateGuide() {
-        // 画像更新
         imgEl.src = guideImages[currentIndex];
-        
-        // カウンター更新 (PC用)
         counterEl.textContent = `${currentIndex + 1} / ${guideImages.length}`;
-
-        // ボタン表示切替 (PC用ロジック & スマホのFinishボタン用)
         prevBtn.style.display = currentIndex === 0 ? 'none' : 'inline-block';
-        
         if (currentIndex === guideImages.length - 1) {
             nextBtn.style.display = 'none';
-            finishBtn.style.display = 'inline-block'; // 最後のページだけFinishボタン表示
+            finishBtn.style.display = 'inline-block';
         } else {
             nextBtn.style.display = 'inline-block';
             finishBtn.style.display = 'none';
         }
-
-        // インジケーター更新
         Array.from(dotsContainer.children).forEach((dot, idx) => {
-            if (idx === currentIndex) {
-                dot.classList.add('active');
-            } else {
-                dot.classList.remove('active');
-            }
+            if (idx === currentIndex) dot.classList.add('active');
+            else dot.classList.remove('active');
         });
     }
-
-    // --- ボタン操作 (PC) ---
-    prevBtn.addEventListener('click', () => {
-        if(currentIndex > 0) { currentIndex--; updateGuide(); }
-    });
-
-    nextBtn.addEventListener('click', () => {
-        if(currentIndex < guideImages.length - 1) { currentIndex++; updateGuide(); }
-    });
-
+    prevBtn.addEventListener('click', () => { if(currentIndex > 0) { currentIndex--; updateGuide(); } });
+    nextBtn.addEventListener('click', () => { if(currentIndex < guideImages.length - 1) { currentIndex++; updateGuide(); } });
     finishBtn.addEventListener('click', () => {
         fetch("{{ url_for('mark_guide_seen') }}", { method: 'POST' })
-        .then(() => {
-            modal.style.transition = 'opacity 0.3s';
-            modal.style.opacity = '0';
-            setTimeout(() => modal.remove(), 300);
-        });
+        .then(() => { modal.style.transition = 'opacity 0.3s'; modal.style.opacity = '0'; setTimeout(() => modal.remove(), 300); });
     });
-
-    // --- スワイプ操作 (スマホ) ---
     let touchStartX = 0;
     let touchEndX = 0;
-    
-    imgEl.addEventListener('touchstart', function(e) {
-        touchStartX = e.changedTouches[0].screenX;
-    }, {passive: true});
-
-    imgEl.addEventListener('touchend', function(e) {
-        touchEndX = e.changedTouches[0].screenX;
-        handleSwipe();
-    }, {passive: true});
-
+    imgEl.addEventListener('touchstart', function(e) { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
+    imgEl.addEventListener('touchend', function(e) { touchEndX = e.changedTouches[0].screenX; handleSwipe(); }, {passive: true});
     function handleSwipe() {
-        // スワイプ距離のしきい値 (50px以上動かしたら反応)
         const threshold = 50;
-        
-        if (touchEndX < touchStartX - threshold) {
-            // 左へスワイプ -> 「次へ」
-            if(currentIndex < guideImages.length - 1) { 
-                currentIndex++; 
-                updateGuide(); 
-            }
-        }
-        
-        if (touchEndX > touchStartX + threshold) {
-            // 右へスワイプ -> 「前へ」
-            if(currentIndex > 0) { 
-                currentIndex--; 
-                updateGuide(); 
-            }
-        }
+        if (touchEndX < touchStartX - threshold) { if(currentIndex < guideImages.length - 1) { currentIndex++; updateGuide(); } }
+        if (touchEndX > touchStartX + threshold) { if(currentIndex > 0) { currentIndex--; updateGuide(); } }
     }
-    
-    // 初期表示
     updateGuide();
 });
 </script>
 {% endif %}
 
 {% if current_user.is_authenticated %}
+    <script>
+        const CURRENT_USERNAME = "{{ current_user.username }}";
+    </script>
+
     <div class="content-width-limiter" style="margin-bottom: 0;">
         <button id="toggle-post-form-btn">
             新しい投稿をする <i class="fas fa-plus"></i>
@@ -252,10 +119,38 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     {% endif %}
                 </div>
+                
                 <div class="form-field">
                         {{ form.title.label }}<br>
                         {{ form.title() }}
+                        
+                        <div id="uec-review-options" class="hidden" style="margin-top: 5px; gap: 10px; align-items: center; background-color: #f1f8ff; padding: 5px 10px; border-radius: 4px; flex-wrap: wrap;">
+                            <select id="uec-year-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9em;">
+                                </select>
+                            
+                            <select id="uec-grade-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9em;">
+                                <option value="">(学年なし)</option>
+                                <option value="1年">1年</option>
+                                <option value="2年">2年</option>
+                                <option value="3年">3年</option>
+                                <option value="4年">4年</option>
+                            </select>
+
+                            <select id="uec-term-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9em;">
+                                <option value="">(学期なし)</option>
+                                <option value="前期">前期</option>
+                                <option value="後期">後期</option>
+                            </select>
+                            <span style="font-size: 0.8em; color: #666;">タイトルに反映されます</span>
+                        </div>
+                        </div>
+
+                <div id="fixed-tag-area" class="hidden" style="margin-bottom: 10px;">
+                    <span class="tag-box" style="background-color: #e9ecef; color: #495057; border-color: #ced4da; cursor: not-allowed; user-select: none;">
+                        <i class="fas fa-tag"></i> review (自動付与)
+                    </span>
                 </div>
+
                 <div class="form-field" id="content-field-original">
     			    {{ form.content.label }}<br>
     			    {{ form.content(cols=40, rows=5, class="textarea-content auto-resize-textarea") }}
@@ -270,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div id="recent-tags-list" class="recent-tags-dropdown hidden">
                         </div>
-                    {{ form.tags(id="tags-input-field", placeholder="例: nクラス, review, B2") }}
+                    {{ form.tags(id="tags-input-field", placeholder="例: nクラス, B2") }}
                 </div>
                 <div id="uecreview-form-container" class="hidden"></div>
 
@@ -301,6 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <select id="sort-select" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
                 <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>新しい順</option>
                 <option value="likes" {% if sort_by == 'likes' %}selected{% endif %}>いいねが多い順</option>
+                <option value="bookmarks" {% if sort_by == 'bookmarks' %}selected{% endif %}>ブックマーク順</option>
             </select>
         </div>
     </div>
@@ -308,7 +204,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="content-width-limiter">
         <div class="post"> 
             <h3>
-                <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a>
+                <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title | format_review_title(post.tags) | safe }}</a>
                 {% if post.updated_at and post.created_at_jst.strftime('%Ym%d%H%M%S') != post.updated_at_jst.strftime('%Ym%d%H%M%S') %}
                     <small style="color: gray; font-size: 0.3em;">(編集済み)</small>
                 {% endif %}
@@ -401,4 +297,103 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endif %}
     </div>
     </div>
-{% endblock %}
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const uecOptions = document.getElementById('uec-review-options');
+        const yearSelect = document.getElementById('uec-year-select');
+        const gradeSelect = document.getElementById('uec-grade-select');
+        const termSelect = document.getElementById('uec-term-select');
+        const titleInput = document.querySelector('input[name="title"]');
+        const fixedTagArea = document.getElementById('fixed-tag-area');
+        const tagsInput = document.getElementById('tags-input-field');
+        
+        // 1. 年度の選択肢を動的生成 (今年 ±2年)
+        if (yearSelect) {
+            const currentYear = new Date().getFullYear();
+            yearSelect.innerHTML = '<option value="">(年度なし)</option>';
+            for (let y = currentYear - 2; y <= currentYear; y++) {
+                const opt = document.createElement('option');
+                opt.value = y + '年度';
+                opt.textContent = y + '年度';
+                yearSelect.appendChild(opt);
+            }
+        }
+
+        // 2. テンプレート選択監視
+        document.querySelectorAll('.template-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const templateIndex = parseInt(item.dataset.index, 10);
+                
+                setTimeout(() => {
+                    if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA[templateIndex]) {
+                        const templateName = TEMPLATES_DATA[templateIndex].name;
+                        
+                        if (templateName === 'UECreview') {
+                            // JSで表示を切り替える（classを削除し、display:flexを適用）
+                            uecOptions.classList.remove('hidden');
+                            uecOptions.style.display = 'flex'; // 明示的にflexにする
+                            fixedTagArea.classList.remove('hidden');
+                            
+                            updateReviewTitle();
+                            removeReviewTagFromInput();
+                        } else {
+                            // 他のテンプレートなら隠す
+                            uecOptions.classList.add('hidden');
+                            uecOptions.style.display = 'none'; // 明示的に消す
+                            fixedTagArea.classList.add('hidden');
+                        }
+                    }
+                }, 100);
+            });
+        });
+        
+        function updateReviewTitle() {
+            if (!titleInput) return;
+            const year = yearSelect.value;
+            const grade = gradeSelect.value;
+            const term = termSelect.value;
+            const baseTitle = `${CURRENT_USERNAME}の授業review`;
+            
+            let prefix = '';
+            if (year) prefix += year + ' ';
+            if (grade) prefix += grade + ' ';
+            if (term) prefix += term + ' ';
+            
+            titleInput.value = prefix + baseTitle;
+        }
+        
+        function removeReviewTagFromInput() {
+            if (!tagsInput) return;
+            let tags = tagsInput.value.split(',').map(t => t.trim());
+            tags = tags.filter(t => t !== 'review' && t !== '');
+            tagsInput.value = tags.join(', ');
+        }
+
+        // ドロップダウン変更時にタイトル更新
+        if (yearSelect && gradeSelect && termSelect) {
+            yearSelect.addEventListener('change', updateReviewTitle);
+            gradeSelect.addEventListener('change', updateReviewTitle);
+            termSelect.addEventListener('change', updateReviewTitle);
+        }
+
+        // 3. 送信時に "review" タグを強制付与
+        const postForms = document.querySelectorAll('form[method="POST"][enctype="multipart/form-data"]');
+        postForms.forEach(form => {
+            form.addEventListener('submit', function(event) {
+                // 固定タグエリアが表示されている = UECreviewモード
+                if (fixedTagArea && !fixedTagArea.classList.contains('hidden')) {
+                    if (tagsInput.value.trim() === '') {
+                        tagsInput.value = 'review';
+                    } else {
+                        const current = tagsInput.value.split(',').map(t => t.trim());
+                        if (!current.includes('review')) {
+                            tagsInput.value += ',review';
+                        }
+                    }
+                }
+            });
+        });
+    });
+    </script>
+    {% endblock %}
