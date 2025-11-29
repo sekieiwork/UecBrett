@@ -348,8 +348,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- 2. 天気予報 (UnixTime版: ズレなし完全対応) ---
-    
+    // --- 2. 天気予報 (時刻表示修正版) ---
     const WEATHER_CODE_MAP = {
         0: { icon: 'fa-sun', color: '#f39c12', desc: '快晴' },
         1: { icon: 'fa-sun', color: '#f39c12', desc: '晴れ' },
@@ -406,7 +405,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const daily = data.daily;
                 const hourly = data.hourly;
                 
-                // 現在
                 const weatherInfo = getWeatherIcon(current.weather_code);
                 document.getElementById('current-icon').innerHTML = `<i class="fas ${weatherInfo.icon}" style="color: ${weatherInfo.color};"></i>`;
                 document.getElementById('current-desc').textContent = weatherInfo.desc;
@@ -414,21 +412,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('today-high').textContent = Math.round(daily.temperature_2m_max[0]);
                 document.getElementById('today-low').textContent = Math.round(daily.temperature_2m_min[0]);
 
-                // --- 1時間ごとの予報 (UnixTimeロジック) ---
                 const hourlyContainer = document.getElementById('hourly-forecast-container');
-                
-                // 現在時刻(秒)に近い「正時(00分)」のタイムスタンプを計算
                 const nowUnix = Math.floor(Date.now() / 1000);
                 const currentHourTimestamp = Math.floor(nowUnix / 3600) * 3600;
 
-                // 配列から現在時刻(正時)を探す
                 let startIndex = hourly.time.indexOf(currentHourTimestamp);
-                
-                // 見つからない(API更新ラグなど)場合は、直近の未来を探す
                 if (startIndex === -1) {
                     startIndex = hourly.time.findIndex(t => t >= nowUnix);
                 }
-                if (startIndex === -1) startIndex = 0; // それでもダメなら最初から
+                if (startIndex === -1) startIndex = 0;
 
                 let hourlyHTML = '';
                 for (let i = startIndex; i < startIndex + 24; i++) {
@@ -440,17 +432,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     const pop = hourly.precipitation_probability[i];
                     const wInfo = getWeatherIcon(code);
                     
-                    // 表示ラベル: 日本時間での「時」を取得
                     let label;
                     if (i === startIndex) {
                         label = '現在';
                     } else {
-                        // 強制的に日本時間の「時」を取得
                         const dateObj = new Date(timeUnix * 1000);
+                        // ▼▼▼ 修正: :00 を削除して「時」だけにする、または数字だけにする ▼▼▼
+                        // 'hour: numeric' はブラウザによって "15時" や "15" になるため、数字だけ取り出す手もありですが、
+                        // ここでは日本ロケールの標準的な表示（例: 22）を利用します。
                         const jstHour = dateObj.toLocaleTimeString('ja-JP', { 
                             timeZone: 'Asia/Tokyo', hour: 'numeric', hour12: false 
                         });
-                        label = `${jstHour}:00`;
+                        // もし "22時" のように "時" がついてもOKならこのままで。
+                        // 数字だけにしたい場合は .replace('時', '') を追加してください。
+                        // 今回はスクショに合わせてシンプルに数字だけにします。
+                        label = jstHour.replace('時', ''); 
                     }
 
                     hourlyHTML += `
@@ -464,19 +460,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 hourlyContainer.innerHTML = hourlyHTML;
 
-                // --- 週間予報 ---
+                // --- 週間予報 (独自集計) ---
                 const dailyContainer = document.getElementById('daily-forecast-container');
                 let dailyHTML = '';
                 const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
                 const displayDays = Math.min(daily.time.length, 7);
 
                 for (let i = 0; i < displayDays; i++) {
-                    // UnixTimeなので *1000 してDateオブジェクト化
                     const dateObj = new Date(daily.time[i] * 1000);
                     const dayName = (i === 0) ? '今日' : weekDays[dateObj.getDay()];
                     
-                    // 1日の範囲 (00:00 ~ 23:59 JST) に含まれる hourly データを集計
-                    // daily.time[i] はその日の 00:00 (JST) のタイムスタンプになっているはず
                     const dayStart = daily.time[i];
                     const dayEnd = dayStart + (24 * 3600);
                     
@@ -508,7 +501,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else {
                         const first = WEATHER_GROUPS[sortedGroups[0]];
                         const second = sortedGroups.length > 1 ? WEATHER_GROUPS[sortedGroups[1]] : first;
-                        
                         iconHTML = `<i class="fas ${first.icon}" style="color: ${first.color};"></i>`;
                         if (first !== second) {
                             iconHTML += `<i class="fas ${second.icon}" style="color: ${second.color};"></i>`;
@@ -562,7 +554,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-
     // --- 3. ToDoサマリー取得 ---
     function fetchTodoSummary() {
         const now = new Date();
@@ -583,7 +574,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(err => console.error(err));
     }
     fetchTodoSummary();
-
 
     // --- 4. PDF変換機能 ---
     const { jsPDF } = window.jspdf;
@@ -753,7 +743,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     const permission = Notification.permission;
                     const isOptedIn = OneSignal.User.PushSubscription.optedIn;
                     const subId = OneSignal.User.PushSubscription.id;
-                    // ▼▼▼ 修正: プロパティとしてアクセス ▼▼▼
                     const extId = OneSignal.User.externalId; 
                     
                     let html = `<strong>権限:</strong> ${permission}<br>`;
@@ -778,7 +767,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-
 });
 </script>
 {% endblock %}
