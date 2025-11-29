@@ -348,24 +348,235 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- 2. ToDoサマリー取得 (新規追加) ---
+    // --- 2. 天気予報 (UnixTime版: ズレなし完全対応) ---
+    
+    const WEATHER_CODE_MAP = {
+        0: { icon: 'fa-sun', color: '#f39c12', desc: '快晴' },
+        1: { icon: 'fa-sun', color: '#f39c12', desc: '晴れ' },
+        2: { icon: 'fa-cloud-sun', color: '#95a5a6', desc: '一部曇' },
+        3: { icon: 'fa-cloud', color: '#7f8c8d', desc: '曇り' },
+        45: { icon: 'fa-smog', color: '#bdc3c7', desc: '霧' },
+        48: { icon: 'fa-smog', color: '#bdc3c7', desc: '霧氷' },
+        51: { icon: 'fa-cloud-rain', color: '#3498db', desc: '霧雨' },
+        53: { icon: 'fa-cloud-rain', color: '#3498db', desc: '霧雨' },
+        55: { icon: 'fa-cloud-rain', color: '#3498db', desc: '霧雨' },
+        61: { icon: 'fa-umbrella', color: '#3498db', desc: '小雨' },
+        63: { icon: 'fa-umbrella', color: '#2980b9', desc: '雨' },
+        65: { icon: 'fa-umbrella', color: '#2980b9', desc: '大雨' },
+        71: { icon: 'fa-snowflake', color: '#ecf0f1', desc: '小雪' },
+        73: { icon: 'fa-snowflake', color: '#ecf0f1', desc: '雪' },
+        75: { icon: 'fa-snowflake', color: '#ecf0f1', desc: '大雪' },
+        80: { icon: 'fa-cloud-showers-heavy', color: '#2980b9', desc: 'にわか雨' },
+        81: { icon: 'fa-cloud-showers-heavy', color: '#2980b9', desc: 'にわか雨' },
+        82: { icon: 'fa-cloud-showers-heavy', color: '#2980b9', desc: '激しい雨' },
+        95: { icon: 'fa-bolt', color: '#f1c40f', desc: '雷雨' },
+        96: { icon: 'fa-bolt', color: '#f1c40f', desc: '雷雨' },
+        99: { icon: 'fa-bolt', color: '#f1c40f', desc: '激しい雷雨' }
+    };
+
+    const WEATHER_GROUPS = {
+        'Sunny': { codes: [0, 1], icon: 'fa-sun', color: '#f39c12' },
+        'Cloudy': { codes: [2, 3, 45, 48], icon: 'fa-cloud', color: '#7f8c8d' },
+        'Rain': { codes: [51, 53, 55, 61, 63, 65, 80, 81, 82], icon: 'fa-umbrella', color: '#3498db' },
+        'Snow': { codes: [71, 73, 75, 77, 85, 86], icon: 'fa-snowflake', color: '#ecf0f1' },
+        'Thunder': { codes: [95, 96, 99], icon: 'fa-bolt', color: '#f1c40f' }
+    };
+
+    function getWeatherIcon(code) {
+        return WEATHER_CODE_MAP[code] || { icon: 'fa-question', color: '#ccc', desc: '不明' };
+    }
+
+    function getGroupName(code) {
+        for (const [name, group] of Object.entries(WEATHER_GROUPS)) {
+            if (group.codes.includes(code)) return name;
+        }
+        return 'Cloudy';
+    }
+
+    function fetchWeather() {
+        const url = 'https://api.open-meteo.com/v1/forecast?latitude=35.650&longitude=139.540&current=temperature_2m,weather_code,apparent_temperature&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FTokyo&timeformat=unixtime';
+
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('weather-loading').style.display = 'none';
+                document.getElementById('weather-content').style.display = 'block';
+
+                const current = data.current;
+                const daily = data.daily;
+                const hourly = data.hourly;
+                
+                // 現在
+                const weatherInfo = getWeatherIcon(current.weather_code);
+                document.getElementById('current-icon').innerHTML = `<i class="fas ${weatherInfo.icon}" style="color: ${weatherInfo.color};"></i>`;
+                document.getElementById('current-desc').textContent = weatherInfo.desc;
+                document.getElementById('current-temp').textContent = Math.round(current.temperature_2m);
+                document.getElementById('today-high').textContent = Math.round(daily.temperature_2m_max[0]);
+                document.getElementById('today-low').textContent = Math.round(daily.temperature_2m_min[0]);
+
+                // --- 1時間ごとの予報 (UnixTimeロジック) ---
+                const hourlyContainer = document.getElementById('hourly-forecast-container');
+                
+                // 現在時刻(秒)に近い「正時(00分)」のタイムスタンプを計算
+                const nowUnix = Math.floor(Date.now() / 1000);
+                const currentHourTimestamp = Math.floor(nowUnix / 3600) * 3600;
+
+                // 配列から現在時刻(正時)を探す
+                let startIndex = hourly.time.indexOf(currentHourTimestamp);
+                
+                // 見つからない(API更新ラグなど)場合は、直近の未来を探す
+                if (startIndex === -1) {
+                    startIndex = hourly.time.findIndex(t => t >= nowUnix);
+                }
+                if (startIndex === -1) startIndex = 0; // それでもダメなら最初から
+
+                let hourlyHTML = '';
+                for (let i = startIndex; i < startIndex + 24; i++) {
+                    if (i >= hourly.time.length) break;
+                    
+                    const timeUnix = hourly.time[i];
+                    const code = hourly.weather_code[i];
+                    const temp = Math.round(hourly.temperature_2m[i]);
+                    const pop = hourly.precipitation_probability[i];
+                    const wInfo = getWeatherIcon(code);
+                    
+                    // 表示ラベル: 日本時間での「時」を取得
+                    let label;
+                    if (i === startIndex) {
+                        label = '現在';
+                    } else {
+                        // 強制的に日本時間の「時」を取得
+                        const dateObj = new Date(timeUnix * 1000);
+                        const jstHour = dateObj.toLocaleTimeString('ja-JP', { 
+                            timeZone: 'Asia/Tokyo', hour: 'numeric', hour12: false 
+                        });
+                        label = `${jstHour}:00`;
+                    }
+
+                    hourlyHTML += `
+                        <div class="hourly-item">
+                            <div class="hourly-time">${label}</div>
+                            <div class="hourly-icon"><i class="fas ${wInfo.icon}" style="color: ${wInfo.color};"></i></div>
+                            <div class="hourly-pop">${pop > 0 ? pop + '%' : ''}</div>
+                            <div class="hourly-temp">${temp}°</div>
+                        </div>
+                    `;
+                }
+                hourlyContainer.innerHTML = hourlyHTML;
+
+                // --- 週間予報 ---
+                const dailyContainer = document.getElementById('daily-forecast-container');
+                let dailyHTML = '';
+                const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
+                const displayDays = Math.min(daily.time.length, 7);
+
+                for (let i = 0; i < displayDays; i++) {
+                    // UnixTimeなので *1000 してDateオブジェクト化
+                    const dateObj = new Date(daily.time[i] * 1000);
+                    const dayName = (i === 0) ? '今日' : weekDays[dateObj.getDay()];
+                    
+                    // 1日の範囲 (00:00 ~ 23:59 JST) に含まれる hourly データを集計
+                    // daily.time[i] はその日の 00:00 (JST) のタイムスタンプになっているはず
+                    const dayStart = daily.time[i];
+                    const dayEnd = dayStart + (24 * 3600);
+                    
+                    const dayCodes = [];
+                    hourly.time.forEach((t, index) => {
+                        if (t >= dayStart && t < dayEnd) {
+                            dayCodes.push(hourly.weather_code[index]);
+                        }
+                    });
+
+                    const counts = {};
+                    let totalHours = 0;
+                    dayCodes.forEach(code => {
+                        const group = getGroupName(code);
+                        counts[group] = (counts[group] || 0) + 1;
+                        totalHours++;
+                    });
+
+                    const sortedGroups = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+                    const topGroup = sortedGroups[0];
+                    const topCount = counts[topGroup];
+                    
+                    let iconHTML = '';
+                    let iconClass = '';
+
+                    if (totalHours > 0 && (topCount / totalHours) >= 0.8) {
+                        const info = WEATHER_GROUPS[topGroup];
+                        iconHTML = `<i class="fas ${info.icon}" style="color: ${info.color};"></i>`;
+                    } else {
+                        const first = WEATHER_GROUPS[sortedGroups[0]];
+                        const second = sortedGroups.length > 1 ? WEATHER_GROUPS[sortedGroups[1]] : first;
+                        
+                        iconHTML = `<i class="fas ${first.icon}" style="color: ${first.color};"></i>`;
+                        if (first !== second) {
+                            iconHTML += `<i class="fas ${second.icon}" style="color: ${second.color};"></i>`;
+                        }
+                        iconClass = 'double-icon';
+                    }
+
+                    const maxT = Math.round(daily.temperature_2m_max[i]);
+                    const minT = Math.round(daily.temperature_2m_min[i]);
+                    const pop = daily.precipitation_probability_max[i];
+
+                    dailyHTML += `
+                        <div class="daily-row">
+                            <div class="daily-day">${dayName}</div>
+                            <div class="daily-icon-area ${iconClass}">${iconHTML}</div>
+                            <div class="daily-pop">${pop > 0 ? pop + '%' : ''}</div>
+                            <div class="daily-temp-bar">
+                                <span class="temp-low">${minT}°</span>
+                                <div style="flex-grow:1; height:4px; background:#eee; margin:0 10px; border-radius:2px; position:relative;">
+                                    <div style="position:absolute; left:0; right:0; top:0; bottom:0; background: linear-gradient(90deg, #a8e063, #56ab2f); opacity:0.3;"></div>
+                                </div>
+                                <span class="temp-high">${maxT}°</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                dailyContainer.innerHTML = dailyHTML;
+
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('weather-loading').innerHTML = '<span style="color:red;">天気の取得に失敗しました</span>';
+            });
+    }
+
+    fetchWeather();
+
+    const scrollAmount = 200;
+    const scrollContainer = document.getElementById('hourly-forecast-container');
+    const btnLeft = document.getElementById('scroll-left');
+    const btnRight = document.getElementById('scroll-right');
+
+    if (btnLeft && scrollContainer) {
+        btnLeft.addEventListener('click', () => {
+            scrollContainer.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        });
+    }
+    if (btnRight && scrollContainer) {
+        btnRight.addEventListener('click', () => {
+            scrollContainer.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        });
+    }
+
+
+    // --- 3. ToDoサマリー取得 ---
     function fetchTodoSummary() {
-        // 日付表示
         const now = new Date();
         const dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
         const dateEl = document.getElementById('hub-today-date');
         if(dateEl) dateEl.textContent = "Today: " + dateStr;
 
-        // APIからデータ取得
         fetch('/api/todo')
             .then(res => res.json())
             .then(data => {
                 const total = data.length;
                 const done = data.filter(t => t.is_completed).length;
-                
                 const doneEl = document.getElementById('hub-todo-done');
                 const totalEl = document.getElementById('hub-todo-total');
-                
                 if(doneEl) doneEl.textContent = done;
                 if(totalEl) totalEl.textContent = total;
             })
@@ -374,7 +585,7 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchTodoSummary();
 
 
-    // --- 3. PDF変換機能 ---
+    // --- 4. PDF変換機能 ---
     const { jsPDF } = window.jspdf;
     const pdfInput = document.getElementById('pdf-images');
     const pdfPreviewArea = document.getElementById('pdf-preview-area');
@@ -457,25 +668,14 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const file = selectedFiles[i];
             const imgData = await readFileAsDataURL(file);
-            
             const imgProps = doc.getImageProperties(imgData);
-            
             const ratio = imgProps.width / imgProps.height;
             const pdfRatio = pdfWidth / pdfHeight;
-            
             let w, h;
-            // 余白なし
-            if (ratio > pdfRatio) {
-                w = pdfWidth;
-                h = w / ratio;
-            } else {
-                h = pdfHeight;
-                w = h * ratio;
-            }
-            
+            if (ratio > pdfRatio) { w = pdfWidth; h = w / ratio; } 
+            else { h = pdfHeight; w = h * ratio; }
             const x = (pdfWidth - w) / 2;
             const y = (pdfHeight - h) / 2;
-
             doc.addImage(imgData, 'JPEG', x, y, w, h);
             pdfStatus.innerText = `${i + 1} / ${selectedFiles.length} 枚目を処理完了`;
         }
@@ -486,21 +686,16 @@ document.addEventListener('DOMContentLoaded', function() {
         downloadBtn.addEventListener('click', async function() {
             if (selectedFiles.length === 0) return;
             setProcessingState(downloadBtn);
-
             try {
                 const filenameText = pdfFilename.value.trim() || '画像まとめ';
                 const filename = filenameText.endsWith('.pdf') ? filenameText : filenameText + '.pdf';
-                
                 const doc = await generatePDF();
                 doc.save(filename);
-                
                 pdfStatus.innerText = '保存しました！';
             } catch (err) {
                 console.error(err);
                 pdfStatus.innerText = 'エラーが発生しました';
-            } finally {
-                resetButtons(false);
-            }
+            } finally { resetButtons(false); }
         });
     }
 
@@ -508,30 +703,21 @@ document.addEventListener('DOMContentLoaded', function() {
         shareBtn.addEventListener('click', async function() {
             if (selectedFiles.length === 0) return;
             setProcessingState(shareBtn);
-
             try {
                 const filenameText = pdfFilename.value.trim() || '画像まとめ';
                 const filename = filenameText.endsWith('.pdf') ? filenameText : filenameText + '.pdf';
-                
                 const doc = await generatePDF();
                 const blob = doc.output('blob');
                 const file = new File([blob], filename, { type: "application/pdf" });
-
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     try {
-                        await navigator.share({
-                            files: [file],
-                            title: filename,
-                            text: 'PDFファイルを作成しました'
-                        });
+                        await navigator.share({ files: [file], title: filename, text: 'PDFファイルを作成しました' });
                         pdfStatus.innerText = '共有メニューを開きました';
                     } catch (shareErr) {
                         if (shareErr.name !== 'AbortError') {
                             doc.save(filename);
                             pdfStatus.innerText = '共有できなかったため保存しました';
-                        } else {
-                            pdfStatus.innerText = '共有をキャンセルしました';
-                        }
+                        } else { pdfStatus.innerText = '共有をキャンセルしました'; }
                     }
                 } else {
                     doc.save(filename);
@@ -540,9 +726,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (err) {
                 console.error(err);
                 pdfStatus.innerText = 'エラーが発生しました';
-            } finally {
-                resetButtons(false);
-            }
+            } finally { resetButtons(false); }
         });
     }
 
@@ -555,242 +739,45 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-
-    // --- 4. 天気予報 ---
-    const WEATHER_CODE_MAP = {
-        0: { icon: 'fa-sun', color: '#f39c12', desc: '快晴' },
-        1: { icon: 'fa-sun', color: '#f39c12', desc: '晴れ' },
-        2: { icon: 'fa-cloud-sun', color: '#95a5a6', desc: '一部曇' },
-        3: { icon: 'fa-cloud', color: '#7f8c8d', desc: '曇り' },
-        45: { icon: 'fa-smog', color: '#bdc3c7', desc: '霧' },
-        48: { icon: 'fa-smog', color: '#bdc3c7', desc: '霧氷' },
-        51: { icon: 'fa-cloud-rain', color: '#3498db', desc: '霧雨' },
-        53: { icon: 'fa-cloud-rain', color: '#3498db', desc: '霧雨' },
-        55: { icon: 'fa-cloud-rain', color: '#3498db', desc: '霧雨' },
-        61: { icon: 'fa-umbrella', color: '#3498db', desc: '小雨' },
-        63: { icon: 'fa-umbrella', color: '#2980b9', desc: '雨' },
-        65: { icon: 'fa-umbrella', color: '#2980b9', desc: '大雨' },
-        71: { icon: 'fa-snowflake', color: '#ecf0f1', desc: '小雪' },
-        73: { icon: 'fa-snowflake', color: '#ecf0f1', desc: '雪' },
-        75: { icon: 'fa-snowflake', color: '#ecf0f1', desc: '大雪' },
-        80: { icon: 'fa-cloud-showers-heavy', color: '#2980b9', desc: 'にわか雨' },
-        81: { icon: 'fa-cloud-showers-heavy', color: '#2980b9', desc: 'にわか雨' },
-        82: { icon: 'fa-cloud-showers-heavy', color: '#2980b9', desc: '激しい雨' },
-        95: { icon: 'fa-bolt', color: '#f1c40f', desc: '雷雨' },
-        96: { icon: 'fa-bolt', color: '#f1c40f', desc: '雷雨' },
-        99: { icon: 'fa-bolt', color: '#f1c40f', desc: '激しい雷雨' }
-    };
-
-    // 天気グループ定義 (集計用)
-    const WEATHER_GROUPS = {
-        'Sunny': { codes: [0, 1], icon: 'fa-sun', color: '#f39c12', priority: 1 },
-        'Cloudy': { codes: [2, 3, 45, 48], icon: 'fa-cloud', color: '#7f8c8d', priority: 2 },
-        'Rain': { codes: [51, 53, 55, 61, 63, 65, 80, 81, 82], icon: 'fa-umbrella', color: '#3498db', priority: 3 },
-        'Snow': { codes: [71, 73, 75, 77, 85, 86], icon: 'fa-snowflake', color: '#ecf0f1', priority: 4 },
-        'Thunder': { codes: [95, 96, 99], icon: 'fa-bolt', color: '#f1c40f', priority: 5 }
-    };
-
-    function getWeatherIcon(code) {
-        return WEATHER_CODE_MAP[code] || { icon: 'fa-question', color: '#ccc', desc: '不明' };
-    }
-
-    function getGroupName(code) {
-        for (const [name, group] of Object.entries(WEATHER_GROUPS)) {
-            if (group.codes.includes(code)) return name;
-        }
-        return 'Cloudy'; 
-    }
-
-    function fetchWeather() {
-        const url = 'https://api.open-meteo.com/v1/forecast?latitude=35.650&longitude=139.540&current=temperature_2m,weather_code,apparent_temperature&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FTokyo';
-
-        fetch(url)
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('weather-loading').style.display = 'none';
-                document.getElementById('weather-content').style.display = 'block';
-
-                const current = data.current;
-                const daily = data.daily;
-                const hourly = data.hourly;
-                
-                const weatherInfo = getWeatherIcon(current.weather_code);
-                document.getElementById('current-icon').innerHTML = `<i class="fas ${weatherInfo.icon}" style="color: ${weatherInfo.color};"></i>`;
-                document.getElementById('current-desc').textContent = weatherInfo.desc;
-                document.getElementById('current-temp').textContent = Math.round(current.temperature_2m);
-                document.getElementById('today-high').textContent = Math.round(daily.temperature_2m_max[0]);
-                document.getElementById('today-low').textContent = Math.round(daily.temperature_2m_min[0]);
-
-                const hourlyContainer = document.getElementById('hourly-forecast-container');
-                const now = new Date();
-                const jstNow = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
-                const currentHourStr = jstNow.toISOString().slice(0, 13);
-                
-                let startIndex = hourly.time.findIndex(t => t.startsWith(currentHourStr));
-                if (startIndex === -1) startIndex = 0;
-
-                let hourlyHTML = '';
-                for (let i = startIndex; i < startIndex + 24; i++) {
-                    if (!hourly.time[i]) break;
-                    
-                    const timeStr = hourly.time[i];
-                    const dateObj = new Date(timeStr);
-                    const h = dateObj.getHours();
-                    const code = hourly.weather_code[i];
-                    const temp = Math.round(hourly.temperature_2m[i]);
-                    const pop = hourly.precipitation_probability[i];
-                    const wInfo = getWeatherIcon(code);
-                    const label = (i === startIndex) ? '現在' : `${h}:00`;
-
-                    hourlyHTML += `
-                        <div class="hourly-item">
-                            <div class="hourly-time">${label}</div>
-                            <div class="hourly-icon"><i class="fas ${wInfo.icon}" style="color: ${wInfo.color};"></i></div>
-                            <div class="hourly-pop">${pop > 0 ? pop + '%' : ''}</div>
-                            <div class="hourly-temp">${temp}°</div>
-                        </div>
-                    `;
-                }
-                hourlyContainer.innerHTML = hourlyHTML;
-
-                const dailyContainer = document.getElementById('daily-forecast-container');
-                let dailyHTML = '';
-                const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
-                const displayDays = Math.min(daily.time.length, 7);
-
-                for (let i = 0; i < displayDays; i++) {
-                    const dateStr = daily.time[i];
-                    const dateObj = new Date(dateStr);
-                    const dayName = (i === 0) ? '今日' : weekDays[dateObj.getDay()];
-                    
-                    const dayCodes = [];
-                    hourly.time.forEach((t, index) => {
-                        if (t.startsWith(dateStr)) {
-                            dayCodes.push(hourly.weather_code[index]);
-                        }
-                    });
-
-                    const counts = {};
-                    let totalHours = 0;
-                    dayCodes.forEach(code => {
-                        const group = getGroupName(code);
-                        counts[group] = (counts[group] || 0) + 1;
-                        totalHours++;
-                    });
-
-                    const sortedGroups = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
-                    const topGroup = sortedGroups[0];
-                    const topCount = counts[topGroup];
-                    
-                    let iconHTML = '';
-                    let iconClass = '';
-
-                    if (totalHours > 0 && (topCount / totalHours) >= 0.8) {
-                        const info = WEATHER_GROUPS[topGroup];
-                        iconHTML = `<i class="fas ${info.icon}" style="color: ${info.color};"></i>`;
-                    } else {
-                        const first = WEATHER_GROUPS[sortedGroups[0]];
-                        const second = sortedGroups.length > 1 ? WEATHER_GROUPS[sortedGroups[1]] : first;
-                        
-                        iconHTML = `<i class="fas ${first.icon}" style="color: ${first.color};"></i>`;
-                        if (first !== second) {
-                            iconHTML += `<i class="fas ${second.icon}" style="color: ${second.color};"></i>`;
-                        }
-                        iconClass = 'double-icon';
-                    }
-
-                    const maxT = Math.round(daily.temperature_2m_max[i]);
-                    const minT = Math.round(daily.temperature_2m_min[i]);
-                    const pop = daily.precipitation_probability_max[i];
-
-                    dailyHTML += `
-                        <div class="daily-row">
-                            <div class="daily-day">${dayName}</div>
-                            <div class="daily-icon-area ${iconClass}">${iconHTML}</div>
-                            <div class="daily-pop">${pop > 0 ? pop + '%' : ''}</div>
-                            <div class="daily-temp-bar">
-                                <span class="temp-low">${minT}°</span>
-                                <div style="flex-grow:1; height:4px; background:#eee; margin:0 10px; border-radius:2px; position:relative;">
-                                    <div style="position:absolute; left:0; right:0; top:0; bottom:0; background: linear-gradient(90deg, #a8e063, #56ab2f); opacity:0.3;"></div>
-                                </div>
-                                <span class="temp-high">${maxT}°</span>
-                            </div>
-                        </div>
-                    `;
-                }
-                dailyContainer.innerHTML = dailyHTML;
-
-            })
-            .catch(err => {
-                console.error(err);
-                document.getElementById('weather-loading').innerHTML = '<span style="color:red;">天気の取得に失敗しました</span>';
-            });
-    }
-
-    fetchWeather();
-
-    const scrollAmount = 200;
-    const scrollContainer = document.getElementById('hourly-forecast-container');
-    const btnLeft = document.getElementById('scroll-left');
-    const btnRight = document.getElementById('scroll-right');
-
-    if (btnLeft && scrollContainer) {
-        btnLeft.addEventListener('click', () => {
-            scrollContainer.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-        });
-    }
-    if (btnRight && scrollContainer) {
-        btnRight.addEventListener('click', () => {
-            scrollContainer.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-        });
-    }
-
-    // ▼▼▼ 通知デバッグ機能 ▼▼▼
+    // ▼▼▼ 通知デバッグ機能 (あなた専用) ▼▼▼
     const debugOut = document.getElementById('debug-output');
-    
-    document.getElementById('check-onesignal-btn').addEventListener('click', function() {
-        debugOut.innerHTML = "確認中...";
-        
-        if (!window.OneSignalDeferred) {
-            debugOut.innerHTML = "OneSignal SDKが見つかりません";
-            return;
-        }
-
-        window.OneSignalDeferred.push(async function(OneSignal) {
-            try {
-                // 1. ブラウザの通知権限
-                const permission = Notification.permission;
-                
-                // 2. OneSignal上の登録状況
-                const isOptedIn = OneSignal.User.PushSubscription.optedIn;
-                const subId = OneSignal.User.PushSubscription.id;     // 端末ID
-                const extId = OneSignal.User.getExternalId();         // user_XX (これが大事)
-                
-                let html = `<strong>権限:</strong> ${permission}<br>`;
-                html += `<strong>有効:</strong> ${isOptedIn ? 'YES' : 'NO'}<br>`;
-                html += `<strong>User ID:</strong> ${extId || '未設定'}<br>`;
-                html += `<strong>Device ID:</strong> ${subId ? 'あり' : 'なし'}`;
-                
-                debugOut.innerHTML = html;
-                
-            } catch (e) {
-                debugOut.innerHTML = "エラー: " + e;
+    if (debugOut) {
+        document.getElementById('check-onesignal-btn').addEventListener('click', function() {
+            debugOut.innerHTML = "確認中...";
+            if (!window.OneSignalDeferred) {
+                debugOut.innerHTML = "OneSignal SDKが見つかりません";
+                return;
             }
+            window.OneSignalDeferred.push(async function(OneSignal) {
+                try {
+                    const permission = Notification.permission;
+                    const isOptedIn = OneSignal.User.PushSubscription.optedIn;
+                    const subId = OneSignal.User.PushSubscription.id;
+                    // ▼▼▼ 修正: プロパティとしてアクセス ▼▼▼
+                    const extId = OneSignal.User.externalId; 
+                    
+                    let html = `<strong>権限:</strong> ${permission}<br>`;
+                    html += `<strong>有効:</strong> ${isOptedIn ? 'YES' : 'NO'}<br>`;
+                    html += `<strong>User ID:</strong> ${extId || '未設定'}<br>`;
+                    html += `<strong>Device ID:</strong> ${subId ? 'あり' : 'なし'}`;
+                    debugOut.innerHTML = html;
+                } catch (e) {
+                    debugOut.innerHTML = "エラー: " + e;
+                }
+            });
         });
-    });
 
-    document.getElementById('force-permission-btn').addEventListener('click', function() {
-        window.OneSignalDeferred.push(async function(OneSignal) {
-            try {
-                // 通知の許可プロンプトを強制表示
-                await OneSignal.Slidedown.promptPush();
-                debugOut.innerHTML = "許可プロンプトを表示しました";
-            } catch(e) {
-                debugOut.innerHTML = "プロンプト表示エラー: " + e;
-            }
+        document.getElementById('force-permission-btn').addEventListener('click', function() {
+            window.OneSignalDeferred.push(async function(OneSignal) {
+                try {
+                    await OneSignal.Slidedown.promptPush();
+                    debugOut.innerHTML = "許可プロンプトを表示しました";
+                } catch(e) {
+                    debugOut.innerHTML = "プロンプト表示エラー: " + e;
+                }
+            });
         });
-    });
-    // ▲▲▲ ここまで ▲▲▲
+    }
 
 });
 </script>
