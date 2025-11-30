@@ -1,0 +1,241 @@
+{% extends "base_layout.html" %}
+
+{% block title %}授業レビューDB{% endblock %}
+
+{% block content %}
+<div class="content-width-limiter">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1em;">
+        <img src="{{ url_for('static', filename='icons/dbicon.png') }}" style="width: 40px; height: 40px;">
+        <h2 style="margin: 0;">授業レビューDB</h2>
+    </div>
+    
+    <p style="font-size: 0.9em; color: #666;">
+        投稿タイトルに基づいて整理されています。(例: 2025年度 1年 前期)
+    </p>
+
+    {% if search_query %}
+        <div style="margin-bottom: 1em;">
+            <p>
+                「{{ search_query }}」の検索結果 
+                <a href="{{ url_for('review_db') }}" style="font-size: 0.8em; margin-left: 10px;">(絞り込みを解除)</a>
+            </p>
+        </div>
+    {% endif %}
+
+    <div class="db-tree-container">
+        {% for year, grades in tree.items() %}
+            <div class="year-section">
+                <button class="accordion-btn year-btn">
+                    <span>{{ year }}</span>
+                    <i class="fas fa-chevron-down arrow-icon"></i>
+                </button>
+                <div class="accordion-panel">
+                    
+                    {% for grade, terms in grades.items()|sort %}
+                        <div class="grade-section">
+                            <button class="accordion-btn grade-btn">
+                                <span><i class="fas fa-user-graduate"></i> {{ grade }}</span>
+                                <i class="fas fa-chevron-down arrow-icon"></i>
+                            </button>
+                            <div class="accordion-panel">
+
+                                {% for term, subjects in terms.items()|sort %}
+                                    <div class="term-section">
+                                        <button class="accordion-btn term-btn">
+                                            <span>
+                                                <i class="fas fa-calendar-alt"></i> {{ term }} 
+                                                <span class="count-badge">{{ subjects|length }} 科目</span>
+                                            </span>
+                                            <i class="fas fa-chevron-down arrow-icon"></i>
+                                        </button>
+                                        <div class="accordion-panel term-panel-content">
+                                            
+                                            <div class="subject-list">
+                                                {% for subject, posts in subjects.items() %}
+                                                    <div class="subject-card">
+                                                        <div class="subject-header">
+                                                            <strong>{{ subject }}</strong>
+                                                            <span style="font-size: 0.8em; color: #666;">({{ posts|length }}件)</span>
+                                                        </div>
+                                                        <div class="subject-reviews">
+                                                            {% for item in posts %}
+                                                                <div class="review-link-item">
+                                                                    <a href="{{ url_for('post_detail', post_id=item.post.id) }}" class="review-main-link">
+                                                                        <span style="display: flex; align-items: center; gap: 5px;">
+                                                                            <i class="fas fa-chalkboard-teacher"></i> {{ item.teacher }}
+                                                                        </span>
+                                                                        <span class="text-red" style="font-weight:bold;">{{ item.grade_val }}</span>
+                                                                    </a>
+                                                                    <div style="font-size: 0.75em; color: #888; margin-top: 3px; text-align: right;">
+                                                                        by <a href="{{ url_for('user_profile', username=item.post.author.username) }}" class="review-user-link">{{ item.post.author.username }}</a>
+                                                                    </div>
+                                                                </div>
+                                                            {% endfor %}
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                {% endfor %} </div>
+                        </div>
+                    {% endfor %} </div>
+            </div>
+        {% endfor %} {% if not tree %}
+            <div class="post-form">
+                <p>データが見つかりませんでした。</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    /* アコーディオン共通 */
+    .accordion-btn {
+        cursor: pointer;
+        padding: 12px 15px;
+        width: 100%;
+        text-align: left;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        outline: none;
+        transition: 0.2s;
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+        background-color: #fff;
+    }
+    
+    .accordion-panel {
+        padding: 0 10px;
+        display: none;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+
+    /* ▼▼▼ 修正: 科目リスト部分のスクロール設定 ▼▼▼ */
+    .term-panel-content {
+        /* 学期の中身（科目リスト）が長くなったらスクロールさせる */
+        max-height: 600px; /* お好みで調整してください */
+        overflow-y: auto;
+        border: 1px solid #f0f0f0; /* 境界をわかりやすく */
+        border-radius: 4px;
+        background-color: #fcfcfc;
+    }
+
+    /* 矢印アイコンのアニメーション */
+    .arrow-icon {
+        transition: transform 0.3s ease;
+        color: #aaa;
+    }
+    .accordion-btn.active .arrow-icon {
+        transform: rotate(180deg);
+    }
+    
+    /* 階層ごとの色分け */
+    .year-btn {
+        background-color: #e3f2fd;
+        color: #0d47a1;
+        font-size: 1.1em;
+        border-left: 5px solid #2196f3;
+    }
+    .year-btn:hover, .year-btn.active { background-color: #bbdefb; }
+
+    .grade-btn {
+        color: #333;
+        font-size: 1em;
+        border-left: 5px solid #66bb6a;
+    }
+    .grade-btn:hover, .grade-btn.active { background-color: #f1f8e9; }
+
+    .term-btn {
+        color: #555;
+        font-size: 0.95em;
+        border-left: 5px solid #ffa726;
+    }
+    .term-btn:hover, .term-btn.active { background-color: #fff3e0; }
+
+    /* ▼▼▼ 修正: 科目カード (縦1列に変更) ▼▼▼ */
+    .subject-list {
+        display: flex;
+        flex-direction: column; /* 縦並び */
+        gap: 10px;
+        padding: 10px;
+    }
+    .subject-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 10px;
+        background-color: #fff;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    /* ▼▼▼ 修正: レビューリンクのスタイル調整 ▼▼▼ */
+    .review-link-item {
+        display: block;
+        padding: 8px;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+        border: 1px solid #eee;
+        margin-bottom: 5px;
+        color: #333;
+    }
+    /* 全体を囲むaタグをやめて、中身を分けたので、メイン部分をリンクっぽく見せる */
+    .review-main-link {
+        display: flex; 
+        justify-content: space-between; 
+        text-decoration: none; 
+        color: #333;
+        transition: opacity 0.2s;
+    }
+    .review-main-link:hover {
+        opacity: 0.7;
+        text-decoration: none;
+    }
+    /* ユーザー名リンク */
+    .review-user-link {
+        color: #007bff;
+        text-decoration: none;
+    }
+    .review-user-link:hover {
+        text-decoration: underline;
+    }
+
+    .count-badge {
+        background-color: #6c757d;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.8em;
+        font-weight: normal;
+        margin-left: 8px;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const acc = document.getElementsByClassName("accordion-btn");
+    for (let i = 0; i < acc.length; i++) {
+        acc[i].addEventListener("click", function() {
+            this.classList.toggle("active");
+            const panel = this.nextElementSibling;
+            if (panel.style.display === "block") {
+                panel.style.display = "none";
+            } else {
+                panel.style.display = "block";
+            }
+        });
+    }
+    
+    {% if search_query %}
+        const allPanels = document.getElementsByClassName("accordion-panel");
+        for(let p of allPanels) { p.style.display = "block"; }
+        const allBtns = document.getElementsByClassName("accordion-btn");
+        for(let b of allBtns) { b.classList.add("active"); }
+    {% endif %}
+});
+</script>
+{% endblock %}

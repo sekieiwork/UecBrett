@@ -1377,6 +1377,91 @@ def api_finance():
     
     return jsonify({'logs': log_list, 'month_total': month_total})
 
+@app.route('/review_db')
+def review_db():
+    # 1. 'review' タグがついている投稿を全取得
+    review_tag = Tag.query.filter_by(name='review').first()
+    if not review_tag:
+        flash('レビュー投稿がまだありません。', 'info')
+        return redirect(url_for('index'))
+    
+    # reviewタグを持つ投稿を取得 (新しい順)
+    reviews = Post.query.join(Post.tags).filter(Tag.id == review_tag.id).order_by(Post.created_at.desc()).all()
+
+    # 日本時間 (created_at_jst) の属性を追加
+    japan_tz = timezone('Asia/Tokyo')
+    for post in reviews:
+        post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
+
+    # 検索クエリがある場合
+    search_query = request.args.get('search_query')
+
+    # 2. データをツリー構造に整理
+    # 新しい構造: tree[年度][学年][学期][科目名] = [投稿リスト]
+    tree = {}
+
+    # 正規表現の定義
+    # タイトル用: "2025年度 1年 前期 ..." から情報を抜く
+    title_pattern = re.compile(r'(\d{4}年度)\s+(.+?)\s+(前期|後期)')
+    
+    # 本文用: 科目、成績、教員を抜く
+    content_pattern = re.compile(
+        r'<span class="text-large">\*\*(.*?)\*\*</span>\s*成績:<span class="text-red text-large">\*\*(.*?)\*\*</span>\s*担当教員:(.*?)\n'
+    )
+
+    for post in reviews:
+        # --- A. タイトルから 年・学年・学期 を抽出 ---
+        # マッチしない場合は「その他」に分類
+        title_match = title_pattern.search(post.title)
+        if title_match:
+            year_str, grade_str, term_str = title_match.groups()
+        else:
+            year_str = "年度不明"
+            grade_str = "学年不明"
+            term_str = "学期不明"
+
+        # --- B. 記事内のレビューデータを抽出 ---
+        matches = content_pattern.findall(post.content)
+        
+        # マッチしなかった場合はタイトルを科目名とする(旧形式対応)
+        if not matches:
+            matches = [(post.title, "不明", "不明")]
+
+        for subject, grade_val, teacher in matches:
+            subject = subject.strip()
+            teacher = teacher.strip()
+
+            # 検索フィルター
+            if search_query:
+                query = search_query.lower()
+                # 科目名、教員名、本文、年度、学年、学期のいずれかにヒットすれば表示
+                if (query not in subject.lower() and 
+                    query not in teacher.lower() and 
+                    query not in post.content.lower() and
+                    query not in year_str and
+                    query not in grade_str):
+                    continue
+
+            # ツリーに格納 (階層: 年度 -> 学年 -> 学期 -> 科目)
+            if year_str not in tree: tree[year_str] = {}
+            if grade_str not in tree[year_str]: tree[year_str][grade_str] = {}
+            if term_str not in tree[year_str][grade_str]: tree[year_str][grade_str][term_str] = {}
+            if subject not in tree[year_str][grade_str][term_str]: tree[year_str][grade_str][term_str][subject] = []
+
+            # 投稿情報を追加
+            tree[year_str][grade_str][term_str][subject].append({
+                'post': post,
+                'grade_val': grade_val,
+                'teacher': teacher
+            })
+
+    # 表示順序の定義
+    # 年度は降順(新しい順)で表示したいので、テンプレート側で keys()|sort(reverse=True) するか、ここでソートしても良いですが、
+    # 辞書は順序保持(Python 3.7+)なので、キーをソートして新しい辞書を作り直すのが確実です。
+    sorted_tree = dict(sorted(tree.items(), key=lambda x: x[0], reverse=True))
+
+    return render_template('review_db.html', tree=sorted_tree, search_query=search_query)
+
 # ▼▼▼ 3. スケジューラーの起動 (if __name__ == '__main__': の直前に追加) ▼▼▼
 # サーバー起動時にスケジューラーを開始
 scheduler = BackgroundScheduler()

@@ -38,7 +38,22 @@
                     {% if current_user.is_authenticated %}
                     <div style="display: flex; align-items: center;">
                         {% if post.tags %}
-                            <img src="{{ url_for('static', filename='icons/ei-tag.png') }}" alt="タグ" style="width: 20px; height: 20px; margin-right: 8px;">
+                            <div class="tag-container">
+                                {% for tag in post.tags %}
+                                    {% if loop.index <= 2 %}
+                                        {% if tag.name == 'review' %}
+                                            <a href="{{ url_for('review_db') }}" class="tag-box" style="background-color: #ffeb3b; color: #333; border-color: #fbc02d; font-weight:bold;">
+                                                <img src="{{ url_for('static', filename='icons/dbicon.png') }}" alt="DB" class="review-tag-icon">review
+                                            </a>
+                                        {% else %}
+                                            <a href="{{ url_for('search', search_query=tag.name) }}" class="tag-box">{{ tag.name }}</a>
+                                        {% endif %}
+                        
+                                    {% elif loop.index == 3 %}
+                                        <a href="{{ url_for('post_detail', post_id=post.id) }}" class="tag-box" style="border-style: dashed; color: #999;">...</a>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
                         {% endif %}
                         <form class="like-form" data-post-id="{{ post.id }}" style="margin: 0;">
                                 <button type="button" class="like-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em; color: #ff4d4f; display: flex; align-items: center; gap: 3px; padding: 0;">
