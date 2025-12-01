@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
     <title>UEC 掲示板</title>
 
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
@@ -1129,18 +1130,15 @@ a.tag-box:hover {
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     
-    // ▼▼▼ [修正] Flashメッセージを閉じる機能 ▼▼▼
+    // ▼▼▼ グローバル変数: シラバスデータのキャッシュ ▼▼▼
+    window.cachedSyllabusData = [];
+
+    // --- 0. Flashメッセージを閉じる機能 ---
     const dismissFlashBtn = document.getElementById('dismiss-flash-btn');
     const flashContainer = document.getElementById('flash-message-container');
-
     if (dismissFlashBtn && flashContainer) {
-        dismissFlashBtn.addEventListener('click', function() {
-            // コンテナを非表示にする
-            flashContainer.style.display = 'none';
-        });
+        dismissFlashBtn.addEventListener('click', function() { flashContainer.style.display = 'none'; });
     }
-    // ▲▲▲ 修正ここまで ▲▲▲
-
 
     // --- 1. ヘルパー関数と共通の要素を取得 ---
     const resizeTextarea = (textarea) => {
@@ -1171,13 +1169,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const recentTagsList = document.getElementById('recent-tags-list');
     const tagsInputField = document.getElementById('tags-input-field'); 
 
-
-    // --- 2. テキストエリア関連の要素を取得 ---
+    // --- 2. テキストエリア関連 ---
     const allEditableTextareas = document.querySelectorAll('.auto-resize-textarea');
-
+    
     // --- 3. イベントリスナーの設定 ---
 
-    // ヘッダーのドロップダウン処理
+    // ヘッダーのドロップダウン
     if (headerDropdownContainer) {
         const headerDropdownContent = headerDropdownContainer.querySelector('.dropdown-content');
         if (headerDropdownContent) {
@@ -1189,7 +1186,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 「新しい投稿をする」ボタンの処理
+    // 「新しい投稿」トグル
     if (toggleButton && postFormContainer) {
         toggleButton.addEventListener('click', function() {
             postFormContainer.classList.toggle('hidden');
@@ -1201,6 +1198,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // コメントトグル
     if (toggleCommentButton && commentFormContainer) {
         toggleCommentButton.addEventListener('click', function() {
             commentFormContainer.classList.toggle('hidden');
@@ -1211,54 +1209,201 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
     
-    
-// --- テキストエリアの自動リサイズ処理 (全デバイス共通) ---
-allEditableTextareas.forEach(textarea => {
-    // ページ読み込み時の初回リサイズ (スクロールなし)
-    setTimeout(() => resizeTextarea(textarea), 100);
-
-    // 入力時のリサイズ (スクロールあり)
-    textarea.addEventListener('input', () => {
-        // 1. リサイズ前の高さを取得
-        const oldHeight = textarea.offsetHeight;
-
-        // 2. テキストエリアをリサイズ (resizeTextarea関数を呼ぶ)
-        resizeTextarea(textarea); 
-
-        // 3. リサイズ後の高さを取得
-        const newHeight = textarea.offsetHeight;
-
-        // 4. 高さがどれだけ増えたか計算
-        const heightDifference = newHeight - oldHeight;
-
-        // 5. 高さが変化した場合のみ、その分だけウィンドウをスクロール
-	// (最大高さに達した時などは heightDifference = 0 になる)
-	if (heightDifference !== 0) {
-    		// 6. カーソルのY座標を追従させるため、即座にスクロール
-    		window.scrollBy(0, heightDifference);
-	}
+    // テキストエリア自動リサイズ
+    allEditableTextareas.forEach(textarea => {
+        setTimeout(() => resizeTextarea(textarea), 100);
+        textarea.addEventListener('input', () => {
+            const oldHeight = textarea.offsetHeight;
+            resizeTextarea(textarea); 
+            const newHeight = textarea.offsetHeight;
+            const heightDifference = newHeight - oldHeight;
+            if (heightDifference !== 0) { window.scrollBy(0, heightDifference); }
+        });
     });
-});
 
-    // --- 4. テンプレート機能の処理 ---
-    const allTemplateDropdowns = document.querySelectorAll('.template-dropdown');
-    allTemplateDropdowns.forEach(dropdown => {
-        const selectBtn = dropdown.querySelector('.template-select-btn');
-        const dropdownContent = dropdown.querySelector('.template-dropdown-content');
-        if(selectBtn && dropdownContent) {
-            selectBtn.addEventListener('click', function(event) {
-                event.stopPropagation();
-                dropdownContent.classList.toggle('hidden');
+    // --- 4. テンプレート機能 (修正版: 解除機能付き) ---
+    
+    // UI要素の取得
+    const selectTrigger = document.getElementById('template-select-trigger');
+    const removeTrigger = document.getElementById('template-remove-trigger');
+    const dropdownContent = document.querySelector('.template-dropdown-content');
+
+    // (A) 選択ボタンクリック
+    if (selectTrigger) {
+        selectTrigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if(dropdownContent) dropdownContent.classList.toggle('hidden');
+        });
+    }
+
+    // (B) 解除ボタンクリック
+    if (removeTrigger) {
+        removeTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // 入力チェック: 何か入力されていたら確認
+            const uecContainer = document.getElementById('uecreview-form-container');
+            let hasInput = false;
+            if (uecContainer && !uecContainer.classList.contains('hidden')) {
+                const inputs = uecContainer.querySelectorAll('input, textarea');
+                inputs.forEach(input => { if(input.value.trim() !== '') hasInput = true; });
+            }
+
+            if (hasInput) {
+                if (!confirm("入力された内容がありますが、テンプレートを解除しますか？\n（制作途中のものは消えてしまいます。）")) {
+                    return;
+                }
+            }
+
+            // --- リセット処理 ---
+            const uecOptions = document.getElementById('uec-review-options');
+            const fixedTagArea = document.getElementById('fixed-tag-area');
+            const originalContentField = document.getElementById('content-field-original');
+            const noticeEl = document.getElementById('uec-formal-name-notice');
+            const titleInput = document.querySelector('input[name="title"]'); 
+            const tagsInput = document.getElementById('tags-input-field');
+
+            // 表示を元に戻す
+            if(uecOptions) { uecOptions.classList.add('hidden'); uecOptions.style.display = 'none'; }
+            if(fixedTagArea) fixedTagArea.classList.add('hidden');
+            if(noticeEl) noticeEl.classList.add('hidden');
+            
+            if(uecContainer) {
+                uecContainer.innerHTML = ''; // フォーム内容を消去
+                uecContainer.classList.add('hidden');
+            }
+            
+            if(originalContentField) {
+                originalContentField.classList.remove('hidden');
+                const ta = originalContentField.querySelector('.auto-resize-textarea');
+                if(ta) ta.required = true; // 必須に戻す
+            }
+
+            if (titleInput) {
+                titleInput.value = '';
+            }
+
+            // タグからreviewを消す
+            if(tagsInput) {
+                let tags = tagsInput.value.split(',').map(t => t.trim());
+                tags = tags.filter(t => t !== 'review');
+                tagsInput.value = tags.join(', ');
+            }
+
+            // ボタンの表示切り替え
+            selectTrigger.classList.remove('hidden');
+            removeTrigger.classList.add('hidden');
+        });
+    }
+
+    // (C) テンプレート項目クリック時の処理
+    if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
+        document.querySelectorAll('.template-item').forEach(item => {
+            item.addEventListener('click', function(event) {
+                event.preventDefault();
+                const templateIndex = parseInt(item.dataset.index, 10);
+                const template = TEMPLATES_DATA[templateIndex];
+                if (!template) return;
+
+                const parentForm = this.closest('form');
+                if (!parentForm) return;
+
+                const titleInput = parentForm.querySelector('input[name="title"]');
+                const uecReviewContainer = parentForm.querySelector('#uecreview-form-container'); 
+                const originalContentField = parentForm.querySelector('#content-field-original'); 
+                const noticeEl = document.getElementById('uec-formal-name-notice');
+                const uecOptions = document.getElementById('uec-review-options');
+                const fixedTagArea = document.getElementById('fixed-tag-area');
+                const tagsInput = document.getElementById('tags-input-field');
+
+                if (template.name === 'UECreview') {
+                    const countStr = prompt('最初に作成する科目数は？', '1');
+                    if (countStr) {
+                        const halfWidthStr = countStr.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+                        const count = parseInt(halfWidthStr, 10);
+                        if (!isNaN(count) && count > 0 && count <= 20) {
+                            
+                            // UI切り替え
+                            if(uecOptions) { uecOptions.classList.remove('hidden'); uecOptions.style.display = 'flex'; }
+                            if(fixedTagArea) fixedTagArea.classList.remove('hidden');
+                            if(noticeEl) noticeEl.classList.remove('hidden');
+                            
+                            // フォーム生成
+                            createUecReviewForm(count, uecReviewContainer, titleInput, template.title);
+                            
+                            // タグのreview除去(自動付与エリアが出るため)
+                            if (tagsInput) {
+                                let tags = tagsInput.value.split(',').map(t => t.trim());
+                                tags = tags.filter(t => t !== 'review' && t !== '');
+                                tagsInput.value = tags.join(', ');
+                            }
+
+                            // 解除ボタンを表示
+                            if (selectTrigger && removeTrigger) {
+                                selectTrigger.classList.add('hidden');
+                                removeTrigger.classList.remove('hidden');
+                            }
+
+                        } else { alert('有効な数字(1〜20)を入力してください。'); }
+                    }
+                } else {
+                    // 通常テンプレートの場合
+                    if (uecReviewContainer) uecReviewContainer.classList.add('hidden');
+                    if (uecReviewContainer) uecReviewContainer.innerHTML = '';
+                    
+                    if (originalContentField) {
+                        originalContentField.classList.remove('hidden');
+                        const ta = originalContentField.querySelector('.auto-resize-textarea');
+                        if (ta) { ta.required = true; ta.value = template.body; resizeTextarea(ta); }
+                    } 
+                    if (titleInput) titleInput.value = template.title;
+                    
+                    // 解除ボタン表示（通常テンプレでも解除できるようにする場合）
+                    if (selectTrigger && removeTrigger) {
+                        selectTrigger.classList.add('hidden');
+                        removeTrigger.classList.remove('hidden');
+                    }
+                }
+
+                // ドロップダウンを閉じる
+                const parentDropdownContent = item.closest('.template-dropdown-content');
+                if (parentDropdownContent) { parentDropdownContent.classList.add('hidden'); }
             });
-        }
+        });
+    }
+
+    // --- 5. シラバス連携 (API取得) ---
+    const yearSelect = document.getElementById('uec-year-select');
+    
+    if (yearSelect) {
+        yearSelect.addEventListener('change', function() {
+            const year = this.value; // 例: "2025年度"
+            if (!year) return;
+
+            // APIからシラバスデータを取得
+            fetch(`/api/syllabus?year=${encodeURIComponent(year)}`)
+                .then(r => r.json())
+                .then(data => {
+                    window.cachedSyllabusData = data; 
+                })
+                .catch(err => console.error("Syllabus API Error:", err));
+        });
+    }
+
+    // --- UECreviewフォーム関連の関数 ---
+
+    // 1. datalist更新用ヘルパー
+    function updateSubjectDatalist(datalistElement, data) {
+    if(!datalistElement) return;
+    datalistElement.innerHTML = ''; 
+    data.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.subject;
+        datalistElement.appendChild(option);
     });
-
-
-// --- UECreviewフォーム関連の関数 ---
-
-    // 1. 科目ブロックを1つ生成してコンテナに追加する関数
+}
+    // 2. 科目ブロック生成関数 (シラバス連動追加版)
     function addUecSubjectBlock(container, data = null) {
         const index = container.querySelectorAll('.uec-form-set').length;
         const formSet = document.createElement('div');
@@ -1267,22 +1412,24 @@ allEditableTextareas.forEach(textarea => {
         let gradesOptions = ['秀', '優', '良', '可', '不可', '（未評価）']
             .map(g => `<option value="${g}">${g}</option>`).join('');
 
-        // HTML生成 (削除ボタン追加、テキストエリアのクラス修正)
+        // HTML生成
         formSet.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; margin-bottom: 10px; padding-bottom: 5px;">
-                <h3 class="subject-index-label" style="margin: 0;">科目 ${index + 1}</h3>
-                <button type="button" class="delete-subject-btn" style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 0.9em;">
-                    <i class="fas fa-trash-alt"></i> 削除
-                </button>
-            </div>
-            <div>
-                <label>科目名:</label>
-                <input type="text" class="uec-subject" placeholder="例：〇〇論">
-            </div>
-            <div>
-                <label>担当教員:</label>
-                <input type="text" class="uec-teacher" placeholder="例：〇〇 先生">
-            </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; margin-bottom: 10px; padding-bottom: 5px;">
+            <h3 class="subject-index-label" style="margin: 0;">科目 ${index + 1}</h3>
+            <button type="button" class="delete-subject-btn" style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 0.9em;">
+                <i class="fas fa-trash-alt"></i> 削除
+            </button>
+        </div>
+        <div>
+            <label>科目名:</label>
+            <input type="text" class="uec-subject" placeholder="例：〇〇論" list="syllabus-suggestions-subj-${index}">
+            <datalist id="syllabus-suggestions-subj-${index}"></datalist>
+        </div>
+        <div>
+            <label>担当教員:</label>
+            <input type="text" class="uec-teacher" placeholder="例：〇〇 先生" list="syllabus-suggestions-teacher-${index}">
+            <datalist id="syllabus-suggestions-teacher-${index}"></datalist>
+        </div>
             <div>
                 <label>成績:</label>
                 <select class="uec-grade">
@@ -1303,28 +1450,70 @@ allEditableTextareas.forEach(textarea => {
             formSet.querySelector('.uec-review-body').value = data.body || '';
         }
 
-        // テキストエリアの自動リサイズを適用
+        // テキストエリア設定
         const textarea = formSet.querySelector('.uec-review-body');
         if (textarea) {
-            // 初期リサイズ
             setTimeout(() => resizeTextarea(textarea), 0);
-            // 入力時リサイズイベント
             textarea.addEventListener('input', () => resizeTextarea(textarea));
         }
 
-        // 削除ボタンのイベント
+        // 削除ボタン設定
         const deleteBtn = formSet.querySelector('.delete-subject-btn');
         deleteBtn.addEventListener('click', function() {
             if (confirm('この科目を削除しますか？')) {
                 formSet.remove();
-                updateSubjectNumbers(container); // 番号を振り直す
+                updateSubjectNumbers(container);
+            }
+        });
+
+        // ▼▼▼ シラバス連動設定 ▼▼▼
+        const subjectInput = formSet.querySelector('.uec-subject');
+        const teacherInput = formSet.querySelector('.uec-teacher');
+        const subjDataList = formSet.querySelector(`#syllabus-suggestions-subj-${index}`);
+        const teacherDataList = formSet.querySelector(`#syllabus-suggestions-teacher-${index}`);
+        // 1. 科目名が入力されたときの挙動
+        subjectInput.addEventListener('input', function() {
+            const val = this.value.trim();
+        
+            // 未入力なら候補を消す
+            if (val === '') {
+                subjDataList.innerHTML = '';
+                return;
+            }
+
+            // 入力があり、かつリストがまだ空ならデータを流し込む
+            // (一度流し込めば、あとはブラウザが入力値に合わせて絞り込んでくれる)
+            if (subjDataList.options.length === 0 && window.cachedSyllabusData && window.cachedSyllabusData.length > 0) {
+                updateSubjectDatalist(subjDataList, window.cachedSyllabusData);
+            }
+        });
+
+        // 2. 科目が確定（選択）されたときの挙動 (教員補完)
+        subjectInput.addEventListener('change', function() {
+            const val = this.value;
+            teacherDataList.innerHTML = ''; 
+            teacherInput.value = ''; 
+
+            if (window.cachedSyllabusData) {
+                const match = window.cachedSyllabusData.find(item => item.subject === val);
+                if (match && match.teachers && match.teachers.length > 0) {
+                    match.teachers.forEach(tName => {
+                        const opt = document.createElement('option');
+                        opt.value = tName;
+                        teacherDataList.appendChild(opt);
+                    });
+                
+                    if (match.teachers.length === 1) {
+                        teacherInput.value = match.teachers[0];
+                    }
+                }
             }
         });
 
         container.appendChild(formSet);
     }
 
-    // 2. 科目番号 (科目 1, 科目 2...) を振り直す関数
+    // 3. 科目番号更新関数
     function updateSubjectNumbers(container) {
         const sets = container.querySelectorAll('.uec-form-set');
         sets.forEach((set, i) => {
@@ -1333,32 +1522,26 @@ allEditableTextareas.forEach(textarea => {
         });
     }
 
-    // 3. メインのフォーム生成関数 (親コンテナを初期化してボタン類を配置)
+    // 4. メインフォーム生成関数
     function createUecReviewForm(initialCount, container, titleInput, templateTitle, existing_data = []) {
         if (!container) return;
 
-        // タイトルの設定 (新規かつデータなしの場合のみ)
         if (titleInput && templateTitle && existing_data.length === 0) {
             titleInput.value = templateTitle;
         }
 
-        // コンテナをクリア
         container.innerHTML = '';
-
-        // フィールドを格納するラッパーを作成
         const fieldsWrapper = document.createElement('div');
         fieldsWrapper.id = 'uec-fields-wrapper';
         container.appendChild(fieldsWrapper);
 
-        // 既存データがある場合はその数だけ、ない場合は指定数だけ生成
         const count = existing_data.length > 0 ? existing_data.length : initialCount;
-        
         for (let i = 0; i < count; i++) {
             const data = existing_data.length > 0 ? existing_data[i] : null;
             addUecSubjectBlock(fieldsWrapper, data);
         }
 
-        // 「＋ 新規追加」ボタンを作成
+        // 追加ボタン
         const addBtnContainer = document.createElement('div');
         addBtnContainer.style.textAlign = 'center';
         addBtnContainer.style.marginTop = '15px';
@@ -1370,14 +1553,12 @@ allEditableTextareas.forEach(textarea => {
         `;
         container.appendChild(addBtnContainer);
 
-        // 追加ボタンのイベント
         const addBtn = addBtnContainer.querySelector('#add-uec-subject-btn');
         addBtn.addEventListener('click', function() {
             addUecSubjectBlock(fieldsWrapper);
-            // スクロールなどの微調整があればここに
         });
 
-        // 表示切り替え処理
+        // 表示切り替え
         container.classList.remove('hidden');
         const originalContentField = container.closest('form').querySelector('#content-field-original');
         if (originalContentField) {
@@ -1387,12 +1568,11 @@ allEditableTextareas.forEach(textarea => {
         }
     }
 
-    // 4. 本文を組み立てる関数 (バリデーションと自動補完を追加)
+    // 5. 本文構築関数 (バリデーション付き)
     function buildUecReviewContent(container) {
         let combinedContent = '';
         const formSets = container.querySelectorAll('.uec-form-set');
 
-        // forループに変更（途中で return して処理を中断できるようにするため）
         for (let i = 0; i < formSets.length; i++) {
             const set = formSets[i];
             const subject = set.querySelector('.uec-subject').value.trim();
@@ -1400,16 +1580,12 @@ allEditableTextareas.forEach(textarea => {
             const grade = set.querySelector('.uec-grade').value;
             const body = set.querySelector('.uec-review-body').value.trim();
 
-            // --- ② [修正] 本文が未入力なら送信ブロック ---
             if (!body) {
                 alert(`科目 ${i + 1} (${subject || '名称未設定'}) のレビュー本文が入力されていません。\n投稿するには本文の入力が必須です。`);
-                return null; // nullを返してエラーを示す
+                return null; 
             }
 
-            // --- ① [修正] 教員名が空なら「不明」をセット ---
             const finalTeacher = teacher || '不明';
-            
-            // 科目名も空ならプレースホルダー的な文言を入れる（既存維持）
             const finalSubject = subject || '科目名なし';
 
             let reviewString = `<span class="text-large">**${finalSubject}**</span> `;
@@ -1423,85 +1599,32 @@ allEditableTextareas.forEach(textarea => {
                 combinedContent += '\n\n---\n\n'; 
             }
         }
-
         return combinedContent;
     }
 
-    // テンプレート選択時の処理
-    if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
-        document.querySelectorAll('.template-item').forEach(item => {
-            item.addEventListener('click', function(event) {
-                event.preventDefault();
-                const templateIndex = parseInt(item.dataset.index, 10);
-                const template = TEMPLATES_DATA[templateIndex];
-                if (!template) return;
-
-                const parentForm = this.closest('form');
-                if (!parentForm) return;
-
-                const titleInput = parentForm.querySelector('input[name="title"]');
-                const originalContentTextarea = parentForm.querySelector('.auto-resize-textarea'); 
-                const uecReviewContainer = parentForm.querySelector('#uecreview-form-container'); 
-                const originalContentField = parentForm.querySelector('#content-field-original'); 
-                
-                let contentTextarea = originalContentTextarea;
-
-                if (template.name === 'UECreview') {
-                    const countStr = prompt('最初に作成する科目数は？', '1');
-                    if (countStr) {
-                        const halfWidthStr = countStr.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-                        const count = parseInt(halfWidthStr, 10);
-                        if (!isNaN(count) && count > 0 && count <= 20) {
-                            createUecReviewForm(count, uecReviewContainer, titleInput, template.title);
-                        } else { alert('有効な数字(1〜20)を入力してください。'); }
-                    }
-                } else {
-                    // 通常テンプレート
-                    if (uecReviewContainer) uecReviewContainer.classList.add('hidden');
-                    if (uecReviewContainer) uecReviewContainer.innerHTML = '';
-                    
-                    if (originalContentField) {
-                        originalContentField.classList.remove('hidden');
-                        const originalTextarea = originalContentField.querySelector('.auto-resize-textarea');
-                        if (originalTextarea) originalTextarea.required = true;
-                    } 
-
-                    if (titleInput) titleInput.value = template.title;
-                    if (contentTextarea) {
-                        contentTextarea.value = template.body;
-                        if (originalContentTextarea) resizeTextarea(originalContentTextarea);
-                    }
-                }
-
-                // ドロップダウンを閉じる
-                const parentDropdownContent = item.closest('.template-dropdown-content');
-                if (parentDropdownContent) { parentDropdownContent.classList.add('hidden'); }
-            });
-        });
-    }
-    // --- 5. その他の機能 ---
-    // 画像アップロード時のファイル名表示処理
+    // --- 6. その他機能 (画像, ブックマーク, コメント削除, タグ) ---
+    
+    // 画像名表示
     if (imageInput) {
         const filenameDisplay = document.getElementById('image-filename-display');
         const editFilenameDisplay = document.getElementById('edit-image-filename-display');
         imageInput.addEventListener('change', function() {
+            const file = this.files[0];
             if (file && file.size > 500 * 1024) {
-                alert('画像サイズが大きすぎます（上限: 500KB）。\nサイズを小さくするか、別の画像を選択してください。');
-                this.value = ''; // 入力をリセット
+                alert('画像サイズが大きすぎます（上限: 500KB）。');
+                this.value = '';
                 if (filenameDisplay) filenameDisplay.textContent = '';
                 return;
             }
-            const file = this.files[0];
-            const filename = file ? file.name : '';
-            if (filenameDisplay) { filenameDisplay.textContent = filename; }
+            if (filenameDisplay) filenameDisplay.textContent = file ? file.name : '';
             if (editFilenameDisplay) { 
-                const currentImageText = document.querySelector('#edit-image-filename-display').getAttribute('data-current-image') || '画像がありません';
-                editFilenameDisplay.textContent = file ? `選択中: ${filename}` : currentImageText;
+                const currentText = document.querySelector('#edit-image-filename-display').getAttribute('data-current-image') || '画像がありません';
+                editFilenameDisplay.textContent = file ? `選択中: ${filename}` : currentText;
              }
         });
     }
 
-    // ブックマークボタンの処理
+    // ブックマーク
     document.querySelectorAll('.bookmark-toggle-btn').forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
@@ -1509,267 +1632,158 @@ allEditableTextareas.forEach(textarea => {
             const postId = form.dataset.postId;
             const url = `{{ url_for('bookmark_post', post_id=0) }}`.slice(0, -1) + postId;
             fetch(url, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' } })
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 const iconSpan = document.getElementById(`bookmark-icon-${postId}`);
                 if (iconSpan) {
-                    if (data.is_bookmarked) {
-                        iconSpan.innerHTML = '<img src="{{ url_for("static", filename="icons/bookmarked.png") }}" alt="ブックマーク済み" style="width: 20px; height: 20px;">';
-                    } else {
-                        iconSpan.innerHTML = '<img src="{{ url_for("static", filename="icons/bookmark.png") }}" alt="ブックマーク" style="width: 20px; height: 20px;">';
-                    }
+                    const iconName = data.is_bookmarked ? 'bookmarked.png' : 'bookmark.png';
+                    iconSpan.innerHTML = `<img src="{{ url_for('static', filename='icons/') }}${iconName}" style="width: 20px; height: 20px;">`;
                 }
-            })
-            .catch(error => console.error('Error:', error));
+            });
         });
     });
 
-    // コメント削除処理
-document.querySelectorAll('.delete-comment-btn').forEach(button => {
+    // コメント削除
+    document.querySelectorAll('.delete-comment-btn').forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             const commentId = this.dataset.commentId;
-            // ▼▼▼ 正しくはバッククォート (`) ▼▼▼
-            const url = `/comment/${commentId}/delete`;
             if (confirm('本当にこのコメントを削除しますか？')) {
-                fetch(url, { method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json'} })
-                .then(response => response.json())
+                fetch(`/comment/${commentId}/delete`, { method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json'} })
+                .then(r => r.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        const commentElement = document.getElementById(`comment-${commentId}`);
-                        if (commentElement) {
-                            commentElement.style.opacity = '0';
-                            setTimeout(() => commentElement.remove(), 300);
-                        }
-                        const commentCountHeader = document.getElementById('comment-count-header');
-                        if (commentCountHeader) { commentCountHeader.innerText = `コメント (${data.remaining_comments})`; }
-                        const titleCommentCount = document.getElementById('title-comment-count');
-                        if (titleCommentCount) { titleCommentCount.innerText = `コメント数(${data.remaining_comments})`; }
-                    } else { alert('コメントの削除に失敗しました。'); }
-                })
-                .catch(error => console.error('Error:', error));
+                        const el = document.getElementById(`comment-${commentId}`);
+                        if (el) el.remove();
+                        const header = document.getElementById('comment-count-header');
+                        if (header) header.innerText = `コメント (${data.remaining_comments})`;
+                    } else { alert('削除失敗'); }
+                });
             }
         });
     }); 
-   
-    
 
-
-    // --- タグフォームのトグル処理 ---
+    // タグフォームトグル
     if (toggleTagButton && tagFormContainer) {
         toggleTagButton.addEventListener('click', function(event) {
-            event.preventDefault(); // aタグのデフォルト動作をキャンセル
-            tagFormContainer.classList.toggle('hidden');
-            
-            // アイコンの + / - をトグルする (あれば)
-            const icon = toggleTagButton.querySelector('i'); // (iタグは <i class="fas fa-plus"></i> のこと)
-            if (icon) {
-                if (tagFormContainer.classList.contains('hidden')) {
-                    icon.classList.remove('fa-minus');
-                    icon.classList.add('fa-plus');
-                } else {
-                    icon.classList.remove('fa-plus');
-                    icon.classList.add('fa-minus');
-                }
-            }
-        });
-    }
-
-    // ▼▼▼ 最近のタグ ドロップダウン機能 ▼▼▼
-    if (recentTagsToggle && recentTagsList && tagsInputField) {
-        
-        // 1. アイコンクリックでドロップダウンを開閉
-        recentTagsToggle.addEventListener('click', function(event) {
             event.preventDefault();
-            event.stopPropagation(); // ドキュメント全体のクリックに伝播しないように
-
-            // リストが非表示の時だけ、中身をフェッチして表示
-            if (recentTagsList.classList.contains('hidden')) {
-                fetch('{{ url_for("get_recent_tags") }}')
-                    .then(response => response.json())
-                    .then(tags => {
-                        recentTagsList.innerHTML = ''; // 中身をクリア
-                        if (tags.length > 0) {
-                            tags.forEach(tagName => {
-                                const tagItem = document.createElement('a');
-                                tagItem.href = '#';
-                                tagItem.className = 'recent-tag-item';
-                                tagItem.textContent = tagName;
-                                
-                                // 2. ドロップダウン内のタグをクリックした時の処理
-                                tagItem.addEventListener('click', function(e) {
-                                    e.preventDefault();
-                                    
-                                    // 現在の入力値を取得し、Setで重複を管理
-                                    const currentTags = new Set(
-                                        tagsInputField.value
-                                            .split(',')
-                                            .map(t => t.trim())
-                                            .filter(Boolean) // 空の文字列を除去
-                                    );
-                                    
-                                    // 新しいタグを追加
-                                    currentTags.add(tagName);
-                                    
-                                    // 入力欄に反映
-                                    tagsInputField.value = Array.from(currentTags).join(', ');
-                                    
-                                    // リストを閉じる
-                                    recentTagsList.classList.add('hidden');
-                                });
-                                recentTagsList.appendChild(tagItem);
-                            });
-                        } else {
-                            recentTagsList.innerHTML = '<span style="padding: 8px 12px; display: block; font-size: 0.9em; color: #6c757d;">最近使用したタグはありません</span>';
-                        }
-                        recentTagsList.classList.remove('hidden');
-                    });
-            } else {
-                // すでに表示されている場合は、閉じるだけ
-                recentTagsList.classList.add('hidden');
-            }
+            tagFormContainer.classList.toggle('hidden');
         });
     }
 
+    // 最近のタグ
+    if (recentTagsToggle && recentTagsList && tagsInputField) {
+        recentTagsToggle.addEventListener('click', function(event) {
+            event.preventDefault(); event.stopPropagation();
+            if (recentTagsList.classList.contains('hidden')) {
+                fetch('{{ url_for("get_recent_tags") }}').then(r => r.json()).then(tags => {
+                    recentTagsList.innerHTML = '';
+                    if (tags.length > 0) {
+                        tags.forEach(tagName => {
+                            const a = document.createElement('a');
+                            a.href = '#'; a.className = 'recent-tag-item'; a.textContent = tagName;
+                            a.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                const current = new Set(tagsInputField.value.split(',').map(t=>t.trim()).filter(Boolean));
+                                current.add(tagName);
+                                tagsInputField.value = Array.from(current).join(', ');
+                                recentTagsList.classList.add('hidden');
+                            });
+                            recentTagsList.appendChild(a);
+                        });
+                    } else { recentTagsList.innerHTML = '<span style="padding:8px 12px;display:block;color:#666;font-size:0.9em;">履歴なし</span>'; }
+                    recentTagsList.classList.remove('hidden');
+                });
+            } else { recentTagsList.classList.add('hidden'); }
+        });
+    }
 
-
-//   6. フォーム送信時の処理 ---
- 
-    // ページ内のすべての投稿/編集フォームを取得
+    // --- 7. フォーム送信処理 (UECreview対応) ---
     const postForms = document.querySelectorAll('form[method="POST"][enctype="multipart/form-data"]');
-
     postForms.forEach(form => {
         form.addEventListener('submit', function(event) {
-            const uecReviewContainer = form.querySelector('#uecreview-form-container');
-            const originalContentTextarea = form.querySelector('.auto-resize-textarea'); // 元の本文
+            const uecContainer = form.querySelector('#uecreview-form-container');
+            const originalContentTextarea = form.querySelector('.auto-resize-textarea'); 
 
-            // UECreviewコンテナが表示されている（アクティブである）場合
-            if (uecReviewContainer && !uecReviewContainer.classList.contains('hidden') && originalContentTextarea) {
-
-                // 1. UECreviewフォームから本文を組み立てる
-                const combinedContent = buildUecReviewContent(uecReviewContainer);
-
-                // --- [修正] バリデーションエラー時は送信を止める ---
+            // UECreviewモードの場合
+            if (uecContainer && !uecContainer.classList.contains('hidden') && originalContentTextarea) {
+                const combinedContent = buildUecReviewContent(uecContainer);
                 if (combinedContent === null) {
-                    event.preventDefault(); // 送信キャンセル
-                    event.stopPropagation();
-                    return; // 処理終了
+                    event.preventDefault(); event.stopPropagation();
+                    return;
                 }
-
-                // 2. 元の本文テキストエリアに値を設定する
                 originalContentTextarea.value = combinedContent;
-
-                // 3. このままデフォルトの送信動作が進む
             }
         });
     });
-// --- 7. 編集ページ用のUECreviewデータ読み込み ---
 
-    // 編集フォーム（indexの投稿フォームではない）が存在する場合のみ実行
+    // --- 8. 編集ページ用データ読み込み ---
     const editForm = document.querySelector('form[method="POST"][enctype="multipart/form-data"]');
-    // const postFormContainer = ... (二重宣言になるため削除)
-
-    if (editForm && !postFormContainer) { // (postFormContainerはスクリプト上部 で宣言済み)
-        // サーバーから渡されたJSONデータがあるか確認
+    if (editForm && !document.getElementById('post-form-container')) { // index以外
         {% if uec_review_data_json is defined and uec_review_data_json %}
             try {
-                // テンプレートに埋め込まれたJSONをパース
                 const reviewData = {{ uec_review_data_json | safe }};
-
                 if (reviewData && reviewData.length > 0) {
-                    // フォーム生成に必要な要素を取得
                     const titleInput = editForm.querySelector('input[name="title"]');
-                    const uecReviewContainer = editForm.querySelector('#uecreview-form-container'); 
+                    const uecContainer = editForm.querySelector('#uecreview-form-container'); 
+                    
+                    // UIを表示状態にする
+                    const uecOptions = document.getElementById('uec-review-options');
+                    const fixedTagArea = document.getElementById('fixed-tag-area');
+                    const noticeEl = document.getElementById('uec-formal-name-notice');
+                    if(uecOptions) { uecOptions.classList.remove('hidden'); uecOptions.style.display = 'flex'; }
+                    if(fixedTagArea) fixedTagArea.classList.remove('hidden');
+                    if(noticeEl) noticeEl.classList.remove('hidden');
 
-                    // UECreviewフォームをデータ付きで生成 (5引数の関数を呼ぶ)
-                    createUecReviewForm(reviewData.length, uecReviewContainer, titleInput, null, reviewData);
+                    // 解除ボタンを表示状態にする
+                    if(selectTrigger && removeTrigger) {
+                        selectTrigger.classList.add('hidden');
+                        removeTrigger.classList.remove('hidden');
+                    }
+
+                    createUecReviewForm(reviewData.length, uecContainer, titleInput, null, reviewData);
                 }
-            } catch (e) {
-                console.error("UECreview データのパースに失敗しました:", e);
-            }
+            } catch (e) { console.error("Data Parse Error:", e); }
         {% endif %}
     }
-    // --- ドロップダウンを閉じるグローバルなクリック処理 ---
-    document.addEventListener('click', function(event) {
-        // 1. ヘッダーのユーザーアイコン
-        if (headerDropdownContainer && !headerDropdownContainer.contains(event.target)) {
-            const content = headerDropdownContainer.querySelector('.dropdown-content');
-            if (content) content.style.display = 'none';
-        }
-        
-        // 2. 投稿フォームの「テンプレートを選択」
-        if (!event.target.closest('.template-dropdown')) {
-            document.querySelectorAll('.template-dropdown-content').forEach(content => {
-                content.classList.add('hidden');
-            });
-        }
 
-        // 3. 「最近のタグ」ドロップダウン
+    // --- グローバルクリック (ドロップダウン閉じる) ---
+    document.addEventListener('click', function(event) {
+        if (headerDropdownContainer && !headerDropdownContainer.contains(event.target)) {
+            const c = headerDropdownContainer.querySelector('.dropdown-content');
+            if (c) c.style.display = 'none';
+        }
+        if (!event.target.closest('.template-dropdown')) {
+            document.querySelectorAll('.template-dropdown-content').forEach(c => c.classList.add('hidden'));
+        }
         if (!event.target.closest('#recent-tags-toggle') && !event.target.closest('.recent-tags-dropdown')) {
-            
-            // ページ上にある「全ての」最近のタグリストを閉じる
-            document.querySelectorAll('.recent-tags-dropdown').forEach(list => {
-                list.classList.add('hidden');
-            });
+            document.querySelectorAll('.recent-tags-dropdown').forEach(c => c.classList.add('hidden'));
         }
     });
 
+    // 回覧板チェック
     document.querySelectorAll('.kairanban-check-toggle').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
-            const kairanbanId = this.dataset.kairanbanId;
-            const url = `/kairanban/check/${kairanbanId}`;
-            const itemElement = document.getElementById(`kairanban-${kairanbanId}`);
-
-            fetch(url, {
-                method: 'POST',
-                headers: { 
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Content-Type': 'application/json' 
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
+            const kid = this.dataset.kairanbanId;
+            fetch(`/kairanban/check/${kid}`, { method: 'POST' }).then(r=>r.json()).then(d => {
+                if(d.status==='success') {
+                    const el = document.getElementById(`kairanban-${kid}`);
+                    if(d.is_checked) el.classList.add('checked'); else el.classList.remove('checked');
+                    document.getElementById(`check-count-${kid}`).textContent = `👀 ${d.new_count}`;
                     
-                    // 1. まずクリックされたアイテムのスタイルを更新 (既存の処理)
-                    if (data.is_checked) {
-                        if (itemElement) itemElement.classList.add('checked');
-                    } else {
-                        if (itemElement) itemElement.classList.remove('checked');
-                    }
-
-                    // 閲覧数カウントのspanを取得してテキストを更新
-                    const countSpan = document.getElementById(`check-count-${kairanbanId}`);
-                    if (countSpan) {
-                        countSpan.textContent = `👀 ${data.new_count}`;
-                    }
-                    // 2. 【リアルタイム更新】
-                    //    ページ上の「チェックされていない回覧板」の数を数える
-                    const unreadCount = document.querySelectorAll('.kairanban-item:not(.checked) .kairanban-check-container').length;
-
-                    // 3. ページ上の「すべての」回覧板アイコンコンテナを取得
-                    const iconContainers = document.querySelectorAll('.kairanban-icon-container');
-                    
-                    if (unreadCount === 0) {
-                        // 4a. もし未読が 0 件になったら、すべてのアイコンから赤丸クラスを削除
-                        iconContainers.forEach(container => {
-                            container.classList.remove('has-unread-kairanban');
-                        });
-                    } else {
-                        // 4b. もし未読が 1 件以上ある（またはチェックを外した）場合、すべてのアイコンに赤丸クラスを追加
-                         iconContainers.forEach(container => {
-                            container.classList.add('has-unread-kairanban');
-                        });
-                    }
+                    // 赤丸更新
+                    const unread = document.querySelectorAll('.kairanban-item:not(.checked) .kairanban-check-container').length;
+                    document.querySelectorAll('.kairanban-icon-container').forEach(c => {
+                        if(unread===0) c.classList.remove('has-unread-kairanban');
+                        else c.classList.add('has-unread-kairanban');
+                    });
                 }
-            })
-            .catch(error => console.error('Error:', error));
+            });
         });
     });
 
-    // ▼▼▼ [修正] 「8. プロフィール編集フォーム」 Safari対応版 ▼▼▼
+    // プロフィール編集フォーム制御 (Safari対応版)
     const gradeSelect = document.getElementById('form-select-grade');
-    
     if (gradeSelect) {
         const categoryDiv = document.getElementById('form-field-category');
         const classDiv = document.getElementById('form-field-class');
@@ -2017,40 +2031,19 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
         // 初期化
         updateFormVisibility();
     }
-    // ▲▲▲ 「8. プロフィール編集フォーム」ここまで ▲▲▲
-    const profileEditForm = document.getElementById('profile-edit-form');
-    const usernameInput = document.getElementById('username-input');
-    const iconInput = document.getElementById('icon-input-field');
-    const filenameDisplay = document.getElementById('icon-filename-display');
-    
-    // アイコンファイル名表示
-    if (iconInput && filenameDisplay) {
-        iconInput.addEventListener('change', function() {
-            const file = this.files[0];
-            if (file) {
-                filenameDisplay.textContent = file.name;
-            } else {
-                filenameDisplay.textContent = '';
-            }
-        });
-    }
-    
-    // ユーザー名変更確認
-    if (profileEditForm && usernameInput) {
-        editForm.addEventListener('submit', function(event) {
-            const newUsername = usernameInput.value.trim();
-            const originalUsername = usernameInput.dataset.originalUsername;
-            if (newUsername !== originalUsername) {
-                const message = `ユーザー名が変更されています ( ${originalUsername} → ${newUsername} )。\n\n更新後は自動的にログアウトします。\nよろしいですか？`;
-                if (!confirm(message)) {
-                    event.preventDefault(); 
-                }
-            }
-        });
-    }
-    
-}); // <-- ★★★ DOMContentLoaded はここで閉じる ★★★
 
+    // ユーザー名変更確認
+    const profileEditForm = document.getElementById('profile-edit-form');
+    if (profileEditForm) {
+        const uInput = document.getElementById('username-input');
+        profileEditForm.addEventListener('submit', function(e) {
+            if (uInput.value.trim() !== uInput.dataset.originalUsername) {
+                if (!confirm("ユーザー名が変更されています。\n更新後はログアウトします。よろしいですか？")) e.preventDefault();
+            }
+        });
+    }
+
+}); // DOMContentLoaded 終了
 </script>
 {% block scripts %}
 <script>

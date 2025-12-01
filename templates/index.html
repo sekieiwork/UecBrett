@@ -110,7 +110,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     {% if templates %}
                     <div class="template-dropdown">
-                        <button type="button" class="template-select-btn">テンプレートを選択</button>
+                        <button type="button" class="template-select-btn" id="template-select-trigger">テンプレートを選択</button>
+                        <button type="button" class="template-remove-btn hidden" id="template-remove-trigger" style="background-color: #dc3545; color: white; padding: 8px 12px; font-size: 0.9em; border: none; border-radius: 4px; cursor: pointer;">テンプレートを解除</button>
                         <div class="template-dropdown-content hidden">
                             {% for t in templates %}
                             <a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
@@ -121,12 +122,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 
                 <div class="form-field">
-                        {{ form.title.label }}<br>
-                        {{ form.title() }}
+                    <div id="uec-formal-name-notice" class="hidden" style="margin-bottom: 8px; background-color: #fff3cd; padding: 10px; border-radius: 4px; border: 1px solid #ffeeba;">
+                        <p class="text-red" style="font-size: 0.9em; margin: 0 0 5px 0; font-weight: bold;">
+                            ※授業名は正式名称で記入してください。
+                        </p>
+                        <p style="font-size: 0.85em; margin: 0; color: #856404;">
+                            ※教員への誹謗中傷、容姿や人格への言及は禁止です。<br>
+                            授業の感想や評価に基づいた内容を心がけてください。
+                        </p>
+                    </div>
+                    {{ form.title.label }}<br>
+                    {{ form.title() }}
                         
-                        <div id="uec-review-options" class="hidden" style="margin-top: 5px; gap: 10px; align-items: center; background-color: #f1f8ff; padding: 5px 10px; border-radius: 4px; flex-wrap: wrap;">
-                            <select id="uec-year-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9em;">
-                                </select>
+                    <div id="uec-review-options" class="hidden" style="margin-top: 5px; gap: 10px; align-items: center; background-color: #f1f8ff; padding: 5px 10px; border-radius: 4px; flex-wrap: wrap;">
+                        <select id="uec-year-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9em;">
+                            </select>
                             
                             <select id="uec-grade-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9em;">
                                 <option value="">(学年なし)</option>
@@ -342,20 +352,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => {
                     if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA[templateIndex]) {
                         const templateName = TEMPLATES_DATA[templateIndex].name;
-                        
+                        const noticeEl = document.getElementById('uec-formal-name-notice');
                         if (templateName === 'UECreview') {
-                            // JSで表示を切り替える（classを削除し、display:flexを適用）
+                            // JSで表示を切り替える
                             uecOptions.classList.remove('hidden');
                             uecOptions.style.display = 'flex'; // 明示的にflexにする
                             fixedTagArea.classList.remove('hidden');
-                            
-                            updateReviewTitle();
-                            removeReviewTagFromInput();
+
+                            if(noticeEl) noticeEl.classList.remove('hidden');
+                                updateReviewTitle();
+                                removeReviewTagFromInput();
                         } else {
                             // 他のテンプレートなら隠す
                             uecOptions.classList.add('hidden');
                             uecOptions.style.display = 'none'; // 明示的に消す
                             fixedTagArea.classList.add('hidden');
+                            // ▼▼▼ 追加: 注意書きを隠す ▼▼▼
+                            if(noticeEl) noticeEl.classList.add('hidden');
                         }
                     }
                 }, 100);

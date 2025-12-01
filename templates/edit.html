@@ -22,18 +22,28 @@
             </a>
             
             {% if templates %}
-            <div class="template-dropdown">
-                <button type="button" class="template-select-btn">テンプレートを選択</button>
-                <div class="template-dropdown-content hidden">
-                    {% for t in templates %}
-                    <a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
+                    <div class="template-dropdown">
+                        <button type="button" class="template-select-btn" id="template-select-trigger">テンプレートを選択</button>
+                        <button type="button" class="template-remove-btn hidden" id="template-remove-trigger" style="background-color: #dc3545; color: white; padding: 8px 12px; font-size: 0.9em; border: none; border-radius: 4px; cursor: pointer;">テンプレートを解除</button>
+                        <div class="template-dropdown-content hidden">
+                            {% for t in templates %}
+                            <a href="#" class="template-item" data-index="{{ loop.index0 }}">{{ t.name }}</a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
         </div>
 
         <div class="form-field">
+            <div id="uec-formal-name-notice" class="hidden" style="margin-bottom: 8px; background-color: #fff3cd; padding: 10px; border-radius: 4px; border: 1px solid #ffeeba;">
+                <p class="text-red" style="font-size: 0.9em; margin: 0 0 5px 0; font-weight: bold;">
+                    ※授業名は正式名称で記入してください。
+                </p>
+                <p style="font-size: 0.85em; margin: 0; color: #856404;">
+                    ※教員への誹謗中傷、容姿や人格への言及は禁止です。<br>
+                    授業の感想や評価に基づいた内容を心がけてください。
+                </p>
+            </div>
             {{ form.title.label }}<br>
             {{ form.title() }}
 

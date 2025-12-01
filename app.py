@@ -50,6 +50,7 @@ md = markdown.Markdown(extensions=['nl2br'])
 migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+login_manager.login_message = '利用するにはログインしてください。'
 
 @app.after_request
 def add_header(response):
@@ -164,6 +165,29 @@ def get_or_create_tags_from_string(tag_string):
     db.session.commit()
     return tag_objects
 
+def ensure_review_tag(post):
+    """
+    タイトルや本文の内容からUECレビュー投稿であると判断できる場合、
+    自動的に 'review' タグを付与する。
+    """
+    # 修正: タイトルの「年度」は必須とせず、本文がテンプレート特有のHTML構造を持っているかで判定する
+    # テンプレートは <span class="text-large">**科目名**</span> という構造を使うため、これを検知キーにする
+    is_review_content = ('<span class="text-large">**' in post.content and '担当教員:' in post.content)
+    
+    if is_review_content:
+        # 現在のタグリストに 'review' があるか確認
+        has_review_tag = any(tag.name == 'review' for tag in post.tags)
+        
+        if not has_review_tag:
+            review_tag = Tag.query.filter_by(name='review').first()
+            if not review_tag:
+                review_tag = Tag(name='review')
+                db.session.add(review_tag)
+            
+            post.tags.append(review_tag)
+            return True
+    return False
+
 def parse_review_for_editing(content):
     if not content.strip().startswith('<span class="text-large">**'): return None 
     subjects = []
@@ -247,7 +271,7 @@ class Kairanban(db.Model):
     expires_at = db.Column(db.DateTime, nullable=False) 
     author_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
     author = db.relationship('User', backref='kairanbans')
-    tags = db.relationship('Tag', secondary=kairanban_tags, lazy='subquery', backref=db.backref('kairanbans', lazy=True), cascade="all, delete")
+    tags = db.relationship('Tag', secondary=kairanban_tags, lazy='subquery', backref=db.backref('kairanbans', lazy=True))
     checks = db.relationship('KairanbanCheck', backref='kairanban', lazy='dynamic', cascade="all, delete")
     notifications = db.relationship('Notification', back_populates='kairanban', lazy='dynamic', cascade="all, delete")
 
@@ -288,7 +312,7 @@ class User(db.Model, UserMixin):
     bookmarks = db.relationship('Bookmark', backref='user', lazy='dynamic', cascade="all, delete")
     notifications = db.relationship('Notification', backref='recipient', lazy='dynamic', cascade="all, delete")
     likes = db.relationship('Like', backref='user', lazy='dynamic', cascade="all, delete")
-    tags = db.relationship('Tag', secondary=user_tags, lazy='subquery', backref=db.backref('users', lazy=True), cascade="all, delete")
+    tags = db.relationship('Tag', secondary=user_tags, lazy='subquery', backref=db.backref('users', lazy=True))
     
     def get_username_class(self): return 'admin-username' if self.is_admin else ''
     def has_unread_notifications(self): return self.notifications.filter_by(is_read=False).count() > 0
@@ -305,7 +329,7 @@ class Post(db.Model):
     bookmarks = db.relationship('Bookmark', backref='post', lazy='dynamic', cascade="all, delete")
     notifications = db.relationship('Notification', back_populates='post', lazy='dynamic', cascade="all, delete")
     likes = db.relationship('Like', backref='post', lazy='dynamic', cascade="all, delete")
-    tags = db.relationship('Tag', secondary=post_tags, lazy='subquery', backref=db.backref('posts', lazy=True), cascade="all, delete")
+    tags = db.relationship('Tag', secondary=post_tags, lazy='subquery', backref=db.backref('posts', lazy=True))
 
 class UserSubscription(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -492,6 +516,7 @@ def process_mentions(content, source_obj):
 # Routes
 @app.route('/', defaults={'page': 1}, methods=['GET', 'POST'])
 @app.route('/page/<int:page>', methods=['GET', 'POST'])
+@login_required
 def index(page):
     form = PostForm()
     if form.validate_on_submit() and current_user.is_authenticated:
@@ -506,6 +531,7 @@ def index(page):
             image_url_str = save_picture(form.image.data)
         post = Post(title=form.title.data, content=form.content.data, author=current_user, image_url=image_url_str)
         post.tags = get_or_create_tags_from_string(form.tags.data)
+        ensure_review_tag(post)
         db.session.add(post)
         db.session.commit()
         process_mentions(post.content, post)
@@ -562,6 +588,7 @@ def admin_reset_guide_status():
     return redirect(url_for('index'))
 
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
+@login_required
 def post_detail(post_id):
     post = Post.query.get_or_404(post_id)
     
@@ -678,6 +705,7 @@ def edit_post(post_id):
         post.content = form.content.data
         post.tags.clear()
         post.tags = get_or_create_tags_from_string(form.tags.data)
+        ensure_review_tag(post)
         if form.image.data:
             file_size = len(form.image.data.read())
             form.image.data.seek(0)
@@ -764,6 +792,7 @@ def logout():
     return redirect(url_for('index'))
 
 @app.route('/search', methods=['GET', 'POST'])
+@login_required
 def search():
     search_query = None
     form = SearchForm()
@@ -913,6 +942,7 @@ def edit_profile(username):
     return render_template('edit_profile.html', form=form, user=user)
 
 @app.route('/user/<string:username>')
+@login_required
 def user_profile(username):
     user = User.query.filter_by(username=username).first_or_404()
     active_tab = request.args.get('active_tab', 'posts')
@@ -940,6 +970,30 @@ def admin_dashboard():
     all_comments = Comment.query.all()
     return render_template('admin_dashboard.html', users=all_users, posts=all_posts, comments=all_comments)
 
+@app.route('/admin/restore_tags', methods=['POST'])
+@login_required
+def admin_restore_tags():
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        posts = Post.query.all()
+        count = 0
+        
+        for post in posts:
+            # ensure_review_tag 関数を使って判定＆付与
+            if ensure_review_tag(post):
+                count += 1
+                
+        db.session.commit()
+        flash(f'全投稿をスキャンし、{count}件の投稿に「review」タグを復元しました。', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Restore Error: {e}")
+        flash('タグ復元中にエラーが発生しました。', 'danger')
+    
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/test_todo_notifications', methods=['POST'])
 @login_required
@@ -1518,6 +1572,76 @@ def review_db():
     sorted_tree = dict(sorted(tree.items(), key=lambda x: x[0], reverse=True))
 
     return render_template('review_db.html', tree=sorted_tree, search_query=search_query)
+
+
+@app.route('/api/syllabus')
+@login_required
+def get_syllabus():
+    year = request.args.get('year')
+    if not year:
+        return jsonify([])
+
+    year_match = re.search(r'\d{4}', year)
+    if not year_match:
+        return jsonify([])
+    
+    target_year = year_match.group(0)
+    
+    url = f"https://kyoumu.office.uec.ac.jp/syllabus/{target_year}/GakkiIchiran_31_0.html"
+    
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        resp = requests.get(url, headers=headers, timeout=10)
+        resp.encoding = resp.apparent_encoding 
+        
+        if resp.status_code != 200:
+            return jsonify([])
+
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        rows = soup.find_all('tr')
+        
+        subject_map = {}
+
+        for row in rows:
+            cols = row.find_all('td')
+            if len(cols) >= 7: 
+                # 6列目(index 5): 科目名
+                subject_link = cols[5].find('a')
+                if not subject_link:
+                    raw_subject = cols[5].text.strip()
+                else:
+                    raw_subject = subject_link.text.strip()
+
+                # 全角括弧（）と半角括弧()の両方に対応
+                subject_text = re.sub(r'[（\(].*?[）\)]', '', raw_subject).strip()
+
+                # 7列目(index 6): 担当教員
+                teacher_text = cols[6].text.strip()
+                teacher_text = re.sub(r'\s+', ' ', teacher_text)
+
+                if subject_text:
+                    if subject_text not in subject_map:
+                        subject_map[subject_text] = set()
+                    
+                    if teacher_text:
+                        subject_map[subject_text].add(teacher_text)
+        
+        results = []
+        for subject, teachers in subject_map.items():
+            results.append({
+                'subject': subject,
+                'teachers': list(teachers)
+            })
+        
+        results.sort(key=lambda x: x['subject'])
+        
+        return jsonify(results)
+
+    except Exception as e:
+        print(f"Syllabus Fetch Error: {e}")
+        return jsonify([])
 
 # ▼▼▼ 3. スケジューラーの起動 (if __name__ == '__main__': の直前に追加) ▼▼▼
 # サーバー起動時にスケジューラーを開始
