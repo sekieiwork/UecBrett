@@ -976,11 +976,59 @@ def admin_delete_post(post_id):
 @app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
 @login_required
 def admin_delete_user(user_id):
-    if not current_user.is_admin: abort(403)
+    if not current_user.is_admin:
+        abort(403)
+    
     user = User.query.get_or_404(user_id)
+    username = user.username # 削除メッセージ用に保存
+
+    # --- 1. Cloudinary上の画像を削除 ---
+    # プロフィールアイコン
+    if user.icon_url:
+        delete_from_cloudinary(user.icon_url)
+    
+    # ユーザーの投稿画像
+    # (user.posts はリレーションシップで取得可能)
+    for post in user.posts:
+        if post.image_url:
+            delete_from_cloudinary(post.image_url)
+
+    # --- 2. 関連データの削除 (DBエラー回避のため手動で消す) ---
+    
+    # 回覧板 (自分が作成したもの)
+    # ※ db.session.delete(k) を使うことで、Kairanbanモデルに定義された
+    #    cascade="all, delete" が働き、紐づく「確認済みマーク」や「通知」も連動して消えます。
+    user_kairanbans = Kairanban.query.filter_by(author_id=user.id).all()
+    for k in user_kairanbans:
+        db.session.delete(k)
+
+    # 回覧板の確認マーク (自分が他人の回覧板につけたチェック)
+    KairanbanCheck.query.filter_by(user_id=user.id).delete()
+
+    # メッセージ (送信したもの、受信したもの)
+    Message.query.filter(or_(Message.sender_id == user.id, Message.recipient_id == user.id)).delete(synchronize_session=False)
+
+    # 各種ログ・ToDo
+    StudyLog.query.filter_by(user_id=user.id).delete()
+    FinanceLog.query.filter_by(user_id=user.id).delete()
+    ToDoItem.query.filter_by(user_id=user.id).delete()
+    
+    # ゴール設定 (Userモデルでcascade設定されているはずですが念のため)
+    Goal.query.filter_by(user_id=user.id).delete()
+
+    # --- 3. ユーザー本体の削除 ---
+    # Userモデルに cascade="all, delete" が設定されている
+    # Posts, Comments, Bookmarks, Notifications(受信), Likes, Subscriptions はここで自動的に消えます
     db.session.delete(user)
-    db.session.commit()
-    flash('ユーザーを削除しました。')
+    
+    try:
+        db.session.commit()
+        flash(f'ユーザー「{username}」とその関連データ（画像含む）を完全に削除しました。', 'success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Delete Error: {e}")
+        flash('削除中にエラーが発生しました。ログを確認してください。', 'danger')
+
     return redirect(url_for('admin_dashboard'))
 
 
