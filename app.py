@@ -1397,52 +1397,62 @@ def review_db():
     search_query = request.args.get('search_query')
 
     # 2. データをツリー構造に整理
-    # 新しい構造: tree[年度][学年][学期][科目名] = [投稿リスト]
     tree = {}
 
-    # 正規表現の定義
-    # タイトル用: "2025年度 1年 前期 ..." から情報を抜く
-    title_pattern = re.compile(r'(\d{4}年度)\s+(.+?)\s+(前期|後期)')
+    # ▼▼▼ 修正: タイトル情報の抽出ロジックを柔軟化 ▼▼▼
+    # まとめて1つの正規表現ではなく、個別に探すことで「一部欠け」や「順序違い」に対応
+    year_pattern = re.compile(r'(\d{4}年度)')
+    grade_pattern = re.compile(r'(?<!\d)(1年|2年|3年|4年|大学院生)')
+    term_pattern = re.compile(r'(前期|後期)')
     
-    # 本文用: 科目、成績、教員を抜く
+    # 本文用正規表現 (担当教員は改行まで、という制限を強化して誤検知を防ぐ)
     content_pattern = re.compile(
-        r'<span class="text-large">\*\*(.*?)\*\*</span>\s*成績:<span class="text-red text-large">\*\*(.*?)\*\*</span>\s*担当教員:(.*?)\n'
+        r'<span class="text-large">\*\*(.*?)\*\*</span>\s*'
+        r'成績:<span class="text-red text-large">\*\*(.*?)\*\*</span>\s*'
+        r'担当教員:([^\n]*)\n' # 改行までを教員名とする
+        r'(.*?)'
+        r'(?=\n\s*---\s*\n|\Z)', # 次の区切り線または末尾までを本文とする
+        re.DOTALL
     )
 
     for post in reviews:
-        # --- A. タイトルから 年・学年・学期 を抽出 ---
-        # マッチしない場合は「その他」に分類
-        title_match = title_pattern.search(post.title)
-        if title_match:
-            year_str, grade_str, term_str = title_match.groups()
-        else:
-            year_str = "年度不明"
-            grade_str = "学年不明"
-            term_str = "学期不明"
+        # --- A. タイトルから情報を個別に抽出 ---
+        
+        # 年度
+        y_match = year_pattern.search(post.title)
+        year_str = y_match.group(1) if y_match else "年度不明"
+
+        # 学年
+        g_match = grade_pattern.search(post.title)
+        grade_str = g_match.group(1) if g_match else "その他"
+
+        # 学期
+        t_match = term_pattern.search(post.title)
+        term_str = t_match.group(1) if t_match else "学期不明"
 
         # --- B. 記事内のレビューデータを抽出 ---
         matches = content_pattern.findall(post.content)
         
-        # マッチしなかった場合はタイトルを科目名とする(旧形式対応)
+        # マッチしなかった場合はタイトルを科目名、全体を本文とする(自由記述対応)
         if not matches:
-            matches = [(post.title, "不明", "不明")]
+            matches = [(post.title, "不明", "不明", post.content)]
 
-        for subject, grade_val, teacher in matches:
+        for subject, grade_val, teacher, body in matches:
             subject = subject.strip()
             teacher = teacher.strip()
+            body = body.strip()
 
             # 検索フィルター
             if search_query:
                 query = search_query.lower()
-                # 科目名、教員名、本文、年度、学年、学期のいずれかにヒットすれば表示
                 if (query not in subject.lower() and 
                     query not in teacher.lower() and 
-                    query not in post.content.lower() and
+                    query not in body.lower() and
                     query not in year_str and
                     query not in grade_str):
                     continue
 
-            # ツリーに格納 (階層: 年度 -> 学年 -> 学期 -> 科目)
+            # ツリーに格納
             if year_str not in tree: tree[year_str] = {}
             if grade_str not in tree[year_str]: tree[year_str][grade_str] = {}
             if term_str not in tree[year_str][grade_str]: tree[year_str][grade_str][term_str] = {}
@@ -1452,12 +1462,11 @@ def review_db():
             tree[year_str][grade_str][term_str][subject].append({
                 'post': post,
                 'grade_val': grade_val,
-                'teacher': teacher
+                'teacher': teacher,
+                'body': body
             })
 
-    # 表示順序の定義
-    # 年度は降順(新しい順)で表示したいので、テンプレート側で keys()|sort(reverse=True) するか、ここでソートしても良いですが、
-    # 辞書は順序保持(Python 3.7+)なので、キーをソートして新しい辞書を作り直すのが確実です。
+    # 表示順序の定義 (年度の降順)
     sorted_tree = dict(sorted(tree.items(), key=lambda x: x[0], reverse=True))
 
     return render_template('review_db.html', tree=sorted_tree, search_query=search_query)

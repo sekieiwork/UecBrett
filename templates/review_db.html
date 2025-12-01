@@ -44,7 +44,7 @@
                                         <button class="accordion-btn term-btn">
                                             <span>
                                                 <i class="fas fa-calendar-alt"></i> {{ term }} 
-                                                <span class="count-badge">{{ subjects|length }} 科目</span>
+                                                <span class="count-badge" style="background-color: #ff9800;">{{ subjects|length }} 科目</span>
                                             </span>
                                             <i class="fas fa-chevron-down arrow-icon"></i>
                                         </button>
@@ -52,22 +52,41 @@
                                             
                                             <div class="subject-list">
                                                 {% for subject, posts in subjects.items() %}
-                                                    <div class="subject-card">
-                                                        <div class="subject-header">
-                                                            <strong>{{ subject }}</strong>
-                                                            <span style="font-size: 0.8em; color: #666;">({{ posts|length }}件)</span>
-                                                        </div>
-                                                        <div class="subject-reviews">
+                                                    <div class="subject-section">
+                                                        <button class="accordion-btn subject-btn">
+                                                            <span><i class="fas fa-book-open"></i> {{ subject }}</span>
+                                                            <span>
+                                                                <span class="count-badge" style="background-color: #8e24aa;">{{ posts|length }}件</span>
+                                                                <i class="fas fa-chevron-down arrow-icon"></i>
+                                                            </span>
+                                                        </button>
+                                                        
+                                                        <div class="accordion-panel subject-panel-content">
                                                             {% for item in posts %}
-                                                                <div class="review-link-item">
-                                                                    <a href="{{ url_for('post_detail', post_id=item.post.id) }}" class="review-main-link">
-                                                                        <span style="display: flex; align-items: center; gap: 5px;">
-                                                                            <i class="fas fa-chalkboard-teacher"></i> {{ item.teacher }}
-                                                                        </span>
-                                                                        <span class="text-red" style="font-weight:bold;">{{ item.grade_val }}</span>
-                                                                    </a>
-                                                                    <div style="font-size: 0.75em; color: #888; margin-top: 3px; text-align: right;">
-                                                                        by <a href="{{ url_for('user_profile', username=item.post.author.username) }}" class="review-user-link">{{ item.post.author.username }}</a>
+                                                                <div class="review-full-card">
+                                                                    <div class="review-header">
+                                                                        <div class="review-info-left">
+                                                                            <span class="teacher-name">
+                                                                                <i class="fas fa-chalkboard-teacher"></i> {{ item.teacher }}
+                                                                            </span>
+                                                                            <span class="grade-val text-red">{{ item.grade_val }}</span>
+                                                                        </div>
+                                                                        <div class="review-info-right">
+                                                                            by <a href="{{ url_for('user_profile', username=item.post.author.username) }}" class="review-user-link">{{ item.post.author.username }}</a>
+                                                                            <span class="review-date">({{ item.post.created_at_jst.strftime('%Y/%m/%d') }})</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <hr class="review-divider">
+                                                                    
+                                                                    <div class="review-body">
+                                                                        {{ item.body | safe_markdown | safe }}
+                                                                    </div>
+                                                                    
+                                                                    <div class="review-footer">
+                                                                        <a href="{{ url_for('post_detail', post_id=item.post.id) }}" style="font-size: 0.85em; color: #007bff;">
+                                                                            <i class="fas fa-external-link-alt"></i> 投稿詳細へ
+                                                                        </a>
                                                                     </div>
                                                                 </div>
                                                             {% endfor %}
@@ -110,20 +129,20 @@
     }
     
     .accordion-panel {
-        padding: 0 10px;
+        padding: 0 5px;
         display: none;
         overflow: hidden;
         margin-bottom: 10px;
     }
 
-    /* ▼▼▼ 修正: 科目リスト部分のスクロール設定 ▼▼▼ */
+    /* 学期パネル: 科目リストが長くなった時のスクロール */
     .term-panel-content {
-        /* 学期の中身（科目リスト）が長くなったらスクロールさせる */
-        max-height: 600px; /* お好みで調整してください */
+        max-height: 800px;
         overflow-y: auto;
-        border: 1px solid #f0f0f0; /* 境界をわかりやすく */
+        border: 1px solid #f0f0f0;
         border-radius: 4px;
         background-color: #fcfcfc;
+        padding: 10px;
     }
 
     /* 矢印アイコンのアニメーション */
@@ -137,81 +156,94 @@
     
     /* 階層ごとの色分け */
     .year-btn {
-        background-color: #e3f2fd;
-        color: #0d47a1;
-        font-size: 1.1em;
-        border-left: 5px solid #2196f3;
+        background-color: #e3f2fd; color: #0d47a1; font-size: 1.1em; border-left: 5px solid #2196f3;
     }
     .year-btn:hover, .year-btn.active { background-color: #bbdefb; }
 
     .grade-btn {
-        color: #333;
-        font-size: 1em;
-        border-left: 5px solid #66bb6a;
+        color: #333; font-size: 1em; border-left: 5px solid #66bb6a;
     }
     .grade-btn:hover, .grade-btn.active { background-color: #f1f8e9; }
 
     .term-btn {
-        color: #555;
-        font-size: 0.95em;
-        border-left: 5px solid #ffa726;
+        color: #555; font-size: 0.95em; border-left: 5px solid #ff9800;
     }
     .term-btn:hover, .term-btn.active { background-color: #fff3e0; }
 
-    /* ▼▼▼ 修正: 科目カード (縦1列に変更) ▼▼▼ */
-    .subject-list {
-        display: flex;
-        flex-direction: column; /* 縦並び */
-        gap: 10px;
-        padding: 10px;
+    .subject-btn {
+        color: #333; font-size: 0.95em; border-left: 5px solid #9c27b0;
+        background-color: #fff;
     }
-    .subject-card {
+    .subject-btn:hover, .subject-btn.active { background-color: #f3e5f5; }
+
+    .subject-list {
+        display: flex; flex-direction: column; gap: 5px;
+    }
+
+    /* レビュー詳細カード */
+    .review-full-card {
+        background-color: #fff;
         border: 1px solid #e0e0e0;
         border-radius: 8px;
-        padding: 10px;
-        background-color: #fff;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        padding: 8px 10px; /* パディングを縮小 (10px -> 8px 10px) */
+        margin-bottom: 8px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
     
-    /* ▼▼▼ 修正: レビューリンクのスタイル調整 ▼▼▼ */
-    .review-link-item {
-        display: block;
-        padding: 8px;
-        border-radius: 4px;
-        background-color: #f9f9f9;
-        border: 1px solid #eee;
-        margin-bottom: 5px;
-        color: #333;
+    .review-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 5px;
     }
-    /* 全体を囲むaタグをやめて、中身を分けたので、メイン部分をリンクっぽく見せる */
-    .review-main-link {
-        display: flex; 
-        justify-content: space-between; 
-        text-decoration: none; 
-        color: #333;
-        transition: opacity 0.2s;
+    
+    .review-info-left {
+        display: flex; align-items: center; gap: 10px;
     }
-    .review-main-link:hover {
-        opacity: 0.7;
-        text-decoration: none;
+    .teacher-name { font-weight: bold; color: #333; }
+    .grade-val { font-weight: bold; font-size: 1.1em; }
+
+    .review-info-right {
+        font-size: 0.85em; color: #666;
     }
-    /* ユーザー名リンク */
-    .review-user-link {
-        color: #007bff;
-        text-decoration: none;
+    
+    .review-user-link { color: #007bff; text-decoration: none; }
+    .review-user-link:hover { text-decoration: underline; }
+
+    /* ▼▼▼ 修正: 区切り線の余白を最小限に ▼▼▼ */
+    .review-divider {
+        margin: 2px 0;
+        border: 0;
+        border-top: 1px dashed #eee;
     }
-    .review-user-link:hover {
-        text-decoration: underline;
+
+    /* ▼▼▼ 修正: 本文の余白を徹底的に削除 ▼▼▼ */
+    .review-body {
+        font-size: 0.95em;
+        line-height: 1.5;
+        color: #444;
+        /* pre-wrapだとMarkdown生成の改行コードまで表示されて隙間が倍増するため normal に戻す */
+        white-space: normal; 
+        word-wrap: break-word; /* 長い英単語などでレイアウトが崩れるのを防ぐ */
+        margin: 0;
+        padding: 2px 0;
+    }
+    
+    /* Markdownで生成されるpタグの余白を削除 */
+    .review-body p {
+        margin: 0 !important; 
+        padding: 0 !important;
+    }
+
+    /* ▼▼▼ 修正: フッターの余白を削除 ▼▼▼ */
+    .review-footer {
+        text-align: right; 
+        margin-top: 0; 
     }
 
     .count-badge {
-        background-color: #6c757d;
-        color: white;
-        padding: 2px 8px;
-        border-radius: 10px;
-        font-size: 0.8em;
-        font-weight: normal;
-        margin-left: 8px;
+        color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; font-weight: normal; margin-right: 5px;
     }
 </style>
 

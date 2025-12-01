@@ -1362,6 +1362,7 @@ allEditableTextareas.forEach(textarea => {
         const addBtnContainer = document.createElement('div');
         addBtnContainer.style.textAlign = 'center';
         addBtnContainer.style.marginTop = '15px';
+        addBtnContainer.style.marginBottom = '25px';
         addBtnContainer.innerHTML = `
             <button type="button" id="add-uec-subject-btn" style="background: none; border: 2px dashed #007bff; color: #007bff; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold;">
                 <i class="fas fa-plus"></i> 科目を追加
@@ -1386,29 +1387,42 @@ allEditableTextareas.forEach(textarea => {
         }
     }
 
-    // 4. 本文を組み立てる関数 (変更なし、ただしDOM構造依存なので念のため確認)
+    // 4. 本文を組み立てる関数 (バリデーションと自動補完を追加)
     function buildUecReviewContent(container) {
         let combinedContent = '';
-        // ラッパー内のフォームセットを探す
         const formSets = container.querySelectorAll('.uec-form-set');
 
-        formSets.forEach((set, index) => {
-            const subject = set.querySelector('.uec-subject').value;
-            const teacher = set.querySelector('.uec-teacher').value;
+        // forループに変更（途中で return して処理を中断できるようにするため）
+        for (let i = 0; i < formSets.length; i++) {
+            const set = formSets[i];
+            const subject = set.querySelector('.uec-subject').value.trim();
+            const teacher = set.querySelector('.uec-teacher').value.trim();
             const grade = set.querySelector('.uec-grade').value;
-            const body = set.querySelector('.uec-review-body').value;
+            const body = set.querySelector('.uec-review-body').value.trim();
 
-            let reviewString = `<span class="text-large">**${subject || 'ここに科目名を入力'}**</span> `;
+            // --- ② [修正] 本文が未入力なら送信ブロック ---
+            if (!body) {
+                alert(`科目 ${i + 1} (${subject || '名称未設定'}) のレビュー本文が入力されていません。\n投稿するには本文の入力が必須です。`);
+                return null; // nullを返してエラーを示す
+            }
+
+            // --- ① [修正] 教員名が空なら「不明」をセット ---
+            const finalTeacher = teacher || '不明';
+            
+            // 科目名も空ならプレースホルダー的な文言を入れる（既存維持）
+            const finalSubject = subject || '科目名なし';
+
+            let reviewString = `<span class="text-large">**${finalSubject}**</span> `;
             reviewString += `成績:<span class="text-red text-large">**${grade}**</span> `;
-            reviewString += `担当教員:${teacher || 'ここに担当教員名を入力'}\n`;
-            reviewString += `${body || '本文を入力'}`;
+            reviewString += `担当教員:${finalTeacher}\n`;
+            reviewString += `${body}`;
 
             combinedContent += reviewString;
 
-            if (index < formSets.length - 1) {
+            if (i < formSets.length - 1) {
                 combinedContent += '\n\n---\n\n'; 
             }
-        });
+        }
 
         return combinedContent;
     }
@@ -1635,15 +1649,20 @@ document.querySelectorAll('.delete-comment-btn').forEach(button => {
                 // 1. UECreviewフォームから本文を組み立てる
                 const combinedContent = buildUecReviewContent(uecReviewContainer);
 
+                // --- [修正] バリデーションエラー時は送信を止める ---
+                if (combinedContent === null) {
+                    event.preventDefault(); // 送信キャンセル
+                    event.stopPropagation();
+                    return; // 処理終了
+                }
+
                 // 2. 元の本文テキストエリアに値を設定する
                 originalContentTextarea.value = combinedContent;
 
-                // 3. このままデフォルトの送信動作を許可する
+                // 3. このままデフォルトの送信動作が進む
             }
         });
     });
-
-
 // --- 7. 編集ページ用のUECreviewデータ読み込み ---
 
     // 編集フォーム（indexの投稿フォームではない）が存在する場合のみ実行
