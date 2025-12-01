@@ -218,5 +218,91 @@
                 });
             }
         });
+        // タイトルから年度を抽出する関数
+    function extractYearFromTitle(title) {
+        const match = title.match(/(\d{4})年度/);
+        return match ? match[0] : null;
+    }
+
+    // 既存の入力欄にdatalistを紐付ける関数
+    function attachDatalistToInputs() {
+        const uecContainer = document.getElementById('uecreview-form-container');
+        if (!uecContainer) return;
+
+        const formSets = uecContainer.querySelectorAll('.uec-form-set');
+        formSets.forEach((set, index) => {
+            const subjectInput = set.querySelector('.uec-subject');
+            const teacherInput = set.querySelector('.uec-teacher');
+            
+            // まだdatalistがない場合のみ追加
+            if (subjectInput && !subjectInput.hasAttribute('list')) {
+                // 科目用datalist
+                const subjListId = `syllabus-suggestions-subj-${index}`;
+                subjectInput.setAttribute('list', subjListId);
+                const subjDatalist = document.createElement('datalist');
+                subjDatalist.id = subjListId;
+                subjectInput.parentNode.appendChild(subjDatalist); // inputの親要素に追加
+
+                // 教員用datalist
+                const teacherListId = `syllabus-suggestions-teacher-${index}`;
+                teacherInput.setAttribute('list', teacherListId);
+                const teacherDatalist = document.createElement('datalist');
+                teacherDatalist.id = teacherListId;
+                teacherInput.parentNode.appendChild(teacherDatalist); // inputの親要素に追加
+
+                // イベントリスナーの登録 (base_layout.htmlのロジックと同じ)
+                // 1. 科目入力時
+                subjectInput.addEventListener('input', function() {
+                    const val = this.value.trim();
+                    if (val === '') {
+                        subjDatalist.innerHTML = '';
+                        return;
+                    }
+                    if (subjDatalist.options.length === 0 && window.cachedSyllabusData && window.cachedSyllabusData.length > 0) {
+                        updateSubjectDatalist(subjDatalist, window.cachedSyllabusData);
+                    }
+                });
+
+                // 2. 科目確定時 (教員補完)
+                subjectInput.addEventListener('change', function() {
+                    const val = this.value;
+                    teacherDatalist.innerHTML = '';
+                    teacherInput.value = '';
+
+                    if (window.cachedSyllabusData) {
+                        const match = window.cachedSyllabusData.find(item => item.subject === val);
+                        if (match && match.teachers && match.teachers.length > 0) {
+                            match.teachers.forEach(tName => {
+                                const opt = document.createElement('option');
+                                opt.value = tName;
+                                teacherDatalist.appendChild(opt);
+                            });
+                            if (match.teachers.length === 1) {
+                                teacherInput.value = match.teachers[0];
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    // ページ読み込み時の処理
+    const titleInput = document.querySelector('input[name="title"]');
+    if (titleInput && IS_REVIEW_POST) {
+        const year = extractYearFromTitle(titleInput.value);
+        
+        if (year) {
+            // APIからシラバスデータを取得
+            fetch(`/api/syllabus?year=${encodeURIComponent(year)}`)
+                .then(r => r.json())
+                .then(data => {
+                    window.cachedSyllabusData = data;
+                    // 既存のフォームに機能を適用
+                    attachDatalistToInputs();
+                })
+                .catch(err => console.error("Syllabus API Error (Edit):", err));
+        }
+    }
     </script>
 {% endblock %}
