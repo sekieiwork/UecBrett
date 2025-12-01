@@ -1128,10 +1128,278 @@ a.tag-box:hover {
         </nav>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+// ▼▼▼ グローバルスコープで定義（他のテンプレートから呼べるようにする） ▼▼▼
+
+// グローバル変数: シラバスデータのキャッシュ
+window.cachedSyllabusData = [];
+
+const initYearSelect = () => {
+        const yearSelect = document.getElementById('uec-year-select');
+        // 既に選択肢がある場合（<option>が1つ以上ある）は再生成しない
+        if (yearSelect && yearSelect.options.length <= 1) {
+            yearSelect.innerHTML = '<option value="">(年度なし)</option>';
+            const currentYear = new Date().getFullYear();
+            // 現在の年から3年分 (例: 2025, 2024, 2023)
+            for (let y = currentYear; y > currentYear - 3; y--) {
+                const opt = document.createElement('option');
+                opt.value = y + '年度';
+                opt.textContent = y + '年度';
+                yearSelect.appendChild(opt);
+            }
+        }
+    };
     
-    // ▼▼▼ グローバル変数: シラバスデータのキャッシュ ▼▼▼
-    window.cachedSyllabusData = [];
+    // ページ読み込み時に即実行
+    initYearSelect();
+
+// 1. ヘルパー関数: テキストエリアのリサイズ
+const resizeTextarea = (textarea) => {
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    const maxHeight = parseInt(window.getComputedStyle(textarea).maxHeight, 10);
+    const scrollHeight = textarea.scrollHeight;
+    if (maxHeight > 0 && scrollHeight > maxHeight) {
+        textarea.style.height = maxHeight + 'px';
+        textarea.style.overflowY = 'auto';
+    } else {
+        textarea.style.height = scrollHeight + 'px';
+        textarea.style.overflowY = 'hidden';
+    }
+};
+
+// 2. datalist更新用ヘルパー (高速化版)
+function fillDatalist(datalist, items) {
+    if (!datalist) return;
+    const uniqueItems = Array.from(new Set(items));
+    datalist.innerHTML = uniqueItems.map(val => `<option value="${val}">`).join('');
+}
+
+// 3. datalist更新用ヘルパー (シラバス連動用エイリアス)
+function updateDatalist(datalistElement, data) {
+    if(!datalistElement) return;
+    const items = data.map(d => d.subject);
+    fillDatalist(datalistElement, items);
+}
+// 名前互換性のため
+function updateSubjectDatalist(datalistElement, data) {
+    updateDatalist(datalistElement, data);
+}
+
+// 4. 科目ブロック生成関数 (シラバス連動 & IME対応版)
+function addUecSubjectBlock(container, data = null) {
+    const index = container.querySelectorAll('.uec-form-set').length;
+    const formSet = document.createElement('div');
+    formSet.className = 'uec-form-set';
+    
+    let gradesOptions = ['秀', '優', '良', '可', '不可', '（未評価）']
+        .map(g => `<option value="${g}">${g}</option>`).join('');
+
+    // HTML生成
+    formSet.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; margin-bottom: 10px; padding-bottom: 5px;">
+        <h3 class="subject-index-label" style="margin: 0;">科目 ${index + 1}</h3>
+        <button type="button" class="delete-subject-btn" style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 0.9em;">
+            <i class="fas fa-trash-alt"></i> 削除
+        </button>
+    </div>
+    <div>
+        <label>科目名:</label>
+        <input type="text" class="uec-subject" placeholder="例：〇〇論" list="syllabus-suggestions-subj-${index}">
+        <datalist id="syllabus-suggestions-subj-${index}"></datalist>
+    </div>
+    <div>
+        <label>担当教員:</label>
+        <input type="text" class="uec-teacher" placeholder="例：〇〇 先生" list="syllabus-suggestions-teacher-${index}">
+        <datalist id="syllabus-suggestions-teacher-${index}"></datalist>
+    </div>
+        <div>
+            <label>成績:</label>
+            <select class="uec-grade">
+                ${gradesOptions}
+            </select>
+        </div>
+        <div>
+            <label>本文 (レビュー):</label>
+            <textarea class="uec-review-body auto-resize-textarea" placeholder="例：テストの難易度、課題について等" rows="3" style="resize: none;"></textarea>
+        </div>
+    `;
+
+    // データを埋め込み
+    if (data) {
+        formSet.querySelector('.uec-subject').value = data.subject || '';
+        formSet.querySelector('.uec-teacher').value = data.teacher || '';
+        formSet.querySelector('.uec-grade').value = data.grade || '（未評価）';
+        formSet.querySelector('.uec-review-body').value = data.body || '';
+    }
+
+    // テキストエリア設定
+    const textarea = formSet.querySelector('.uec-review-body');
+    if (textarea) {
+        setTimeout(() => resizeTextarea(textarea), 0);
+        textarea.addEventListener('input', () => {
+            const oldHeight = textarea.offsetHeight;
+            resizeTextarea(textarea); 
+            const newHeight = textarea.offsetHeight;
+            const heightDifference = newHeight - oldHeight;
+            if (heightDifference !== 0) { window.scrollBy(0, heightDifference); }
+        });
+    }
+
+    // 削除ボタン設定
+    const deleteBtn = formSet.querySelector('.delete-subject-btn');
+    deleteBtn.addEventListener('click', function() {
+        if (confirm('この科目を削除しますか？')) {
+            formSet.remove();
+            updateSubjectNumbers(container);
+        }
+    });
+
+    // ▼▼▼ シラバス連動設定 (IME対応 & 軽量化) ▼▼▼
+    const subjectInput = formSet.querySelector('.uec-subject');
+    const teacherInput = formSet.querySelector('.uec-teacher');
+    const subjDataList = formSet.querySelector(`#syllabus-suggestions-subj-${index}`);
+    const teacherDataList = formSet.querySelector(`#syllabus-suggestions-teacher-${index}`);
+    
+    // 入力ハンドラ
+    const handleSubjectInput = function(event) {
+        if (event.type === 'input' && event.isComposing) return;
+
+        const val = subjectInput.value;
+        if (!val) {
+            subjDataList.innerHTML = '';
+            return;
+        }
+
+        if (window.cachedSyllabusData) {
+            const MAX_CANDIDATES = 50;
+            const filtered = [];
+            let count = 0;
+            for (const item of window.cachedSyllabusData) {
+                if (item.subject.indexOf(val) !== -1) {
+                    filtered.push(item.subject);
+                    count++;
+                    if (count >= MAX_CANDIDATES) break;
+                }
+            }
+            fillDatalist(subjDataList, filtered);
+        }
+    };
+
+    subjectInput.addEventListener('input', handleSubjectInput);
+    subjectInput.addEventListener('compositionend', handleSubjectInput);
+    subjectInput.addEventListener('focus', handleSubjectInput);
+
+    // 教員補完
+    subjectInput.addEventListener('change', function() {
+        const val = this.value;
+        teacherDataList.innerHTML = ''; 
+        teacherInput.value = ''; 
+
+        if (window.cachedSyllabusData) {
+            const match = window.cachedSyllabusData.find(item => item.subject === val);
+            if (match && match.teachers && match.teachers.length > 0) {
+                fillDatalist(teacherDataList, match.teachers);
+            
+                if (match.teachers.length === 1) {
+                    teacherInput.value = match.teachers[0];
+                }
+            }
+        }
+    });
+
+    container.appendChild(formSet);
+}
+
+// 5. 科目番号更新関数
+function updateSubjectNumbers(container) {
+    const sets = container.querySelectorAll('.uec-form-set');
+    sets.forEach((set, i) => {
+        const label = set.querySelector('.subject-index-label');
+        if (label) label.textContent = `科目 ${i + 1}`;
+    });
+}
+
+// 6. メインフォーム生成関数
+function createUecReviewForm(initialCount, container, titleInput, templateTitle, existing_data = []) {
+    if (!container) return;
+
+    if (titleInput && templateTitle && existing_data.length === 0) {
+        titleInput.value = templateTitle;
+    }
+
+    container.innerHTML = '';
+    const fieldsWrapper = document.createElement('div');
+    fieldsWrapper.id = 'uec-fields-wrapper';
+    container.appendChild(fieldsWrapper);
+
+    const count = existing_data.length > 0 ? existing_data.length : initialCount;
+    for (let i = 0; i < count; i++) {
+        const data = existing_data.length > 0 ? existing_data[i] : null;
+        addUecSubjectBlock(fieldsWrapper, data);
+    }
+
+    // 追加ボタン
+    const addBtnContainer = document.createElement('div');
+    addBtnContainer.style.textAlign = 'center';
+    addBtnContainer.style.marginTop = '15px';
+    addBtnContainer.style.marginBottom = '25px';
+    addBtnContainer.innerHTML = `
+        <button type="button" id="add-uec-subject-btn" style="background: none; border: 2px dashed #007bff; color: #007bff; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold;">
+            <i class="fas fa-plus"></i> 科目を追加
+        </button>
+    `;
+    container.appendChild(addBtnContainer);
+
+    const addBtn = addBtnContainer.querySelector('#add-uec-subject-btn');
+    addBtn.addEventListener('click', function() {
+        addUecSubjectBlock(fieldsWrapper);
+    });
+
+    container.classList.remove('hidden');
+    const originalContentField = container.closest('form').querySelector('#content-field-original');
+    if (originalContentField) {
+        originalContentField.classList.add('hidden');
+        const originalTextarea = originalContentField.querySelector('.auto-resize-textarea');
+        if (originalTextarea) originalTextarea.required = false;
+    }
+}
+
+// 7. 本文構築関数
+function buildUecReviewContent(container) {
+    let combinedContent = '';
+    const formSets = container.querySelectorAll('.uec-form-set');
+
+    for (let i = 0; i < formSets.length; i++) {
+        const set = formSets[i];
+        const subject = set.querySelector('.uec-subject').value.trim();
+        const teacher = set.querySelector('.uec-teacher').value.trim();
+        const grade = set.querySelector('.uec-grade').value;
+        const body = set.querySelector('.uec-review-body').value.trim();
+
+        if (!body) {
+            alert(`科目 ${i + 1} (${subject || '名称未設定'}) のレビュー本文が入力されていません。\n投稿するには本文の入力が必須です。`);
+            return null; 
+        }
+
+        const finalTeacher = teacher || '不明';
+        const finalSubject = subject || '科目名なし';
+
+        let reviewString = `<span class="text-large">**${finalSubject}**</span> `;
+        reviewString += `成績:<span class="text-red text-large">**${grade}**</span> `;
+        reviewString += `担当教員:${finalTeacher}\n`;
+        reviewString += `${body}`;
+
+        combinedContent += reviewString;
+
+        if (i < formSets.length - 1) {
+            combinedContent += '\n\n---\n\n'; 
+        }
+    }
+    return combinedContent;
+}
+
+// ▼▼▼ DOMロード後の処理（イベントリスナー登録など） ▼▼▼
+document.addEventListener('DOMContentLoaded', function() {
 
     // --- 0. Flashメッセージを閉じる機能 ---
     const dismissFlashBtn = document.getElementById('dismiss-flash-btn');
@@ -1139,21 +1407,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (dismissFlashBtn && flashContainer) {
         dismissFlashBtn.addEventListener('click', function() { flashContainer.style.display = 'none'; });
     }
-
-    // --- 1. ヘルパー関数と共通の要素を取得 ---
-    const resizeTextarea = (textarea) => {
-        if (!textarea) return;
-        textarea.style.height = 'auto';
-        const maxHeight = parseInt(window.getComputedStyle(textarea).maxHeight, 10);
-        const scrollHeight = textarea.scrollHeight;
-        if (maxHeight > 0 && scrollHeight > maxHeight) {
-            textarea.style.height = maxHeight + 'px';
-            textarea.style.overflowY = 'auto';
-        } else {
-            textarea.style.height = scrollHeight + 'px';
-            textarea.style.overflowY = 'hidden';
-        }
-    };
 
     const headerDropdownContainer = document.querySelector('.dropdown-container');
     const toggleButton = document.getElementById('toggle-post-form-btn');
@@ -1169,11 +1422,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const recentTagsList = document.getElementById('recent-tags-list');
     const tagsInputField = document.getElementById('tags-input-field'); 
 
-    // --- 2. テキストエリア関連 ---
     const allEditableTextareas = document.querySelectorAll('.auto-resize-textarea');
     
-    // --- 3. イベントリスナーの設定 ---
-
     // ヘッダーのドロップダウン
     if (headerDropdownContainer) {
         const headerDropdownContent = headerDropdownContainer.querySelector('.dropdown-content');
@@ -1222,9 +1472,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // --- 4. テンプレート機能 (修正版: 解除機能付き) ---
-    
-    // UI要素の取得
+    // --- 4. テンプレート機能 ---
     const selectTrigger = document.getElementById('template-select-trigger');
     const removeTrigger = document.getElementById('template-remove-trigger');
     const dropdownContent = document.querySelector('.template-dropdown-content');
@@ -1242,7 +1490,6 @@ document.addEventListener('DOMContentLoaded', function() {
         removeTrigger.addEventListener('click', function(e) {
             e.preventDefault();
             
-            // 入力チェック: 何か入力されていたら確認
             const uecContainer = document.getElementById('uecreview-form-container');
             let hasInput = false;
             if (uecContainer && !uecContainer.classList.contains('hidden')) {
@@ -1256,7 +1503,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
-            // --- リセット処理 ---
+            // リセット
             const uecOptions = document.getElementById('uec-review-options');
             const fixedTagArea = document.getElementById('fixed-tag-area');
             const originalContentField = document.getElementById('content-field-original');
@@ -1264,40 +1511,37 @@ document.addEventListener('DOMContentLoaded', function() {
             const titleInput = document.querySelector('input[name="title"]'); 
             const tagsInput = document.getElementById('tags-input-field');
 
-            // 表示を元に戻す
             if(uecOptions) { uecOptions.classList.add('hidden'); uecOptions.style.display = 'none'; }
             if(fixedTagArea) fixedTagArea.classList.add('hidden');
             if(noticeEl) noticeEl.classList.add('hidden');
             
             if(uecContainer) {
-                uecContainer.innerHTML = ''; // フォーム内容を消去
+                uecContainer.innerHTML = ''; 
                 uecContainer.classList.add('hidden');
             }
             
             if(originalContentField) {
                 originalContentField.classList.remove('hidden');
                 const ta = originalContentField.querySelector('.auto-resize-textarea');
-                if(ta) ta.required = true; // 必須に戻す
+                if(ta) ta.required = true; 
             }
 
             if (titleInput) {
                 titleInput.value = '';
             }
 
-            // タグからreviewを消す
             if(tagsInput) {
                 let tags = tagsInput.value.split(',').map(t => t.trim());
                 tags = tags.filter(t => t !== 'review');
                 tagsInput.value = tags.join(', ');
             }
 
-            // ボタンの表示切り替え
             selectTrigger.classList.remove('hidden');
             removeTrigger.classList.add('hidden');
         });
     }
 
-    // (C) テンプレート項目クリック時の処理
+    // (C) テンプレート項目クリック
     if (typeof TEMPLATES_DATA !== 'undefined' && TEMPLATES_DATA.length > 0) {
         document.querySelectorAll('.template-item').forEach(item => {
             item.addEventListener('click', function(event) {
@@ -1324,22 +1568,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         const count = parseInt(halfWidthStr, 10);
                         if (!isNaN(count) && count > 0 && count <= 20) {
                             
-                            // UI切り替え
                             if(uecOptions) { uecOptions.classList.remove('hidden'); uecOptions.style.display = 'flex'; }
                             if(fixedTagArea) fixedTagArea.classList.remove('hidden');
                             if(noticeEl) noticeEl.classList.remove('hidden');
                             
-                            // フォーム生成
                             createUecReviewForm(count, uecReviewContainer, titleInput, template.title);
                             
-                            // タグのreview除去(自動付与エリアが出るため)
                             if (tagsInput) {
                                 let tags = tagsInput.value.split(',').map(t => t.trim());
                                 tags = tags.filter(t => t !== 'review' && t !== '');
                                 tagsInput.value = tags.join(', ');
                             }
 
-                            // 解除ボタンを表示
                             if (selectTrigger && removeTrigger) {
                                 selectTrigger.classList.add('hidden');
                                 removeTrigger.classList.remove('hidden');
@@ -1348,7 +1588,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         } else { alert('有効な数字(1〜20)を入力してください。'); }
                     }
                 } else {
-                    // 通常テンプレートの場合
                     if (uecReviewContainer) uecReviewContainer.classList.add('hidden');
                     if (uecReviewContainer) uecReviewContainer.innerHTML = '';
                     
@@ -1359,14 +1598,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     } 
                     if (titleInput) titleInput.value = template.title;
                     
-                    // 解除ボタン表示（通常テンプレでも解除できるようにする場合）
                     if (selectTrigger && removeTrigger) {
                         selectTrigger.classList.add('hidden');
                         removeTrigger.classList.remove('hidden');
                     }
                 }
 
-                // ドロップダウンを閉じる
                 const parentDropdownContent = item.closest('.template-dropdown-content');
                 if (parentDropdownContent) { parentDropdownContent.classList.add('hidden'); }
             });
@@ -1375,13 +1612,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- 5. シラバス連携 (API取得) ---
     const yearSelect = document.getElementById('uec-year-select');
-    
     if (yearSelect) {
         yearSelect.addEventListener('change', function() {
-            const year = this.value; // 例: "2025年度"
+            const year = this.value;
             if (!year) return;
 
-            // APIからシラバスデータを取得してキャッシュするのみ (全リスト更新は重いのでしない)
             fetch(`/api/syllabus?year=${encodeURIComponent(year)}`)
                 .then(r => r.json())
                 .then(data => {
@@ -1391,232 +1626,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- UECreviewフォーム関連の関数 ---
-
-    // 1. datalist更新用ヘルパー (高速化版)
-    function fillDatalist(datalist, items) {
-        if (!datalist) return;
-        const uniqueItems = Array.from(new Set(items));
-        // innerHTMLによる一括挿入で高速化
-        datalist.innerHTML = uniqueItems.map(val => `<option value="${val}">`).join('');
-    }
-
-    // 2. 科目ブロック生成関数 (シラバス連動 & IME対応版)
-    function addUecSubjectBlock(container, data = null) {
-        const index = container.querySelectorAll('.uec-form-set').length;
-        const formSet = document.createElement('div');
-        formSet.className = 'uec-form-set';
-        
-        let gradesOptions = ['秀', '優', '良', '可', '不可', '（未評価）']
-            .map(g => `<option value="${g}">${g}</option>`).join('');
-
-        // HTML生成
-        formSet.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; margin-bottom: 10px; padding-bottom: 5px;">
-            <h3 class="subject-index-label" style="margin: 0;">科目 ${index + 1}</h3>
-            <button type="button" class="delete-subject-btn" style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 0.9em;">
-                <i class="fas fa-trash-alt"></i> 削除
-            </button>
-        </div>
-        <div>
-            <label>科目名:</label>
-            <input type="text" class="uec-subject" placeholder="例：〇〇論" list="syllabus-suggestions-subj-${index}">
-            <datalist id="syllabus-suggestions-subj-${index}"></datalist>
-        </div>
-        <div>
-            <label>担当教員:</label>
-            <input type="text" class="uec-teacher" placeholder="例：〇〇 先生" list="syllabus-suggestions-teacher-${index}">
-            <datalist id="syllabus-suggestions-teacher-${index}"></datalist>
-        </div>
-            <div>
-                <label>成績:</label>
-                <select class="uec-grade">
-                    ${gradesOptions}
-                </select>
-            </div>
-            <div>
-                <label>本文 (レビュー):</label>
-                <textarea class="uec-review-body auto-resize-textarea" placeholder="例：テストの難易度、課題について等" rows="3" style="resize: none;"></textarea>
-            </div>
-        `;
-
-        // データを埋め込み
-        if (data) {
-            formSet.querySelector('.uec-subject').value = data.subject || '';
-            formSet.querySelector('.uec-teacher').value = data.teacher || '';
-            formSet.querySelector('.uec-grade').value = data.grade || '（未評価）';
-            formSet.querySelector('.uec-review-body').value = data.body || '';
-        }
-
-        // テキストエリア設定
-        const textarea = formSet.querySelector('.uec-review-body');
-        if (textarea) {
-            setTimeout(() => resizeTextarea(textarea), 0);
-            textarea.addEventListener('input', () => resizeTextarea(textarea));
-        }
-
-        // 削除ボタン設定
-        const deleteBtn = formSet.querySelector('.delete-subject-btn');
-        deleteBtn.addEventListener('click', function() {
-            if (confirm('この科目を削除しますか？')) {
-                formSet.remove();
-                updateSubjectNumbers(container);
-            }
-        });
-
-        // ▼▼▼ シラバス連動設定 (IME対応 & 軽量化) ▼▼▼
-        const subjectInput = formSet.querySelector('.uec-subject');
-        const teacherInput = formSet.querySelector('.uec-teacher');
-        const subjDataList = formSet.querySelector(`#syllabus-suggestions-subj-${index}`);
-        const teacherDataList = formSet.querySelector(`#syllabus-suggestions-teacher-${index}`);
-        
-        // 入力ハンドラ
-        const handleSubjectInput = function(event) {
-            // IME変換中は無視 (ダブり入力防止)
-            if (event.type === 'input' && event.isComposing) return;
-
-            const val = subjectInput.value;
-            if (!val) {
-                subjDataList.innerHTML = '';
-                return;
-            }
-
-            // キャッシュから部分一致検索 (最大50件)
-            if (window.cachedSyllabusData) {
-                const MAX_CANDIDATES = 50;
-                const filtered = [];
-                let count = 0;
-                for (const item of window.cachedSyllabusData) {
-                    if (item.subject.indexOf(val) !== -1) {
-                        filtered.push(item.subject);
-                        count++;
-                        if (count >= MAX_CANDIDATES) break;
-                    }
-                }
-                fillDatalist(subjDataList, filtered);
-            }
-        };
-
-        // 入力イベント
-        subjectInput.addEventListener('input', handleSubjectInput);
-        // 変換確定イベント
-        subjectInput.addEventListener('compositionend', handleSubjectInput);
-        // フォーカス時
-        subjectInput.addEventListener('focus', handleSubjectInput);
-
-        // 教員補完
-        subjectInput.addEventListener('change', function() {
-            const val = this.value;
-            teacherDataList.innerHTML = ''; 
-            teacherInput.value = ''; 
-
-            if (window.cachedSyllabusData) {
-                const match = window.cachedSyllabusData.find(item => item.subject === val);
-                if (match && match.teachers && match.teachers.length > 0) {
-                    fillDatalist(teacherDataList, match.teachers);
-                
-                    if (match.teachers.length === 1) {
-                        teacherInput.value = match.teachers[0];
-                    }
-                }
-            }
-        });
-
-        container.appendChild(formSet);
-    }
-
-    // 3. 科目番号更新関数
-    function updateSubjectNumbers(container) {
-        const sets = container.querySelectorAll('.uec-form-set');
-        sets.forEach((set, i) => {
-            const label = set.querySelector('.subject-index-label');
-            if (label) label.textContent = `科目 ${i + 1}`;
-        });
-    }
-
-    // 4. メインフォーム生成関数
-    function createUecReviewForm(initialCount, container, titleInput, templateTitle, existing_data = []) {
-        if (!container) return;
-
-        if (titleInput && templateTitle && existing_data.length === 0) {
-            titleInput.value = templateTitle;
-        }
-
-        container.innerHTML = '';
-        const fieldsWrapper = document.createElement('div');
-        fieldsWrapper.id = 'uec-fields-wrapper';
-        container.appendChild(fieldsWrapper);
-
-        const count = existing_data.length > 0 ? existing_data.length : initialCount;
-        for (let i = 0; i < count; i++) {
-            const data = existing_data.length > 0 ? existing_data[i] : null;
-            addUecSubjectBlock(fieldsWrapper, data);
-        }
-
-        // 追加ボタン
-        const addBtnContainer = document.createElement('div');
-        addBtnContainer.style.textAlign = 'center';
-        addBtnContainer.style.marginTop = '15px';
-        addBtnContainer.style.marginBottom = '25px';
-        addBtnContainer.innerHTML = `
-            <button type="button" id="add-uec-subject-btn" style="background: none; border: 2px dashed #007bff; color: #007bff; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold;">
-                <i class="fas fa-plus"></i> 科目を追加
-            </button>
-        `;
-        container.appendChild(addBtnContainer);
-
-        const addBtn = addBtnContainer.querySelector('#add-uec-subject-btn');
-        addBtn.addEventListener('click', function() {
-            addUecSubjectBlock(fieldsWrapper);
-        });
-
-        // 表示切り替え
-        container.classList.remove('hidden');
-        const originalContentField = container.closest('form').querySelector('#content-field-original');
-        if (originalContentField) {
-            originalContentField.classList.add('hidden');
-            const originalTextarea = originalContentField.querySelector('.auto-resize-textarea');
-            if (originalTextarea) originalTextarea.required = false;
-        }
-    }
-
-    // 5. 本文構築関数 (バリデーション付き)
-    function buildUecReviewContent(container) {
-        let combinedContent = '';
-        const formSets = container.querySelectorAll('.uec-form-set');
-
-        for (let i = 0; i < formSets.length; i++) {
-            const set = formSets[i];
-            const subject = set.querySelector('.uec-subject').value.trim();
-            const teacher = set.querySelector('.uec-teacher').value.trim();
-            const grade = set.querySelector('.uec-grade').value;
-            const body = set.querySelector('.uec-review-body').value.trim();
-
-            if (!body) {
-                alert(`科目 ${i + 1} (${subject || '名称未設定'}) のレビュー本文が入力されていません。\n投稿するには本文の入力が必須です。`);
-                return null; 
-            }
-
-            const finalTeacher = teacher || '不明';
-            const finalSubject = subject || '科目名なし';
-
-            let reviewString = `<span class="text-large">**${finalSubject}**</span> `;
-            reviewString += `成績:<span class="text-red text-large">**${grade}**</span> `;
-            reviewString += `担当教員:${finalTeacher}\n`;
-            reviewString += `${body}`;
-
-            combinedContent += reviewString;
-
-            if (i < formSets.length - 1) {
-                combinedContent += '\n\n---\n\n'; 
-            }
-        }
-        return combinedContent;
-    }
-
-    // --- 6. その他機能 (画像, ブックマーク, コメント削除, タグ) ---
-    
-    // 画像名表示
+    // --- 6. その他機能 ---
+    // 画像名
     if (imageInput) {
         const filenameDisplay = document.getElementById('image-filename-display');
         const editFilenameDisplay = document.getElementById('edit-image-filename-display');
@@ -1718,7 +1729,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const originalContentTextarea = form.querySelector('.auto-resize-textarea'); 
             const tagsInput = form.querySelector('#tags-input-field');
 
-            // UECreviewモードの場合
             if (uecContainer && !uecContainer.classList.contains('hidden') && originalContentTextarea) {
                 const combinedContent = buildUecReviewContent(uecContainer);
                 if (combinedContent === null) {
@@ -1727,7 +1737,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 originalContentTextarea.value = combinedContent;
 
-                // 送信直前に「review」タグを確実に含める
                 if (tagsInput) {
                     let currentTags = tagsInput.value.split(',').map(t => t.trim()).filter(Boolean);
                     if (!currentTags.includes('review')) {
@@ -1741,7 +1750,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- 8. 編集ページ用データ読み込み ---
     const editForm = document.querySelector('form[method="POST"][enctype="multipart/form-data"]');
-    if (editForm && !document.getElementById('post-form-container')) { // index以外
+    if (editForm && !document.getElementById('post-form-container')) { 
         {% if uec_review_data_json is defined and uec_review_data_json %}
             try {
                 const reviewData = {{ uec_review_data_json | safe }};
@@ -1749,7 +1758,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     const titleInput = editForm.querySelector('input[name="title"]');
                     const uecContainer = editForm.querySelector('#uecreview-form-container'); 
                     
-                    // UIを表示状態にする
                     const uecOptions = document.getElementById('uec-review-options');
                     const fixedTagArea = document.getElementById('fixed-tag-area');
                     const noticeEl = document.getElementById('uec-formal-name-notice');
@@ -1757,7 +1765,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     if(fixedTagArea) fixedTagArea.classList.remove('hidden');
                     if(noticeEl) noticeEl.classList.remove('hidden');
 
-                    // 解除ボタンを表示状態にする
                     if(selectTrigger && removeTrigger) {
                         selectTrigger.classList.add('hidden');
                         removeTrigger.classList.remove('hidden');
@@ -1783,28 +1790,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // 回覧板チェック
-    document.querySelectorAll('.kairanban-check-toggle').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const kid = this.dataset.kairanbanId;
-            fetch(`/kairanban/check/${kid}`, { method: 'POST' }).then(r=>r.json()).then(d => {
-                if(d.status==='success') {
-                    const el = document.getElementById(`kairanban-${kid}`);
-                    if(d.is_checked) el.classList.add('checked'); else el.classList.remove('checked');
-                    document.getElementById(`check-count-${kid}`).textContent = `👀 ${d.new_count}`;
-                    
-                    // 赤丸更新
-                    const unread = document.querySelectorAll('.kairanban-item:not(.checked) .kairanban-check-container').length;
-                    document.querySelectorAll('.kairanban-icon-container').forEach(c => {
-                        if(unread===0) c.classList.remove('has-unread-kairanban');
-                        else c.classList.add('has-unread-kairanban');
-                    });
-                }
-            });
-        });
-    });
-
-    // プロフィール編集フォーム制御 (Safari対応版)
+    // --- プロフィール編集フォーム (Safari対応版) ---
+    // (長いので省略しません)
     const gradeSelect = document.getElementById('form-select-grade');
     if (gradeSelect) {
         const categoryDiv = document.getElementById('form-field-category');
@@ -1817,44 +1804,27 @@ document.addEventListener('DOMContentLoaded', function() {
         const programSelect = document.getElementById('form-select-program');
         const majorSelect = document.getElementById('form-select-major');
 
-        // --- Safari対策: 選択肢を物理的に削除・再構築する関数 ---
         const filterSelectOptions = (selectElement, predicate) => {
-            // 初回実行時に、すべての選択肢をメモリにバックアップする
             if (!selectElement._originalOptions) {
                 selectElement._originalOptions = Array.from(selectElement.options).map(opt => ({
-                    value: opt.value,
-                    text: opt.text
+                    value: opt.value, text: opt.text
                 }));
             }
-
             const currentVal = selectElement.value;
-            selectElement.innerHTML = ''; // 一旦空にする
-
+            selectElement.innerHTML = ''; 
             let isCurrentValValid = false;
-
             selectElement._originalOptions.forEach(optData => {
-                // 空文字（"--- 選択 ---"）は常に表示、それ以外は条件判定
                 if (optData.value === '' || predicate(optData.value)) {
                     const option = document.createElement('option');
-                    option.value = optData.value;
-                    option.textContent = optData.text;
+                    option.value = optData.value; option.textContent = optData.text;
                     selectElement.appendChild(option);
-
-                    if (optData.value === currentVal) {
-                        isCurrentValValid = true;
-                    }
+                    if (optData.value === currentVal) isCurrentValValid = true;
                 }
             });
-
-            // もともと選んでいた値が有効なら維持、無効になったらリセット
-            if (isCurrentValValid) {
-                selectElement.value = currentVal;
-            } else {
-                selectElement.value = '';
-            }
+            if (isCurrentValValid) selectElement.value = currentVal; else selectElement.value = '';
         };
 
-        // --- 判定ロジック関数群 ---
+        // (判定関数省略せず記述)
         const getClassGroup = (value) => {
             if (['1クラス', '2クラス', '3クラス', '4クラス', '5クラス', '6クラス', '7クラス', '8クラス', '9クラス', '10クラス', '11クラス', '12クラス'].includes(value)) return '1_year';
             if (['Aクラス', 'Bクラス', 'Cクラス'].includes(value)) return '2_year_I';
@@ -1862,7 +1832,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (['III類1クラス', 'III類2クラス', 'III類3クラス', 'III類4クラス'].includes(value)) return '2_year_III';
             return 'other';
         };
-
         const getProgramGroup = (value) => {
             const programs_I = ['メディア情報学プログラム', '経営・社会情報学プログラム', '情報数理工学プログラム', 'コンピュータサイエンスプログラム', 'デザイン思考・データサイエンスプログラム'];
             const programs_II = ['セキュリティ情報学プログラム', '情報通信工学プログラム', '電子情報学プログラム', '計測・制御システムプログラム', '先端ロボティクスプログラム'];
@@ -1872,23 +1841,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (programs_III.includes(value)) return 'III類';
             return 'other';
         };
-
         const getMajorByProgram = (programValue) => {
             const major_JohoGaku = ['メディア情報学プログラム', '経営・社会情報学プログラム', 'デザイン思考・データサイエンスプログラム', 'セキュリティ情報学プログラム'];
             if (major_JohoGaku.includes(programValue)) return '情報学専攻';
-
             const major_JohoNetwork = ['情報通信工学プログラム', '電子情報学プログラム', '情報数理工学プログラム', 'コンピュータサイエンスプログラム'];
             if (major_JohoNetwork.includes(programValue)) return '情報・ネットワーク工学専攻';
-
             const major_KikaiChino = ['機械システムプログラム', '計測・制御システムプログラム', '先端ロボティクスプログラム'];
             if (major_KikaiChino.includes(programValue)) return '機械知能システム学専攻';
-
             const major_KibanRiko = ['光工学プログラム', '物理工学プログラム', '化学生命工学プログラム', '電子工学プログラム'];
             if (major_KibanRiko.includes(programValue)) return '基盤理工学専攻';
-            
             return ''; 
         };
-
         const getCategoryForFirstYear = (classValue) => {
             if (!classValue) return '';
             const classNum = parseInt(classValue.replace('クラス', ''), 10);
@@ -1898,163 +1861,65 @@ document.addEventListener('DOMContentLoaded', function() {
             return '';
         };
 
-        // --- メインの表示切替ロジック ---
         const updateFormVisibility = () => {
             const gradeVal = gradeSelect.value;
             const categoryVal = categorySelect.value;
             const classVal = classSelect.value;
             const programVal = programSelect.value;
 
-            // 1. 全ての表示枠を一旦リセット
-            categoryDiv.style.display = 'none';
-            classDiv.style.display = 'none';
-            programDiv.style.display = 'none';
-            majorDiv.style.display = 'none';
-            
-            categorySelect.disabled = false;
-            majorSelect.disabled = false;
-            categorySelect.style.pointerEvents = 'auto';
-            categorySelect.style.backgroundColor = '#fff';
-            majorSelect.style.pointerEvents = 'auto';
-            majorSelect.style.backgroundColor = '#fff';
+            categoryDiv.style.display = 'none'; classDiv.style.display = 'none'; programDiv.style.display = 'none'; majorDiv.style.display = 'none';
+            categorySelect.disabled = false; majorSelect.disabled = false; categorySelect.style.pointerEvents = 'auto'; categorySelect.style.backgroundColor = '#fff'; majorSelect.style.pointerEvents = 'auto'; majorSelect.style.backgroundColor = '#fff';
 
-            // 2. 「類」の選択肢をフィルタリング (大学院生ならK課程を消す)
-            filterSelectOptions(categorySelect, (val) => {
-                if (gradeVal === '大学院生') {
-                    return val !== 'K課程'; // 大学院生ならK課程を除外
-                }
-                return true; // それ以外は全表示
-            });
+            filterSelectOptions(categorySelect, (val) => { if (gradeVal === '大学院生') return val !== 'K課程'; return true; });
 
-            // K課程の場合の特別処理
-            if (categoryVal === 'K課程') {
-                categoryDiv.style.display = 'block';
-                return; 
-            }
+            if (categoryVal === 'K課程') { categoryDiv.style.display = 'block'; return; }
 
             if (gradeVal === '1年') {
-                categoryDiv.style.display = 'block'; 
-                classDiv.style.display = 'block';
-                
-                // 1年生のクラス選択肢を更新 (選ばれた類に合わせて絞る)
+                categoryDiv.style.display = 'block'; classDiv.style.display = 'block';
                 filterSelectOptions(classSelect, (val) => {
                     const group = getClassGroup(val);
-                    if (group !== '1_year') return false; // 1年以外のクラスは消す
-
+                    if (group !== '1_year') return false; 
                     if (categoryVal === 'I類') return parseInt(val) >= 1 && parseInt(val) <= 4;
                     if (categoryVal === 'II類') return parseInt(val) >= 5 && parseInt(val) <= 8;
                     if (categoryVal === 'III類') return parseInt(val) >= 9 && parseInt(val) <= 12;
-                    return true; // 類が未選択なら全部出す
+                    return true; 
                 });
-
-                // クラスから類を自動判定
                 const autoCategory = getCategoryForFirstYear(classVal);
-                if (autoCategory) {
-                    categorySelect.value = autoCategory;
-                    categorySelect.style.pointerEvents = 'none';
-                    categorySelect.style.backgroundColor = '#e9ecef';
-                }
-
+                if (autoCategory) { categorySelect.value = autoCategory; categorySelect.style.pointerEvents = 'none'; categorySelect.style.backgroundColor = '#e9ecef'; }
             }
             else if (gradeVal === '2年') {
-                categoryDiv.style.display = 'block';
-                programDiv.style.display = 'block';
-                
+                categoryDiv.style.display = 'block'; programDiv.style.display = 'block';
                 if (categoryVal === 'I類' || categoryVal === 'II類' || categoryVal === 'III類') {
                     classDiv.style.display = 'block';
-                    
-                    // 2年生クラスの絞り込み
                     filterSelectOptions(classSelect, (val) => {
                         if (categoryVal === 'I類') return getClassGroup(val) === '2_year_I';
                         if (categoryVal === 'II類') return getClassGroup(val) === '2_year_II';
                         if (categoryVal === 'III類') return getClassGroup(val) === '2_year_III';
                         return false;
                     });
-
-                    // プログラムの絞り込み
-                    filterSelectOptions(programSelect, (val) => {
-                        if (val === '未決定') return true;
-                        return getProgramGroup(val) === categoryVal;
-                    });
-                } else {
-                    // 類未選択時: プログラムは全部表示(未決定含む)、クラスは隠す
-                    filterSelectOptions(programSelect, () => true);
-                }
+                    filterSelectOptions(programSelect, (val) => { if (val === '未決定') return true; return getProgramGroup(val) === categoryVal; });
+                } else { filterSelectOptions(programSelect, () => true); }
             }
             else if (gradeVal === '3年' || gradeVal === '4年') {
-                categoryDiv.style.display = 'block';
-                programDiv.style.display = 'block';
-                
-                filterSelectOptions(programSelect, (val) => {
-                    if (val === '未決定') return true;
-                    if (!categoryVal) return true;
-                    return getProgramGroup(val) === categoryVal;
-                });
+                categoryDiv.style.display = 'block'; programDiv.style.display = 'block';
+                filterSelectOptions(programSelect, (val) => { if (val === '未決定') return true; if (!categoryVal) return true; return getProgramGroup(val) === categoryVal; });
             }
             else if (gradeVal === '大学院生') {
-                categoryDiv.style.display = 'block';
-                programDiv.style.display = 'block';
-                majorDiv.style.display = 'block';
-                
-                // プログラムの絞り込み
-                filterSelectOptions(programSelect, (val) => {
-                    if (val === '未決定') return true;
-                    if (!categoryVal) return true;
-                    return getProgramGroup(val) === categoryVal;
-                });
-
-                // 専攻の絞り込み (プログラムに合わせて)
+                categoryDiv.style.display = 'block'; programDiv.style.display = 'block'; majorDiv.style.display = 'block';
+                filterSelectOptions(programSelect, (val) => { if (val === '未決定') return true; if (!categoryVal) return true; return getProgramGroup(val) === categoryVal; });
                 const targetMajor = getMajorByProgram(programVal);
-                
-                filterSelectOptions(majorSelect, (val) => {
-                    if (!programVal || programVal === '未決定') return true; // プログラム未定なら全専攻表示
-                    return val === targetMajor;
-                });
-
-                // 専攻の自動設定とロック
-                if (targetMajor) {
-                    majorSelect.value = targetMajor;
-                    majorSelect.style.pointerEvents = 'none';
-                    majorSelect.style.backgroundColor = '#e9ecef';
-                }
+                filterSelectOptions(majorSelect, (val) => { if (!programVal || programVal === '未決定') return true; return val === targetMajor; });
+                if (targetMajor) { majorSelect.value = targetMajor; majorSelect.style.pointerEvents = 'none'; majorSelect.style.backgroundColor = '#e9ecef'; }
             }
         };
 
-        // --- イベントリスナー ---
-        gradeSelect.addEventListener('change', () => {
-            // 学年が変わったらリセット
-            categorySelect.value = '';
-            classSelect.value = '';
-            programSelect.value = '';
-            majorSelect.value = '';
-            updateFormVisibility();
-        });
-        
-        categorySelect.addEventListener('change', () => {
-            classSelect.value = '';
-            programSelect.value = '';
-            majorSelect.value = '';
-            updateFormVisibility();
-        });
-
-        classSelect.addEventListener('change', () => {
-            if (gradeSelect.value === '1年') {
-                updateFormVisibility();
-            }
-        });
-
-        programSelect.addEventListener('change', () => {
-            majorSelect.value = '';
-            if (gradeSelect.value === '大学院生') {
-                updateFormVisibility();
-            }
-        });
-
-        // 初期化
+        gradeSelect.addEventListener('change', () => { categorySelect.value = ''; classSelect.value = ''; programSelect.value = ''; majorSelect.value = ''; updateFormVisibility(); });
+        categorySelect.addEventListener('change', () => { classSelect.value = ''; programSelect.value = ''; majorSelect.value = ''; updateFormVisibility(); });
+        classSelect.addEventListener('change', () => { if (gradeSelect.value === '1年') updateFormVisibility(); });
+        programSelect.addEventListener('change', () => { majorSelect.value = ''; if (gradeSelect.value === '大学院生') updateFormVisibility(); });
         updateFormVisibility();
     }
 
-    // ユーザー名変更確認
     const profileEditForm = document.getElementById('profile-edit-form');
     if (profileEditForm) {
         const uInput = document.getElementById('username-input');

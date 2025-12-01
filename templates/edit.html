@@ -138,142 +138,108 @@
             });
         }
 
-        // --- 2. UECreview シラバス連携ロジック ---
+        // --- 2. UECreview 編集画面用ロジック ---
         
-        // ヘルパー: datalistにoptionを追加する
-        function fillDatalist(datalist, items) {
-            if (!datalist) return;
-            const uniqueItems = Array.from(new Set(items));
-            datalist.innerHTML = uniqueItems.map(val => `<option value="${val}">`).join('');
+        // UI要素の取得
+        const uecOptions = document.getElementById('uec-review-options');
+        const yearSelect = document.getElementById('uec-year-select');
+        const gradeSelect = document.getElementById('uec-grade-select');
+        const termSelect = document.getElementById('uec-term-select');
+        const fixedTagArea = document.getElementById('fixed-tag-area');
+        const tagsInput = document.getElementById('tags-input-field');
+        const contentFieldOriginal = document.getElementById('content-field-original');
+        const uecReviewContainer = document.getElementById('uecreview-form-container');
+        const noticeEl = document.getElementById('uec-formal-name-notice');
+
+        // ▼▼▼ 修正: タイトルから情報を逆算してセットする関数 ▼▼▼
+        function setReviewOptionsFromTitle(title) {
+            if (!title) return;
+
+            // 年度 (例: 2025年度)
+            const yearMatch = title.match(/(\d{4}年度)/);
+            if (yearMatch && yearSelect) yearSelect.value = yearMatch[1];
+
+            // 学年 (例: 1年)
+            const gradeMatch = title.match(/(?<!\d)([1-4]年|大学院生)/);
+            if (gradeMatch && gradeSelect) gradeSelect.value = gradeMatch[1];
+
+            // 学期 (例: 前期)
+            const termMatch = title.match(/(前期|後期)/);
+            if (termMatch && termSelect) termSelect.value = termMatch[1];
+        }
+        // ▲▲▲ 修正ここまで ▲▲▲
+
+        // 3. タイトル更新ロジック (変更時用)
+        function updateReviewTitle() {
+            if (!titleInput) return;
+            const year = yearSelect.value;
+            const grade = gradeSelect.value;
+            const term = termSelect.value;
+            const baseTitle = `${CURRENT_USERNAME}の授業review`;
+            
+            let prefix = '';
+            if (year) prefix += year + ' ';
+            if (grade) prefix += grade + ' ';
+            if (term) prefix += term + ' ';
+            
+            titleInput.value = prefix + baseTitle;
         }
 
-        // ヘルパー: 1つのフォームセットに対してイベントとデータを適用する
-        function setupFormSet(set, syllabusData) {
-            const subjectInput = set.querySelector('.uec-subject');
-            const teacherInput = set.querySelector('.uec-teacher');
-            if (!subjectInput || !teacherInput) return;
+        if (yearSelect && gradeSelect && termSelect) {
+            yearSelect.addEventListener('change', updateReviewTitle);
+            gradeSelect.addEventListener('change', updateReviewTitle);
+            termSelect.addEventListener('change', updateReviewTitle);
+        }
 
-            // IDからdatalistを取得
-            const subjListId = subjectInput.getAttribute('list');
-            const teacherListId = teacherInput.getAttribute('list');
-            const subjDatalist = document.getElementById(subjListId);
-            const teacherDatalist = document.getElementById(teacherListId);
-
-            // --- 修正: IME対応の入力イベントハンドラ ---
-            const handleSubjectInput = function(event) {
-                // ▼▼▼ 追加: IME変換中は処理を中断して、文字重複バグを防ぐ ▼▼▼
-                if (event.type === 'input' && event.isComposing) {
-                    return;
-                }
-                // ▲▲▲ 追加ここまで ▲▲▲
-
-                const val = subjectInput.value; 
-                
-                if (!val) {
-                    subjDatalist.innerHTML = ''; 
-                    return;
-                }
-
-                // シラバスデータから部分一致で検索し、最大50件に絞る
-                const MAX_CANDIDATES = 50;
-                const filteredSubjects = [];
-                let count = 0;
-
-                for (const item of syllabusData) {
-                    if (item.subject.indexOf(val) !== -1) {
-                        filteredSubjects.push(item.subject);
-                        count++;
-                        if (count >= MAX_CANDIDATES) break;
-                    }
-                }
-                
-                fillDatalist(subjDatalist, filteredSubjects);
-            };
-
-            // 入力イベント（英数字など直接入力用）
-            subjectInput.addEventListener('input', handleSubjectInput);
+        // 4. 初期表示制御
+        if (typeof IS_REVIEW_POST !== 'undefined' && IS_REVIEW_POST) {
+            // UIを表示
+            if(uecOptions) { uecOptions.classList.remove('hidden'); uecOptions.style.display = 'flex'; }
+            if(fixedTagArea) fixedTagArea.classList.remove('hidden');
+            if(noticeEl) noticeEl.classList.remove('hidden');
             
-            // ▼▼▼ 追加: 変換確定イベント（日本語入力用） ▼▼▼
-            subjectInput.addEventListener('compositionend', handleSubjectInput);
-            
-            // フォーカス時
-            subjectInput.addEventListener('focus', handleSubjectInput);
-
-
-            // --- 教員リスト更新ロジック ---
-            const updateTeacherList = () => {
-                if (!teacherDatalist || !syllabusData) return;
-                const currentSubj = subjectInput.value;
-                // 完全一致で検索
-                const match = syllabusData.find(d => d.subject === currentSubj);
-                
-                if (match && match.teachers) {
-                    fillDatalist(teacherDatalist, match.teachers);
-                    // 教員が1人なら自動入力
-                    if (match.teachers.length === 1) {
-                        teacherInput.value = match.teachers[0];
-                    }
-                } else {
-                    teacherDatalist.innerHTML = ''; 
-                }
-            };
-
-            // 科目が確定(変更)されたら教員リストを更新
-            subjectInput.addEventListener('change', function() {
-                teacherInput.value = ''; 
-                updateTeacherList();
-            });
-            
-            // 初期状態でも、もし科目が入っていれば教員リストを作っておく
-            if (subjectInput.value) {
-                updateTeacherList();
+            // タグ調整
+            if (tagsInput) {
+                let tags = tagsInput.value.split(',').map(t => t.trim());
+                tags = tags.filter(t => t !== 'review' && t !== '');
+                tagsInput.value = tags.join(', ');
             }
-        }
 
-        // メイン: 全フォームに適用する関数
-        function applySyllabusDataToAllForms(data) {
-            if (!data) return;
-            window.cachedSyllabusData = data; 
-            
-            const uecContainer = document.getElementById('uecreview-form-container');
-            if (!uecContainer) return;
-
-            const formSets = uecContainer.querySelectorAll('.uec-form-set');
-            formSets.forEach(set => setupFormSet(set, data));
-        }
-
-        // --- 3. 実行トリガー ---
-
-        // (A) 初期ロード時
-        if (titleInput && typeof IS_REVIEW_POST !== 'undefined' && IS_REVIEW_POST) {
-            const yearMatch = titleInput.value.match(/(\d{4})年度/);
-            const year = yearMatch ? yearMatch[0] : null;
-            
-            if (year) {
-                fetch(`/api/syllabus?year=${encodeURIComponent(year)}`)
-                    .then(r => r.json())
-                    .then(data => {
-                        applySyllabusDataToAllForms(data);
-                    })
-                    .catch(err => console.error("Syllabus API Error:", err));
+            // ▼▼▼ 追加: 既存タイトルからドロップダウンの値を復元 ▼▼▼
+            if (titleInput) {
+                setReviewOptionsFromTitle(titleInput.value);
             }
-        }
+            // ▲▲▲ 追加ここまで ▲▲▲
 
-        // (B) フォーム追加監視
-        const uecContainer = document.getElementById('uecreview-form-container');
-        if (uecContainer) {
-            const observer = new MutationObserver((mutations) => {
-                mutations.forEach((mutation) => {
-                    if (mutation.addedNodes.length > 0 && window.cachedSyllabusData) {
-                        mutation.addedNodes.forEach(node => {
-                            if (node.classList && node.classList.contains('uec-form-set')) {
-                                setupFormSet(node, window.cachedSyllabusData);
-                            }
+            // フォーム復元 (base_layoutの関数を利用)
+            {% if uec_review_data_json %}
+                if(contentFieldOriginal) contentFieldOriginal.classList.add('hidden');
+                if(uecReviewContainer) uecReviewContainer.classList.remove('hidden');
+                
+                // シラバス連携用: 年度が特定できていればAPIを叩く
+                if (yearSelect && yearSelect.value) {
+                    const year = yearSelect.value;
+                    fetch(`/api/syllabus?year=${encodeURIComponent(year)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            window.cachedSyllabusData = data;
+                            // データ取得後にフォームを生成しないと、リストの自動入力が効かないためここで呼ぶ
+                            // ※ createUecReviewForm は base_layout.html でグローバル定義されている前提
+                            const reviewData = {{ uec_review_data_json | safe }};
+                            createUecReviewForm(reviewData.length, uecReviewContainer, titleInput, null, reviewData);
+                        })
+                        .catch(err => {
+                            console.error("Syllabus API Error (Edit):", err);
+                            // エラーでもフォーム自体は生成する
+                            const reviewData = {{ uec_review_data_json | safe }};
+                            createUecReviewForm(reviewData.length, uecReviewContainer, titleInput, null, reviewData);
                         });
-                    }
-                });
-            });
-            observer.observe(uecContainer, { childList: true });
+                } else {
+                    // 年度がない場合もフォーム生成
+                    const reviewData = {{ uec_review_data_json | safe }};
+                    createUecReviewForm(reviewData.length, uecReviewContainer, titleInput, null, reviewData);
+                }
+            {% endif %}
         }
     });
 </script>

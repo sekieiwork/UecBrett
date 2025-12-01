@@ -45,6 +45,10 @@ app = Flask(__name__)
 import secrets
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(16))
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_recycle': 3600,       # 1時間ごとに接続を再作成
+    'pool_pre_ping': True       # 接続を使用する前に有効かチェックする (これが一番効果的)
+}
 db = SQLAlchemy(app)
 md = markdown.Markdown(extensions=['nl2br'])
 migrate = Migrate(app, db)
