@@ -1381,7 +1381,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const year = this.value; // 例: "2025年度"
             if (!year) return;
 
-            // APIからシラバスデータを取得
+            // APIからシラバスデータを取得してキャッシュするのみ (全リスト更新は重いのでしない)
             fetch(`/api/syllabus?year=${encodeURIComponent(year)}`)
                 .then(r => r.json())
                 .then(data => {
@@ -1393,17 +1393,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- UECreviewフォーム関連の関数 ---
 
-    // 1. datalist更新用ヘルパー
-    function updateSubjectDatalist(datalistElement, data) {
-    if(!datalistElement) return;
-    datalistElement.innerHTML = ''; 
-    data.forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.subject;
-        datalistElement.appendChild(option);
-    });
-}
-    // 2. 科目ブロック生成関数 (シラバス連動追加版)
+    // 1. datalist更新用ヘルパー (高速化版)
+    function fillDatalist(datalist, items) {
+        if (!datalist) return;
+        const uniqueItems = Array.from(new Set(items));
+        // innerHTMLによる一括挿入で高速化
+        datalist.innerHTML = uniqueItems.map(val => `<option value="${val}">`).join('');
+    }
+
+    // 2. 科目ブロック生成関数 (シラバス連動 & IME対応版)
     function addUecSubjectBlock(container, data = null) {
         const index = container.querySelectorAll('.uec-form-set').length;
         const formSet = document.createElement('div');
@@ -1466,29 +1464,47 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // ▼▼▼ シラバス連動設定 ▼▼▼
+        // ▼▼▼ シラバス連動設定 (IME対応 & 軽量化) ▼▼▼
         const subjectInput = formSet.querySelector('.uec-subject');
         const teacherInput = formSet.querySelector('.uec-teacher');
         const subjDataList = formSet.querySelector(`#syllabus-suggestions-subj-${index}`);
         const teacherDataList = formSet.querySelector(`#syllabus-suggestions-teacher-${index}`);
-        // 1. 科目名が入力されたときの挙動
-        subjectInput.addEventListener('input', function() {
-            const val = this.value.trim();
         
-            // 未入力なら候補を消す
-            if (val === '') {
+        // 入力ハンドラ
+        const handleSubjectInput = function(event) {
+            // IME変換中は無視 (ダブり入力防止)
+            if (event.type === 'input' && event.isComposing) return;
+
+            const val = subjectInput.value;
+            if (!val) {
                 subjDataList.innerHTML = '';
                 return;
             }
 
-            // 入力があり、かつリストがまだ空ならデータを流し込む
-            // (一度流し込めば、あとはブラウザが入力値に合わせて絞り込んでくれる)
-            if (subjDataList.options.length === 0 && window.cachedSyllabusData && window.cachedSyllabusData.length > 0) {
-                updateSubjectDatalist(subjDataList, window.cachedSyllabusData);
+            // キャッシュから部分一致検索 (最大50件)
+            if (window.cachedSyllabusData) {
+                const MAX_CANDIDATES = 50;
+                const filtered = [];
+                let count = 0;
+                for (const item of window.cachedSyllabusData) {
+                    if (item.subject.indexOf(val) !== -1) {
+                        filtered.push(item.subject);
+                        count++;
+                        if (count >= MAX_CANDIDATES) break;
+                    }
+                }
+                fillDatalist(subjDataList, filtered);
             }
-        });
+        };
 
-        // 2. 科目が確定（選択）されたときの挙動 (教員補完)
+        // 入力イベント
+        subjectInput.addEventListener('input', handleSubjectInput);
+        // 変換確定イベント
+        subjectInput.addEventListener('compositionend', handleSubjectInput);
+        // フォーカス時
+        subjectInput.addEventListener('focus', handleSubjectInput);
+
+        // 教員補完
         subjectInput.addEventListener('change', function() {
             const val = this.value;
             teacherDataList.innerHTML = ''; 
@@ -1497,11 +1513,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (window.cachedSyllabusData) {
                 const match = window.cachedSyllabusData.find(item => item.subject === val);
                 if (match && match.teachers && match.teachers.length > 0) {
-                    match.teachers.forEach(tName => {
-                        const opt = document.createElement('option');
-                        opt.value = tName;
-                        teacherDataList.appendChild(opt);
-                    });
+                    fillDatalist(teacherDataList, match.teachers);
                 
                     if (match.teachers.length === 1) {
                         teacherInput.value = match.teachers[0];
@@ -1698,12 +1710,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- 7. フォーム送信処理 (UECreview対応) ---
+    // --- 7. フォーム送信処理 (UECreview対応 & タグ強制付与) ---
     const postForms = document.querySelectorAll('form[method="POST"][enctype="multipart/form-data"]');
     postForms.forEach(form => {
         form.addEventListener('submit', function(event) {
             const uecContainer = form.querySelector('#uecreview-form-container');
             const originalContentTextarea = form.querySelector('.auto-resize-textarea'); 
+            const tagsInput = form.querySelector('#tags-input-field');
 
             // UECreviewモードの場合
             if (uecContainer && !uecContainer.classList.contains('hidden') && originalContentTextarea) {
@@ -1713,6 +1726,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 originalContentTextarea.value = combinedContent;
+
+                // 送信直前に「review」タグを確実に含める
+                if (tagsInput) {
+                    let currentTags = tagsInput.value.split(',').map(t => t.trim()).filter(Boolean);
+                    if (!currentTags.includes('review')) {
+                        currentTags.push('review');
+                        tagsInput.value = currentTags.join(', ');
+                    }
+                }
             }
         });
     });
