@@ -58,10 +58,6 @@
         margin-bottom: 1.5em; /* 共通のボトムマージン */
     }
 
-    /* ▼▼▼ 重複していたCSSルールを削除しました (L51-L66) ▼▼▼ */
-    /* ▲▲▲ ここまで ▲▲▲ */
-
-
     /* タイトルとヘッダー */
     .post h3, .post-detail h1 { margin-top: 0; margin-bottom: 0.5em; font-size: 1.5em; }
     .post-form h2 { margin-top: 0; margin-bottom: 0.5em; padding-bottom: 0.5em; border-bottom: 1px solid #dee2e6; }
@@ -77,9 +73,7 @@
         resize: none;
     }
 
-    /* ▼▼▼ ① ここから修正 ▼▼▼ */
-    /* 意図: form内のテキスト入力欄のスタイルを定義します。
-       width: 100% と box-sizing: border-box; で、textareaと横幅が揃うようになります。*/
+
     form input[type="text"],form input[type="password"] {
         width: 100%;
         padding: 0.5em;
@@ -89,7 +83,7 @@
         font-size: 1em; /* ブラウザごとの差異を吸収 */
         height: auto;
     }
-    /* ▲▲▲ ① ここまで修正 ▲▲▲ */
+
 
 
     /* 2. 本文入力・編集用の自動リサイズ設定 */
@@ -137,12 +131,11 @@
          max-height: none;
          overflow-y: visible;
          
-         /* ▼▼▼ 枠線と背景を復活させる設定 ▼▼▼ */
+         /*  枠線と背景を復活させる設定  */
          border: 1px solid #dee2e6;
          border-radius: 0.25rem;
          background-color: #ffffff;
          padding: 0.8em 1em; /* 内側の余白 */
-         /* ▲▲▲ ここまで ▲▲▲ */
          
          margin-top: 5px;
          margin-bottom: 5px;
@@ -179,7 +172,7 @@
          margin-bottom: 0.3em; /* ここを 0 にすれば完全に詰まります。お好みで調整 */
      }
 
-     /* ▼▼▼ 長文コメントの省略表示用CSS ▼▼▼ */
+     /*  長文コメントの省略表示用CSS  */
     
     /* 折りたたまれた状態 */
     .comment-content.collapsed {
@@ -654,7 +647,6 @@
             margin-left: auto; 
             margin-right: auto; 
         }
-        /* ▲▲▲ 修正ここまで ▲▲▲ */
 
         .mobile-nav {
         display: flex;
@@ -679,7 +671,7 @@
 
 
 
-/* ▼▼▼ UECreviewフォーム用CSS ▼▼▼ */
+/*  UECreviewフォーム用CSS  */
     #uecreview-form-container .uec-form-set {
         border: 1px solid #e0e0e0;
         padding: 1.5em;
@@ -718,9 +710,9 @@
     #uecreview-form-container select {
         height: auto;
     }
-/* ▲▲▲ UECreviewフォーム用CSS ▲▲▲ */
+/* UECreviewフォーム用CSS  */
 
-/* ▼▼▼ タグ表示用CSS ▼▼▼ */
+/*  タグ表示用CSS  */
 .tag-container {
     display: flex;
     flex-wrap: wrap;
@@ -747,9 +739,9 @@ a.tag-box:hover {
     text-decoration: none; /* 下線はつけない */
 }
 
-/* ▲▲▲ タグ表示用CSS ▲▲▲ */
+/* タグ表示用CSS  */
 
-/* ▼▼▼ [前回追加] 最近のタグ ドロップダウン用CSS ▼▼▼ */
+/* 最近のタグ ドロップダウン用CSS  */
 .recent-tags-dropdown {
 
     position: absolute;
@@ -897,7 +889,7 @@ a.tag-box:hover {
         font-size: 0.75em;
         color: #8899a6;
     }
-    /* ▼▼▼ 追加: リンクカードをまとめるコンテナ ▼▼▼ */
+    /*   リンクカードをまとめるコンテナ  */
     .link-card-container {
         margin-top: 10px;
         margin-bottom: 10px;
@@ -914,7 +906,7 @@ a.tag-box:hover {
         .link-card-title { font-size: 0.9em; }
     }
 
-    /* ▼▼▼ 画像拡大モーダル用CSS ▼▼▼ */
+    /*  画像拡大モーダル用CSS  */
     #image-modal {
         display: none; /* デフォルト非表示 */
         position: fixed;
@@ -1128,7 +1120,7 @@ a.tag-box:hover {
         </nav>
 
 <script>
-// ▼▼▼ グローバルスコープで定義（他のテンプレートから呼べるようにする） ▼▼▼
+//  グローバルスコープで定義（他のテンプレートから呼べるようにする） 
 
 // グローバル変数: シラバスデータのキャッシュ
 window.cachedSyllabusData = [];
@@ -1139,7 +1131,7 @@ const initYearSelect = () => {
         if (yearSelect && yearSelect.options.length <= 1) {
             yearSelect.innerHTML = '<option value="">(年度なし)</option>';
             const currentYear = new Date().getFullYear();
-            // 現在の年から3年分 (例: 2025, 2024, 2023)
+            // 現在の年から3年分
             for (let y = currentYear; y > currentYear - 3; y--) {
                 const opt = document.createElement('option');
                 opt.value = y + '年度';
@@ -1254,7 +1246,7 @@ function addUecSubjectBlock(container, data = null) {
         }
     });
 
-    // ▼▼▼ シラバス連動設定 (IME対応 & 軽量化) ▼▼▼
+    //  シラバス連動設定 (IME対応 & 軽量化) 
     const subjectInput = formSet.querySelector('.uec-subject');
     const teacherInput = formSet.querySelector('.uec-teacher');
     const subjDataList = formSet.querySelector(`#syllabus-suggestions-subj-${index}`);
@@ -1398,7 +1390,7 @@ function buildUecReviewContent(container) {
     return combinedContent;
 }
 
-// ▼▼▼ DOMロード後の処理（イベントリスナー登録など） ▼▼▼
+//  DOMロード後の処理（イベントリスナー登録など） 
 document.addEventListener('DOMContentLoaded', function() {
 
     // --- 0. Flashメッセージを閉じる機能 ---
@@ -1791,7 +1783,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // --- プロフィール編集フォーム (Safari対応版) ---
-    // (長いので省略しません)
     const gradeSelect = document.getElementById('form-select-grade');
     if (gradeSelect) {
         const categoryDiv = document.getElementById('form-field-category');
@@ -1824,7 +1815,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isCurrentValValid) selectElement.value = currentVal; else selectElement.value = '';
         };
 
-        // (判定関数省略せず記述)
+
         const getClassGroup = (value) => {
             if (['1クラス', '2クラス', '3クラス', '4クラス', '5クラス', '6クラス', '7クラス', '8クラス', '9クラス', '10クラス', '11クラス', '12クラス'].includes(value)) return '1_year';
             if (['Aクラス', 'Bクラス', 'Cクラス'].includes(value)) return '2_year_I';
@@ -1955,7 +1946,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.innerText = '...全文を表示する ▽';
                 btn.className = 'read-more-btn';
 
-                // ▼▼▼ 3. ボタンクリック時の動作 ▼▼▼
+                //  3. ボタンクリック時の動作 
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     
@@ -1979,10 +1970,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // ページ読み込み時に実行
     collapseLongComments();
     
-    // (画像読み込みなどで高さが変わる場合があるので、少し遅れてもう一度実行すると確実です)
     setTimeout(collapseLongComments, 500);
 
-    // --- リンクカード生成機能 (修正版: 1つだけ表示 & エラーハンドリング強化) ---
+    // --- リンクカード生成機能 ---
     const contentAreas = document.querySelectorAll('.post-content, .comment-content');
     
     contentAreas.forEach(area => {
@@ -2054,7 +2044,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // ▼▼▼ 画像拡大（ライトボックス）機能 ▼▼▼
+    //  画像拡大（ライトボックス）機能 
     
     // 1. モーダルのHTMLをbodyに追加
     const modalHtml = `
@@ -2094,10 +2084,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
-    // ▲▲▲ 画像拡大機能 ここまで ▲▲▲
 });
 
-// ▼▼▼いいねボタンの機能 ▼▼▼
+// いいねボタンの機能 
     document.querySelectorAll('.like-toggle-btn').forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
@@ -2138,7 +2127,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // ▼▼▼並び替えドロップダウンの機能 ▼▼▼
+    // 並び替えドロップダウンの機能 
     const sortSelect = document.getElementById('sort-select');
     if (sortSelect) {
         sortSelect.addEventListener('change', function() {

@@ -332,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const fixedTagArea = document.getElementById('fixed-tag-area');
         const tagsInput = document.getElementById('tags-input-field');
         
-        // 1. 年度の選択肢を動的生成 (今年 ±2年)
+        // 1. 年度の選択肢を動的生成
         if (yearSelect) {
             const currentYear = new Date().getFullYear();
             yearSelect.innerHTML = '<option value="">(年度なし)</option>';
@@ -367,7 +367,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             uecOptions.classList.add('hidden');
                             uecOptions.style.display = 'none'; // 明示的に消す
                             fixedTagArea.classList.add('hidden');
-                            // ▼▼▼ 追加: 注意書きを隠す ▼▼▼
+                            // 注意書きを隠す 
                             if(noticeEl) noticeEl.classList.add('hidden');
                         }
                     }

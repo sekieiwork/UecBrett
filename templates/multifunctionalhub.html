@@ -303,27 +303,27 @@
     </div>
 
     <!--{% if current_user.username == '二酸化ケイ素' %}
-    <div class="hub-card" data-id="debug" style="border-left: 5px solid #6610f2;">
-        <h3 style="margin-top:0; border-bottom: none;">
-            <i class="fas fa-tools" style="color: #6610f2;"></i> 通知デバッグ
-        </h3>
-        <p style="font-size:0.9em; color:#666;">スマホが正しく登録されているか確認します。</p>
+        <div class="hub-card" data-id="debug" style="border-left: 5px solid #6610f2;">
+            <h3 style="margin-top:0; border-bottom: none;">
+                <i class="fas fa-tools" style="color: #6610f2;"></i> 通知デバッグ
+            </h3>
+            <p style="font-size:0.9em; color:#666;">スマホが正しく登録されているか確認します。</p>
         
-        <div id="debug-output" style="background:#f8f9fa; padding:10px; border:1px solid #ddd; border-radius:5px; font-family:monospace; margin-bottom:10px; min-height:60px; font-size:0.85em; overflow-wrap: break-word;">
-            ボタンを押して状態をチェックしてください...
-        </div>
+            <div id="debug-output" style="background:#f8f9fa; padding:10px; border:1px solid #ddd; border-radius:5px; font-family:monospace; margin-bottom:10px; min-height:60px; font-size:0.85em; overflow-wrap: break-word;">
+                ボタンを押して状態をチェックしてください...
+            </div>
         
-        <div style="display:flex; gap:10px;">
-            <button id="check-onesignal-btn" class="file-upload-btn" style="background-color: #6610f2; flex:1;">
-                状態チェック
-            </button>
-            <button id="force-permission-btn" class="file-upload-btn" style="background-color: #fd7e14; flex:1;">
+            <div style="display:flex; gap:10px;">
+                <button id="check-onesignal-btn" class="file-upload-btn" style="background-color: #6610f2; flex:1;">
+                    状態チェック
+                </button>
+                <button id="force-permission-btn" class="file-upload-btn" style="background-color: #fd7e14; flex:1;">
                 許可を求める
-            </button>
+                </button>
+            </div>
         </div>
-    </div>
-    {% endif %}
-</div>-->
+    {% endif %}-->
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -437,15 +437,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         label = '現在';
                     } else {
                         const dateObj = new Date(timeUnix * 1000);
-                        // ▼▼▼ 修正: :00 を削除して「時」だけにする、または数字だけにする ▼▼▼
-                        // 'hour: numeric' はブラウザによって "15時" や "15" になるため、数字だけ取り出す手もありですが、
-                        // ここでは日本ロケールの標準的な表示（例: 22）を利用します。
+                        // :00 を削除して「時」だけにする、または数字だけにする
                         const jstHour = dateObj.toLocaleTimeString('ja-JP', { 
                             timeZone: 'Asia/Tokyo', hour: 'numeric', hour12: false 
                         });
-                        // もし "22時" のように "時" がついてもOKならこのままで。
-                        // 数字だけにしたい場合は .replace('時', '') を追加してください。
-                        // 今回はスクショに合わせてシンプルに数字だけにします。
+
                         label = jstHour.replace('時', ''); 
                     }
 
@@ -729,7 +725,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ▼▼▼ 通知デバッグ機能 (あなた専用) ▼▼▼
+    // ▼▼▼ 通知デバッグ機能 (専用) ▼▼▼
     const debugOut = document.getElementById('debug-output');
     if (debugOut) {
         document.getElementById('check-onesignal-btn').addEventListener('click', function() {

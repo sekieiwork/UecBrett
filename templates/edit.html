@@ -151,23 +151,22 @@
         const uecReviewContainer = document.getElementById('uecreview-form-container');
         const noticeEl = document.getElementById('uec-formal-name-notice');
 
-        // ▼▼▼ 修正: タイトルから情報を逆算してセットする関数 ▼▼▼
+        // タイトルから情報を逆算してセットする関数 
         function setReviewOptionsFromTitle(title) {
             if (!title) return;
 
-            // 年度 (例: 2025年度)
+            // 年度 
             const yearMatch = title.match(/(\d{4}年度)/);
             if (yearMatch && yearSelect) yearSelect.value = yearMatch[1];
 
-            // 学年 (例: 1年)
+            // 学年 
             const gradeMatch = title.match(/(?<!\d)([1-4]年|大学院生)/);
             if (gradeMatch && gradeSelect) gradeSelect.value = gradeMatch[1];
 
-            // 学期 (例: 前期)
+            // 学期 
             const termMatch = title.match(/(前期|後期)/);
             if (termMatch && termSelect) termSelect.value = termMatch[1];
         }
-        // ▲▲▲ 修正ここまで ▲▲▲
 
         // 3. タイトル更新ロジック (変更時用)
         function updateReviewTitle() {
@@ -205,11 +204,10 @@
                 tagsInput.value = tags.join(', ');
             }
 
-            // ▼▼▼ 追加: 既存タイトルからドロップダウンの値を復元 ▼▼▼
+            // 既存タイトルからドロップダウンの値を復元 
             if (titleInput) {
                 setReviewOptionsFromTitle(titleInput.value);
             }
-            // ▲▲▲ 追加ここまで ▲▲▲
 
             // フォーム復元 (base_layoutの関数を利用)
             {% if uec_review_data_json %}
@@ -224,7 +222,6 @@
                         .then(data => {
                             window.cachedSyllabusData = data;
                             // データ取得後にフォームを生成しないと、リストの自動入力が効かないためここで呼ぶ
-                            // ※ createUecReviewForm は base_layout.html でグローバル定義されている前提
                             const reviewData = {{ uec_review_data_json | safe }};
                             createUecReviewForm(reviewData.length, uecReviewContainer, titleInput, null, reviewData);
                         })

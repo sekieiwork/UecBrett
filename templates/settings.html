@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ▼▼▼ 追加: 通知詳細設定の表示切り替え ▼▼▼
+    //   通知詳細設定の表示切り替え 
     const masterToggle = document.getElementById('master-push-toggle');
     const detailedSettings = document.getElementById('detailed-settings');
 
@@ -105,10 +105,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    // ▲▲▲ ここまで追加 ▲▲▲
 
 
-    // --- 2. デバイス別通知設定の制御 (既存) ---
+    // --- 2. デバイス別通知設定の制御 ---
     const deviceToggle = document.getElementById('device-push-toggle');
     const deviceToggleLabel = deviceToggle ? deviceToggle.nextElementSibling : null;
 
@@ -140,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if(deviceToggleLabel) deviceToggleLabel.textContent = "このデバイス（ブラウザ）で通知を受け取る";
             }
 
-            // base_layout.html でのログイン処理(100ms〜500ms)が終わるのを待ってから確認する
+            // base_layout.html でのログイン処理が終わるのを待ってから確認する
             setTimeout(function() {
                 updateToggleState();
             }, 1000);

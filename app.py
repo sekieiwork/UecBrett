@@ -33,6 +33,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
+import unicodedata
 
 cloudinary.config(
     cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
@@ -1483,6 +1484,40 @@ def api_finance():
     
     return jsonify({'logs': log_list, 'month_total': month_total})
 
+def normalize_subject_name(name):
+    """
+    科目名の表記ゆれを吸収して正規化する。
+    1. 全角英数字・スペースを半角に統一 (NFKC正規化)
+    2. 括弧の中身を削除 (「(クラス5)」などを消す)
+    3. 特定の用語を統一 (コンピューター -> コンピュータ)
+    4. ローマ数字を統一 (Ⅰ -> I)
+    """
+    if not name: return "不明"
+    
+    # 1. NFKC正規化 (全角英数・スペース -> 半角)
+    # これにより Ⅰ(全角) も I(半角) になる場合が多いですが、確実にするため後続処理も入れます
+    name = unicodedata.normalize('NFKC', name)
+    
+    # 2. 括弧とその中身を削除 (半角括弧)
+    name = re.sub(r'\(.*?\)', '', name).strip()
+    
+    # 3. 特定の用語統一
+    name = name.replace('コンピューター', 'コンピュータ')
+    name = name.replace('インタフェース', 'インターフェース')
+
+    langs = r'(English|German|French|Chinese|Spanish|Russian|Korean)'
+    
+    # パターンA: 末尾が l(エル) や 1(イチ) の誤字 -> " I" (スペース+I) に置換
+    # 例: "Englishl" -> "English I", "English1" -> "English I"
+    name = re.sub(f'{langs}\\s*[l1]$', r'\1 I', name, flags=re.IGNORECASE)
+    
+    # パターンB: 言語名の直後にローマ数字(I,V,X)や数字が「スペース無し」でくっついている場合 -> スペースを挿入
+    # 例: "EnglishI" -> "English I", "EnglishII" -> "English II"
+    name = re.sub(f'{langs}([IVX\\d]+)$', r'\1 \2', name, flags=re.IGNORECASE)
+
+    # 末尾のスペースなどを再除去
+    return name.strip()
+
 @app.route('/review_db')
 def review_db():
     # 1. 'review' タグがついている投稿を全取得
@@ -1544,7 +1579,8 @@ def review_db():
             matches = [(post.title, "不明", "不明", post.content)]
 
         for subject, grade_val, teacher, body in matches:
-            subject = subject.strip()
+            raw_subject = subject.strip()
+            subject = normalize_subject_name(raw_subject)
             teacher = teacher.strip()
             body = body.strip()
 
@@ -1552,6 +1588,7 @@ def review_db():
             if search_query:
                 query = search_query.lower()
                 if (query not in subject.lower() and 
+                    query not in raw_subject.lower() and # 元の名前も対象に
                     query not in teacher.lower() and 
                     query not in body.lower() and
                     query not in year_str and
