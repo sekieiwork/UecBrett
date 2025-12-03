@@ -21,6 +21,7 @@
             </p>
         </div>
     {% endif %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <div class="db-tree-container">
         {% for year, grades in tree.items() %}
@@ -245,10 +246,50 @@
     .count-badge {
         color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; font-weight: normal; margin-right: 5px;
     }
+
+    .unknown-area {
+    margin-top: 20px;
+    border-top: 2px dashed #ccc;
+    padding-top: 10px;
+    background-color: #fff9f9;
+    }
+    .report-subject-btn {
+        font-size: 0.8em; color: #fff; background: #ffc107; border: none; border-radius: 4px; padding: 2px 8px; cursor: pointer; float: right;
+    }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    // サーバーから渡された「現在申請中の科目リスト」をSetにする
+    // (Jinja2のtojsonフィルターでJS配列に変換)
+    const pendingKeys = new Set({{ pending_keys | tojson }});
+
+    // --- 1. JS版 正規化関数 (Python側と合わせる) ---
+    function normalizeSubjectName(name) {
+        if (!name) return "";
+        
+        // 1. 全角英数字を半角に
+        let normalized = name.replace(/[！-～]/g, function(s){
+            return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+        }).replace(/　/g, " ");
+
+        // 2. 括弧削除
+        normalized = normalized.replace(/\(.*\)/g, "").replace(/（.*）/g, "").trim();
+
+        // 3. 用語統一
+        normalized = normalized.replace(/コンピューター/g, "コンピュータ");
+        normalized = normalized.replace(/インタフェース/g, "インターフェース");
+
+        // 4. 英語科目の補正
+        normalized = normalized.replace(/(English|German|French|Chinese|Spanish|Russian|Korean)\s*[l1]$/i, "$1 I");
+        normalized = normalized.replace(/(English|German|French|Chinese|Spanish|Russian|Korean)([IVX\d]+)$/i, "$1 $2");
+
+        return normalized.trim();
+    }
+
+    // 2. アコーディオン動作
     const acc = document.getElementsByClassName("accordion-btn");
     for (let i = 0; i < acc.length; i++) {
         acc[i].addEventListener("click", function() {
@@ -268,6 +309,135 @@ document.addEventListener('DOMContentLoaded', function() {
         const allBtns = document.getElementsByClassName("accordion-btn");
         for(let b of allBtns) { b.classList.add("active"); }
     {% endif %}
+
+
+    // 3. シラバス照合 & 警告表示 & ソート
+    const yearSections = document.querySelectorAll('.year-section');
+    
+    yearSections.forEach(section => {
+        const yearBtn = section.querySelector('.year-btn span');
+        if (!yearBtn) return;
+        const yearText = yearBtn.textContent.trim(); 
+
+        if (!yearText || yearText === '年度不明') return;
+
+        fetch(`/api/syllabus?year=${encodeURIComponent(yearText)}`)
+            .then(r => r.json())
+            .then(syllabusData => {
+                if (!syllabusData || syllabusData.length === 0) return;
+
+                // 正規化してSetに格納
+                const validSubjects = new Set(syllabusData.map(d => normalizeSubjectName(d.subject)));
+                
+                // この年度内の全科目をチェック
+                const subjectSections = section.querySelectorAll('.subject-section');
+                
+                subjectSections.forEach(el => {
+                    const btn = el.querySelector('.subject-btn');
+                    const subjSpan = btn.querySelector('span'); 
+                    const rawSubjName = subjSpan.textContent.trim();
+                    const normalizedSubjName = normalizeSubjectName(rawSubjName);
+
+                    // 正規リストにない場合
+                    if (!validSubjects.has(normalizedSubjName)) {
+                        
+                        // マーカークラスを追加（ソート用）
+                        el.classList.add('is-unknown-subject');
+
+                        // 1. アイコンを変更
+                        const icon = subjSpan.querySelector('i');
+                        if(icon) {
+                            icon.className = "fas fa-question-circle";
+                            icon.style.color = "#dc3545"; // 赤
+                        }
+                        
+                        // 2. ボタンまたはバッジを追加 (重複防止)
+                        if (!el.querySelector('.report-subject-btn') && !el.querySelector('.pending-badge')) {
+                            
+                            // 申請キー: "年度_科目名"
+                            const reqKey = `${yearText}_${rawSubjName}`;
+                            const rightSpan = btn.lastElementChild; // 件数バッジなどがある右側の要素
+
+                            if (pendingKeys.has(reqKey)) {
+                                // A. すでに申請中 -> 「申請済」バッジ
+                                const badge = document.createElement('span');
+                                badge.className = 'pending-badge';
+                                badge.innerHTML = '<i class="fas fa-check-circle"></i> 申請済';
+                                badge.style.cssText = "font-size:0.8em; color:#fff; background:#6c757d; border-radius:4px; padding:2px 8px; margin-left:auto; margin-right:10px;";
+                                
+                                // 右端グループの手前に挿入 (margin-left: auto で右寄せ)
+                                btn.insertBefore(badge, rightSpan);
+
+                            } else {
+                                // B. 未申請 -> 「申請」ボタン
+                                const reportBtn = document.createElement('button');
+                                reportBtn.className = 'report-subject-btn';
+                                reportBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> 申請';
+                                reportBtn.title = "正規科目として報告";
+                                
+                                // スタイル (右寄せ)
+                                reportBtn.style.marginLeft = "auto"; 
+                                reportBtn.style.marginRight = "10px";
+                                
+                                reportBtn.addEventListener('click', function(e) {
+                                    e.stopPropagation();
+                                    if(!confirm(`「${rawSubjName}」を正規科目として報告しますか？`)) return;
+                                    
+                                    fetch('/api/request_subject_fix', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRFToken': csrfToken
+                                        },
+                                        body: JSON.stringify({ subject: rawSubjName, year: yearText })
+                                    })
+                                    .then(r => r.json())
+                                    .then(res => {
+                                        if(res.status === 'success') {
+                                            alert(res.message);
+                                            // ボタンをバッジに置換
+                                            reportBtn.remove();
+                                            const badge = document.createElement('span');
+                                            badge.className = 'pending-badge';
+                                            badge.innerHTML = '<i class="fas fa-check-circle"></i> 申請済';
+                                            badge.style.cssText = "font-size:0.8em; color:#fff; background:#6c757d; border-radius:4px; padding:2px 8px; margin-left:auto; margin-right:10px;";
+                                            btn.insertBefore(badge, rightSpan);
+                                        } else {
+                                            alert('エラー: ' + res.message);
+                                        }
+                                    })
+                                    .catch(err => alert('送信エラー'));
+                                });
+
+                                btn.insertBefore(reportBtn, rightSpan);
+                            }
+                        }
+                    }
+                });
+
+                // ▼▼▼ ソート処理: 不明科目を最後に移動 ▼▼▼
+                const listContainers = section.querySelectorAll('.subject-list');
+                listContainers.forEach(container => {
+                    const children = Array.from(container.children);
+                    
+                    // ソート: is-unknown-subject があるものを後ろへ
+                    children.sort((a, b) => {
+                        const aIsUnknown = a.classList.contains('is-unknown-subject');
+                        const bIsUnknown = b.classList.contains('is-unknown-subject');
+                        
+                        if (aIsUnknown && !bIsUnknown) return 1;
+                        if (!aIsUnknown && bIsUnknown) return -1;
+                        return 0; 
+                    });
+                    
+                    // DOM再配置
+                    children.forEach(child => container.appendChild(child));
+                });
+                // ▲▲▲ ソートここまで ▲▲▲
+
+            })
+            .catch(e => console.error("Validation Error:", e));
+    });
 });
 </script>
 {% endblock %}

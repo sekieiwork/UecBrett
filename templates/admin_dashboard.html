@@ -12,7 +12,7 @@
             <li>
                 {{ user.username }}
                 <form action="{{ url_for('admin_delete_user', user_id=user.id) }}" method="POST" style="display:inline;">
-                    <button type="submit">削除</button>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/> <button type="submit">削除</button>
                 </form>
             </li>
         {% endfor %}
@@ -26,7 +26,7 @@
             <li>
                 {{ post.title }} (投稿者: {{ post.author.username }})
                 <form action="{{ url_for('admin_delete_post', post_id=post.id) }}" method="POST" style="display:inline;">
-                    <button type="submit">削除</button>
+                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/> <button type="submit">削除</button>
                 </form>
             </li>
         {% endfor %}
@@ -40,11 +40,53 @@
             <li>
                 {{ comment.content }} (投稿者: {{ comment.commenter.username }})
                 <form action="{{ url_for('admin_delete_comment', comment_id=comment.id) }}" method="POST" style="display:inline;">
-                    <button type="submit">削除</button>
+                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/> <button type="submit">削除</button>
                 </form>
             </li>
         {% endfor %}
         </ul>
+    </div>
+
+    <h2>科目修正・正規化申請</h2>
+    <div class="admin-list-container">
+        {% if subject_requests %}
+            <ul>
+            {% for req in subject_requests %}
+                <li style="margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">
+                    <strong>{{ req.subject_name }}</strong> ({{ req.year }})<br>
+                    <span style="font-size: 0.9em; color: #666;">申請者: {{ req.user.username }} - {{ req.timestamp.strftime('%Y/%m/%d') }}</span>
+                    
+                    <form action="{{ url_for('resolve_subject_request', request_id=req.id) }}" method="POST" style="display:inline; margin-left: 10px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="file-upload-btn" style="background-color: #28a745; padding: 2px 8px; font-size: 0.8em;">解決済みにする</button>
+                    </form>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>未対応の申請はありません。</p>
+        {% endif %}
+    </div>
+
+    <h3 style="margin-top: 30px; color: #28a745;">承認済み科目リスト (正規化ホワイトリスト)</h3>
+    <div class="admin-list-container">
+        {% if approved_requests %}
+            <ul>
+            {% for req in approved_requests %}
+                <li style="margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">
+                    <strong>{{ req.subject_name }}</strong> ({{ req.year }})<br>
+                    <span style="font-size: 0.9em; color: #666;">申請者: {{ req.user.username }}</span>
+                    
+                    <form action="{{ url_for('revoke_subject_request', request_id=req.id) }}" method="POST" style="display:inline; margin-left: 10px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="file-upload-btn" style="background-color: #dc3545; padding: 2px 8px; font-size: 0.8em;" onclick="return confirm('本当にこの科目の承認を取り消しますか？\n次回から再び「判別不明」扱いになります。')">撤回 (削除)</button>
+                    </form>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>承認済みの科目はありません。</p>
+        {% endif %}
     </div>
 
     <div class="post-form" style="margin-bottom: 20px; border-left: 5px solid #ffc107;">

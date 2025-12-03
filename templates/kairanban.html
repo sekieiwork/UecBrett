@@ -108,7 +108,7 @@
                         
                         {% if current_user.is_authenticated and (k.author == current_user or current_user.is_admin) %}
                         <form method="POST" action="{{ url_for('delete_kairanban', kairanban_id=k.id) }}" style="margin-bottom: 0;">
-                            <input type="submit" value="撤回" onclick="return confirm('本当にこの回覧板を撤回しますか？');" class="delete-button" style="font-size: 0.8em; padding: 2px 6px;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/> <input type="submit" value="撤回" onclick="return confirm('本当にこの回覧板を撤回しますか？');" class="delete-button" style="font-size: 0.8em; padding: 2px 6px;">
                         </form>
                         {% endif %}
 

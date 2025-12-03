@@ -9,6 +9,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, curren
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from pytz import timezone, utc
+from flask_wtf.csrf import CSRFProtect
 import os
 try:
     from dotenv import load_dotenv
@@ -55,7 +56,8 @@ md = markdown.Markdown(extensions=['nl2br'])
 migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-login_manager.login_message = '利用するにはログインしてください。'
+login_manager.login_message = 'ご利用にはログインが必要です。'
+csrf = CSRFProtect(app)
 
 @app.after_request
 def add_header(response):
@@ -413,6 +415,18 @@ class ToDoItem(db.Model):
     due_date = db.Column(db.Date, nullable=True) 
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     user = db.relationship('User', backref='todos')
+
+class SubjectRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
+    subject_name = db.Column(db.String(100), nullable=False)
+    year = db.Column(db.String(20), nullable=False) # 2025年度 など
+    message = db.Column(db.String(255), nullable=True) # 申請コメント
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    is_resolved = db.Column(db.Boolean, default=False)
+    
+    user = db.relationship('User', backref='subject_requests')
+
 # --- OneSignal連携関数 ---
 def send_onesignal_notification(user_ids, title, message, url=None):
     """OneSignalへプッシュ通知を送信 (requests版)"""
@@ -790,10 +804,11 @@ def login():
         else: flash('ユーザー名またはパスワードが正しくありません。')
     return render_template('login.html', form=form)
 
-@app.route('/logout')
+@app.route('/logout', methods=['POST']) 
 @login_required
 def logout():
     logout_user()
+    flash('ログアウトしました。')
     return redirect(url_for('index'))
 
 @app.route('/search', methods=['GET', 'POST'])
@@ -973,7 +988,67 @@ def admin_dashboard():
     all_users = User.query.all()
     all_posts = Post.query.all()
     all_comments = Comment.query.all()
-    return render_template('admin_dashboard.html', users=all_users, posts=all_posts, comments=all_comments)
+    
+    # 未解決の申請
+    subject_requests = SubjectRequest.query.filter_by(is_resolved=False).order_by(SubjectRequest.timestamp.desc()).all()
+    
+    # ▼▼▼ 追加: 解決済み(承認済み)の申請も取得 ▼▼▼
+    approved_requests = SubjectRequest.query.filter_by(is_resolved=True).order_by(SubjectRequest.timestamp.desc()).all()
+    
+    return render_template('admin_dashboard.html', 
+                           users=all_users, 
+                           posts=all_posts, 
+                           comments=all_comments, 
+                           subject_requests=subject_requests,
+                           approved_requests=approved_requests)
+
+
+# --- 新規ルート追加: 申請の撤回 (削除) ---
+@app.route('/admin/revoke_request/<int:request_id>', methods=['POST'])
+@login_required
+def revoke_subject_request(request_id):
+    if not current_user.is_admin: abort(403)
+    
+    req = SubjectRequest.query.get_or_404(request_id)
+    
+    # データを削除する (これでシラバスAPIのホワイトリストから消える)
+    db.session.delete(req)
+    db.session.commit()
+    
+    flash(f'科目「{req.subject_name}」の承認を撤回（削除）しました。', 'warning')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/api/request_subject_fix', methods=['POST'])
+@login_required
+def request_subject_fix():
+    data = request.get_json()
+    subject = data.get('subject')
+    year = data.get('year')
+    
+    if not subject or not year:
+        return jsonify({'status': 'error', 'message': 'Invalid data'}), 400
+        
+    # 重複申請チェック (同じ人が同じ科目を申請済みならスキップ)
+    exists = SubjectRequest.query.filter_by(user_id=current_user.id, subject_name=subject, year=year, is_resolved=False).first()
+    if exists:
+        return jsonify({'status': 'error', 'message': '既に申請済みです。'})
+
+    req = SubjectRequest(user_id=current_user.id, subject_name=subject, year=year, message="正規科目としての登録依頼")
+    db.session.add(req)
+    db.session.commit()
+    
+    return jsonify({'status': 'success', 'message': '管理者に申請を送りました。'})
+
+# ▼▼▼ 追加: 申請解決API (管理者用) ▼▼▼
+@app.route('/admin/resolve_request/<int:request_id>', methods=['POST'])
+@login_required
+def resolve_subject_request(request_id):
+    if not current_user.is_admin: abort(403)
+    req = SubjectRequest.query.get_or_404(request_id)
+    req.is_resolved = True
+    db.session.commit()
+    flash('申請を解決済みにしました。')
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/restore_tags', methods=['POST'])
 @login_required
@@ -1540,46 +1615,38 @@ def review_db():
     # 2. データをツリー構造に整理
     tree = {}
 
-    # ▼▼▼ 修正: タイトル情報の抽出ロジックを柔軟化 ▼▼▼
-    # まとめて1つの正規表現ではなく、個別に探すことで「一部欠け」や「順序違い」に対応
     year_pattern = re.compile(r'(\d{4}年度)')
     grade_pattern = re.compile(r'(?<!\d)(1年|2年|3年|4年|大学院生)')
     term_pattern = re.compile(r'(前期|後期)')
     
-    # 本文用正規表現 (担当教員は改行まで、という制限を強化して誤検知を防ぐ)
     content_pattern = re.compile(
         r'<span class="text-large">\*\*(.*?)\*\*</span>\s*'
         r'成績:<span class="text-red text-large">\*\*(.*?)\*\*</span>\s*'
-        r'担当教員:([^\n]*)\n' # 改行までを教員名とする
+        r'担当教員:([^\n]*)\n'
         r'(.*?)'
-        r'(?=\n\s*---\s*\n|\Z)', # 次の区切り線または末尾までを本文とする
+        r'(?=\n\s*---\s*\n|\Z)',
         re.DOTALL
     )
 
     for post in reviews:
         # --- A. タイトルから情報を個別に抽出 ---
-        
-        # 年度
         y_match = year_pattern.search(post.title)
         year_str = y_match.group(1) if y_match else "年度不明"
 
-        # 学年
         g_match = grade_pattern.search(post.title)
         grade_str = g_match.group(1) if g_match else "その他"
 
-        # 学期
         t_match = term_pattern.search(post.title)
         term_str = t_match.group(1) if t_match else "学期不明"
 
         # --- B. 記事内のレビューデータを抽出 ---
         matches = content_pattern.findall(post.content)
-        
-        # マッチしなかった場合はタイトルを科目名、全体を本文とする(自由記述対応)
         if not matches:
             matches = [(post.title, "不明", "不明", post.content)]
 
         for subject, grade_val, teacher, body in matches:
             raw_subject = subject.strip()
+            # 科目名の正規化
             subject = normalize_subject_name(raw_subject)
             teacher = teacher.strip()
             body = body.strip()
@@ -1588,7 +1655,7 @@ def review_db():
             if search_query:
                 query = search_query.lower()
                 if (query not in subject.lower() and 
-                    query not in raw_subject.lower() and # 元の名前も対象に
+                    query not in raw_subject.lower() and
                     query not in teacher.lower() and 
                     query not in body.lower() and
                     query not in year_str and
@@ -1608,81 +1675,110 @@ def review_db():
                 'teacher': teacher,
                 'body': body
             })
+    
+    # 科目名のソート用関数: 日本語(0) -> 英字(1) の順にする
+    def subject_sort_key(item):
+        subject_name = item[0]
+        # 先頭が半角英数字ならTrue(英字)
+        is_ascii = re.match(r'^[a-zA-Z0-9]', subject_name) is not None
+        # False(日本語)=0, True(英字)=1 なので日本語が先に来る
+        priority = 1 if is_ascii else 0
+        return (priority, subject_name)
 
-    # 表示順序の定義 (年度の降順)
-    sorted_tree = dict(sorted(tree.items(), key=lambda x: x[0], reverse=True))
+    sorted_tree = {}
+    
+    # 1. 年度: 降順 (新しい年度が上)
+    for year in sorted(tree.keys(), reverse=True):
+        sorted_tree[year] = {}
+        
+        # 2. 学年: 昇順 (1年 -> 2年...)
+        for grade in sorted(tree[year].keys()):
+            sorted_tree[year][grade] = {}
+            
+            # 3. 学期: 昇順 (前期 -> 後期 -> 学期不明)
+            # Unicode順で "前"(524D) < "後"(5F8C) なので sorted() で前期が先に来ます
+            for term in sorted(tree[year][grade].keys()):
+                
+                # 4. 科目: 日本語優先 -> アルファベット順
+                subjects_dict = tree[year][grade][term]
+                sorted_subjects = dict(sorted(subjects_dict.items(), key=subject_sort_key))
+                
+                sorted_tree[year][grade][term] = sorted_subjects
 
-    return render_template('review_db.html', tree=sorted_tree, search_query=search_query)
+                pending_reqs = SubjectRequest.query.filter_by(is_resolved=False).all()
+                pending_keys = [f"{req.year}_{req.subject_name}" for req in pending_reqs]
 
+    return render_template('review_db.html', tree=sorted_tree, search_query=search_query, pending_keys=pending_keys)
 
 @app.route('/api/syllabus')
 @login_required
 def get_syllabus():
     year = request.args.get('year')
-    if not year:
-        return jsonify([])
+    if not year: return jsonify([])
 
     year_match = re.search(r'\d{4}', year)
-    if not year_match:
-        return jsonify([])
+    if not year_match: return jsonify([])
     
     target_year = year_match.group(0)
+    full_year_str = f"{target_year}年度" # 検索用 ("2025年度")
     
+    # 1. 承認済み科目をDBから取得
+    approved_requests = SubjectRequest.query.filter_by(year=full_year_str, is_resolved=True).all()
+    approved_subjects = {req.subject_name for req in approved_requests}
+
+    # 2. シラバスをスクレイピング
     url = f"https://kyoumu.office.uec.ac.jp/syllabus/{target_year}/GakkiIchiran_31_0.html"
     
+    results = []
+    
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
+        headers = {'User-Agent': 'Mozilla/5.0 ...'} # (既存のヘッダー)
         resp = requests.get(url, headers=headers, timeout=10)
         resp.encoding = resp.apparent_encoding 
         
-        if resp.status_code != 200:
-            return jsonify([])
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            rows = soup.find_all('tr')
+            subject_map = {}
 
-        soup = BeautifulSoup(resp.text, 'html.parser')
-        rows = soup.find_all('tr')
-        
-        subject_map = {}
+            for row in rows:
+                cols = row.find_all('td')
+                if len(cols) >= 7: 
+                    # ... (既存のスクレイピングロジック) ...
+                    # subject_text, teacher_text を取得する部分
+                    # ------------------------------------------------
+                    # 6列目(index 5): 科目名
+                    subject_link = cols[5].find('a')
+                    raw_subject = subject_link.text.strip() if subject_link else cols[5].text.strip()
+                    subject_text = re.sub(r'[（\(].*?[）\)]', '', raw_subject).strip()
 
-        for row in rows:
-            cols = row.find_all('td')
-            if len(cols) >= 7: 
-                # 6列目(index 5): 科目名
-                subject_link = cols[5].find('a')
-                if not subject_link:
-                    raw_subject = cols[5].text.strip()
-                else:
-                    raw_subject = subject_link.text.strip()
+                    # 7列目(index 6): 担当教員
+                    teacher_text = re.sub(r'\s+', ' ', cols[6].text.strip())
 
-                # 全角括弧（）と半角括弧()の両方に対応
-                subject_text = re.sub(r'[（\(].*?[）\)]', '', raw_subject).strip()
+                    if subject_text:
+                        if subject_text not in subject_map: subject_map[subject_text] = set()
+                        if teacher_text: subject_map[subject_text].add(teacher_text)
+                    # ------------------------------------------------
 
-                # 7列目(index 6): 担当教員
-                teacher_text = cols[6].text.strip()
-                teacher_text = re.sub(r'\s+', ' ', teacher_text)
-
-                if subject_text:
-                    if subject_text not in subject_map:
-                        subject_map[subject_text] = set()
-                    
-                    if teacher_text:
-                        subject_map[subject_text].add(teacher_text)
-        
-        results = []
-        for subject, teachers in subject_map.items():
-            results.append({
-                'subject': subject,
-                'teachers': list(teachers)
-            })
-        
-        results.sort(key=lambda x: x['subject'])
-        
-        return jsonify(results)
+            # マップからリストへ変換
+            for subject, teachers in subject_map.items():
+                results.append({'subject': subject, 'teachers': list(teachers)})
 
     except Exception as e:
         print(f"Syllabus Fetch Error: {e}")
-        return jsonify([])
+        # エラーでも承認済み科目は返すために続行
+
+    # 3. 承認済み科目をリストに追加 (重複チェック)
+    existing_subjects = {r['subject'] for r in results}
+    for approved_subj in approved_subjects:
+        if approved_subj not in existing_subjects:
+            # 教員情報はDBにないので空リストまたは「不明」とする
+            results.append({'subject': approved_subj, 'teachers': []})
+
+    # ソートして返す
+    results.sort(key=lambda x: x['subject'])
+    
+    return jsonify(results)
 
 # ▼▼▼ 3. スケジューラーの起動 (if __name__ == '__main__': の直前に追加) ▼▼▼
 # サーバー起動時にスケジューラーを開始

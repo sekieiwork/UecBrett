@@ -73,7 +73,7 @@
                             <a href="{{ url_for('edit_post', post_id=post.id) }}" class="delete-button yellow" style="text-decoration: none; display: inline-block;">編集</a>
                             
                             <form action="{{ url_for('delete_post', post_id=post.id) }}" method="POST" style="margin: 0;">
-                                <button type="submit" class="delete-button" onclick="return confirm('本当にこの投稿を削除しますか？');">削除</button>
+                               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/> <button type="submit" class="delete-button" onclick="return confirm('本当にこの投稿を削除しますか？');">削除</button>
                             </form>
                         {% endif %}
                     </div> 
@@ -150,7 +150,7 @@
                         {% if current_user.is_authenticated and (current_user == comment.commenter or current_user == post.author or current_user.is_admin) %}
                             <div class="comment-actions">
                                 <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="POST" style="margin:0;">
-                                    <button type="submit" class="delete-button" onclick="return confirm('本当に削除しますか？')">削除</button>
+                                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/> <button type="submit" class="delete-button" onclick="return confirm('本当に削除しますか？')">削除</button>
                                 </form>
                             </div>
                         {% endif %}

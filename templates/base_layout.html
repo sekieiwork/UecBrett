@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>UEC 掲示板</title>
 
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
@@ -981,6 +982,25 @@ a.tag-box:hover {
         margin-bottom: 2px;
     }
 
+    /* ログアウトボタンをドロップダウンのリンクと同じ見た目にする */
+    .logout-btn {
+        background: none;
+        border: none;
+        padding: 6px 16px;
+        width: 100%;
+        text-align: left;
+        color: #dc3545; /* 赤色 */
+        cursor: pointer;
+        font-size: 1em; /* 継承 */
+        font-family: inherit;
+    }
+    
+    .logout-btn:hover {
+        background-color: #f1f1f1;
+        text-decoration: none;
+    }
+この修正による効果
+
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
@@ -1039,7 +1059,11 @@ a.tag-box:hover {
                             
                             <hr style="margin: 5px 0;">
                             
-                            <a href="{{ url_for('logout') }}" style="color: #dc3545;">ログアウト</a>
+                            <form action="{{ url_for('logout') }}" method="POST" style="margin: 0;">
+                                <button type="submit" class="logout-btn">
+                                    ログアウト
+                                </button>
+                            </form>
                         </div>
                     </div>
                 {% else %}
@@ -1646,7 +1670,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const form = this.closest('.bookmark-form');
             const postId = form.dataset.postId;
             const url = `{{ url_for('bookmark_post', post_id=0) }}`.slice(0, -1) + postId;
-            fetch(url, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' } })
+            fetch(url, { 
+                method: 'POST', 
+                headers: { 
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                } 
+            })
             .then(r => r.json())
             .then(data => {
                 const iconSpan = document.getElementById(`bookmark-icon-${postId}`);
@@ -1664,7 +1695,14 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const commentId = this.dataset.commentId;
             if (confirm('本当にこのコメントを削除しますか？')) {
-                fetch(`/comment/${commentId}/delete`, { method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json'} })
+                fetch(`/comment/${commentId}/delete`, { 
+                method: 'POST', 
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                } 
+            })
                 .then(r => r.json())
                 .then(data => {
                     if (data.status === 'success') {
@@ -1677,6 +1715,44 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }); 
+
+    document.querySelectorAll('.kairanban-check-toggle').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const kid = this.dataset.kairanbanId;
+            
+            // fetchでPOST送信
+            fetch(`/kairanban/check/${kid}`, { 
+                method: 'POST', 
+                headers: { 
+                    'X-CSRFToken': csrfToken // 必須
+                }
+            })
+            .then(r => r.json())
+            .then(d => {
+                if(d.status === 'success') {
+                    // UI更新: 取り消し線やアイコンの変化
+                    const el = document.getElementById(`kairanban-${kid}`);
+                    if(d.is_checked) {
+                        el.classList.add('checked');
+                    } else {
+                        el.classList.remove('checked');
+                    }
+                    
+                    // カウント更新
+                    const countSpan = document.getElementById(`check-count-${kid}`);
+                    if(countSpan) countSpan.textContent = `👀 ${d.new_count}`;
+                    
+                    // 赤丸アイコンの更新 (未読が0になったら消す)
+                    const unread = document.querySelectorAll('.kairanban-item:not(.checked) .kairanban-check-container').length;
+                    document.querySelectorAll('.kairanban-icon-container').forEach(c => {
+                        if(unread === 0) c.classList.remove('has-unread-kairanban');
+                        else c.classList.add('has-unread-kairanban');
+                    });
+                }
+            })
+            .catch(err => console.error("Check Error:", err));
+        });
+    });
 
     // タグフォームトグル
     if (toggleTagButton && tagFormContainer) {
@@ -1926,7 +2002,8 @@ document.addEventListener('DOMContentLoaded', function() {
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-        const collapseLongComments = () => {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const collapseLongComments = () => {
         const comments = document.querySelectorAll('.comment-content');
         const LIMIT_HEIGHT = 160; // 折りたたむ基準の高さ (CSSのmax-heightより少し大きめに)
 
@@ -2101,7 +2178,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: 'POST',
                 headers: { 
                     'X-Requested-With': 'XMLHttpRequest',
-                    'Content-Type': 'application/json' 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
                 }
             })
             .then(response => response.json())
