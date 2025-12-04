@@ -10,12 +10,19 @@
                 <p>
                     {{ notification.message }}
                 </p>
+                
                 {% if notification.post_id %}
-                    <p><a href="{{ url_for('post_detail', post_id=notification.post_id) }}">投稿詳細へ</a></p>
+                    <p>
+                        {% if 'いいね' in notification.message %}
+                            <a href="{{ url_for('post_detail', post_id=notification.post_id, show_likes=1) }}">投稿詳細へ（いいね一覧）</a>
+                        {% else %}
+                            <a href="{{ url_for('post_detail', post_id=notification.post_id) }}">投稿詳細へ</a>
+                        {% endif %}
+                    </p>
                 {% elif notification.kairanban_id %}
                     <p><a href="{{ url_for('kairanban_index') }}">回覧板へ</a></p>
                 {% endif %}
-                </div>
+            </div>
         {% endfor %}
     {% else %}
         <p>新しい通知はありません。</p>

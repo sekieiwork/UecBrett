@@ -195,6 +195,31 @@ def ensure_review_tag(post):
             return True
     return False
 
+def contains_unsafe_links(text):
+    """
+    本文内に危険なリンクが含まれているかチェックする。
+    Trueなら危険、Falseなら安全。
+    """
+    # 1. Markdownのリンク構文 [text](url) または 生のURL を探す
+    # 簡易的に (] | \s | ^) などの後に続く url っぽいものを拾う
+    
+    # チェック対象の危険キーワード
+    unsafe_patterns = [
+        r'javascript:',      # XSS攻撃
+        r'data:',            # データスキーム
+        r'vbscript:',        # スクリプト
+        r'\]\s*\(\s*/logout', # ログアウトリンク (Markdown)
+        r'href=["\']\s*/logout', # ログアウトリンク (HTML)
+        r'\]\s*\(\s*/admin',  # 管理画面リンク
+        r'\]\s*\(\s*/post/\d+/delete' # 削除リンク
+    ]
+    
+    for pattern in unsafe_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            return True
+            
+    return False
+
 def parse_review_for_editing(content):
     if not content.strip().startswith('<span class="text-large">**'): return None 
     subjects = []
@@ -539,6 +564,9 @@ def process_mentions(content, source_obj):
 def index(page):
     form = PostForm()
     if form.validate_on_submit() and current_user.is_authenticated:
+        if contains_unsafe_links(form.content.data):
+            flash('投稿に許可されていないリンク形式（javascript: や /logout など）が含まれています。', 'danger')
+            return redirect(url_for('index'))
         image_url_str = None 
         if form.image.data:
             file_size = len(form.image.data.read())
@@ -622,6 +650,10 @@ def post_detail(post_id):
 
     comment_form = CommentForm()
     if comment_form.validate_on_submit() and current_user.is_authenticated:
+        if contains_unsafe_links(comment_form.content.data):
+            flash('コメントに許可されていないリンク形式が含まれています。', 'danger')
+            return redirect(url_for('post_detail', post_id=post.id))
+        
         comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
         db.session.add(comment)
         db.session.commit()
@@ -673,13 +705,34 @@ def toggle_like(post_id):
         is_liked = True
         if current_user != post.author:
             if post.author.notification_comment_like:
-                message = f'あなたの投稿「{post.title}」にいいねが付きました。'
+                message = f'{current_user.username}さんがあなたの投稿「{post.title}」にいいねしました。'
                 notification = Notification(recipient=post.author, post=post, message=message)
                 db.session.add(notification)
                 if post.author.push_notifications_enabled:
                     send_onesignal_notification(user_ids=[post.author.id], title="新しいいいね", message=message, url=url_for('post_detail', post_id=post.id, _external=True))
     db.session.commit()
     return jsonify({'is_liked': is_liked, 'count': post.likes.count()})
+
+
+# ---いいねしたユーザー一覧取得API---
+@app.route('/api/post/<int:post_id>/likers')
+@login_required
+def get_post_likers(post_id):
+    post = Post.query.get_or_404(post_id)
+    # いいねした人のリストを作成 (新しい順)
+    likers = []
+    # post.likes はリレーションで取得 (Likeモデル経由)
+    # Likeモデルの定義上、userリレーションがあるのでそれを利用
+    sorted_likes = sorted(post.likes, key=lambda l: l.timestamp, reverse=True)
+    
+    for like in sorted_likes:
+        likers.append({
+            'username': like.user.username,
+            'icon_url': like.user.icon_url,
+            'profile_url': url_for('user_profile', username=like.user.username)
+        })
+        
+    return jsonify(likers)
 
 @app.route('/bookmark_post/<int:post_id>', methods=['POST'])
 @login_required
@@ -720,6 +773,11 @@ def edit_post(post_id):
     if post.author != current_user: abort(403)
     form = PostForm()
     if form.validate_on_submit():
+
+        if contains_unsafe_links(form.content.data):
+            flash('投稿に許可されていないリンク形式が含まれています。', 'danger')
+            return redirect(url_for('edit_post', post_id=post.id))
+        
         post.title = form.title.data
         post.content = form.content.data
         post.tags.clear()
@@ -937,6 +995,9 @@ def edit_profile(username):
     original_username = user.username
     form = ProfileForm(obj=user)
     if form.validate_on_submit():
+        if contains_unsafe_links(form.bio.data):
+            flash('自己紹介に許可されていないリンク形式が含まれています。', 'danger')
+            return render_template('edit_profile.html', form=form, user=user)
         new_username = form.username.data
         user.username = new_username 
         user.bio = form.bio.data
@@ -1195,6 +1256,10 @@ def kairanban_index():
     form = KairanbanForm()
     if form.validate_on_submit(): 
         try:
+            if contains_unsafe_links(form.content.data):
+                flash('回覧板に許可されていないリンク形式が含まれています。', 'danger')
+                return redirect(url_for('kairanban_index'))
+            
             days = int(form.expires_in_days.data)
             expires_at_datetime = datetime.utcnow() + timedelta(days=days)
             new_kairanban = Kairanban(content=form.content.data, author=current_user, expires_at=expires_at_datetime)

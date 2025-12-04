@@ -48,7 +48,7 @@
                     {% if current_user.is_authenticated %}
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <form class="like-form" data-post-id="{{ post.id }}" style="margin: 0;">
-                            <button type="button" class="like-toggle-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2em; color: #ff4d4f; display: flex; align-items: center; gap: 3px; padding: 0;">
+                            <button type="button" class="like-toggle-btn" data-is-author="{{ 'true' if post.author == current_user else 'false' }}" style="background: none; border: none; cursor: pointer; font-size: 1.2em; color: #ff4d4f; display: flex; align-items: center; gap: 3px; padding: 0;">
                                 <span id="like-icon-{{ post.id }}">
                                     {% if post.is_liked %} <i class="fas fa-heart text-red"></i> {% else %} <i class="far fa-heart"></i> {% endif %}
                                 </span>
@@ -172,6 +172,23 @@
                         window.location.href = currentUrl.toString();
                     });
                 }
+                // URLパラメータを見て「いいね一覧」を自動オープン ▼▼▼
+                document.addEventListener('DOMContentLoaded', function() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    // show_likes=1 があれば実行
+                    if (urlParams.get('show_likes') === '1') {
+                        // 投稿IDを取得 (Jinja2で埋め込む)
+                        const postId = {{ post.id }};
+                        
+                        // base_layout.html で定義した関数を呼び出す
+                        // (少し待ってから開くとアニメーション等がスムーズです)
+                        setTimeout(() => {
+                            if (typeof showLikersModal === 'function') {
+                                showLikersModal(postId);
+                            }
+                        }, 100);
+                    }
+                });
             </script>
             
 {% endblock %}
