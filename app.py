@@ -441,6 +441,31 @@ class ToDoItem(db.Model):
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     user = db.relationship('User', backref='todos')
 
+class GourmetSpot(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    lat = db.Column(db.Float, nullable=False) # 緯度
+    lng = db.Column(db.Float, nullable=False) # 経度
+    content = db.Column(db.Text, nullable=True) # 説明・レビュー（Wiki形式で編集）
+    rating = db.Column(db.Integer, default=3) # 1~5の評価
+    
+    # 更新情報 (Wiki形式なので「最後に誰がいつ更新したか」を記録)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_editor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
+    last_editor = db.relationship('User', backref='edited_spots')
+    
+class GourmetReview(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    spot_id = db.Column(db.Integer, db.ForeignKey('gourmet_spot.id', ondelete="CASCADE"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    rating = db.Column(db.Integer, default=3)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='gourmet_reviews')
+    spot = db.relationship('GourmetSpot', backref=db.backref('reviews', cascade="all, delete-orphan"))
+
 class SubjectRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
@@ -451,6 +476,17 @@ class SubjectRequest(db.Model):
     is_resolved = db.Column(db.Boolean, default=False)
     
     user = db.relationship('User', backref='subject_requests')
+
+class SpotNameRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
+    spot_id = db.Column(db.Integer, db.ForeignKey('gourmet_spot.id', ondelete="CASCADE"), nullable=False)
+    new_name = db.Column(db.String(100), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    is_resolved = db.Column(db.Boolean, default=False) # 処理済みフラグ
+
+    user = db.relationship('User', backref='spot_name_requests')
+    spot = db.relationship('GourmetSpot', backref='name_requests')
 
 # --- OneSignal連携関数 ---
 def send_onesignal_notification(user_ids, title, message, url=None):
@@ -1050,18 +1086,18 @@ def admin_dashboard():
     all_posts = Post.query.all()
     all_comments = Comment.query.all()
     
-    # 未解決の申請
     subject_requests = SubjectRequest.query.filter_by(is_resolved=False).order_by(SubjectRequest.timestamp.desc()).all()
-    
-    # ▼▼▼ 追加: 解決済み(承認済み)の申請も取得 ▼▼▼
     approved_requests = SubjectRequest.query.filter_by(is_resolved=True).order_by(SubjectRequest.timestamp.desc()).all()
+    
+    spot_name_requests = SpotNameRequest.query.filter_by(is_resolved=False).order_by(SpotNameRequest.timestamp.desc()).all()
     
     return render_template('admin_dashboard.html', 
                            users=all_users, 
                            posts=all_posts, 
                            comments=all_comments, 
                            subject_requests=subject_requests,
-                           approved_requests=approved_requests)
+                           approved_requests=approved_requests,
+                           spot_name_requests=spot_name_requests)
 
 
 # --- 新規ルート追加: 申請の撤回 (削除) ---
@@ -1895,6 +1931,206 @@ def get_syllabus():
     results.sort(key=lambda x: x['subject'])
     
     return jsonify(results)
+
+
+@app.route('/map')
+@login_required
+def gourmet_map():
+    return render_template('gourmet_map.html', md=md)
+
+# スポット一覧取得API (地図ピン用: 評価は口コミの平均から算出)
+@app.route('/api/spots')
+def get_spots():
+    spots = GourmetSpot.query.all()
+    data = []
+    for s in spots:
+        # 口コミから平均評価を計算 (なければ0)
+        review_count = len(s.reviews)
+        if review_count > 0:
+            avg_rating = sum(r.rating for r in s.reviews) / review_count
+            display_rating = int(round(avg_rating)) # 星表示用に四捨五入
+        else:
+            display_rating = 0
+
+        data.append({
+            'id': s.id,
+            'name': s.name,
+            'lat': s.lat,
+            'lng': s.lng,
+            'rating': display_rating,
+            'review_count': review_count
+        })
+    return jsonify(data)
+
+# スポット詳細取得API
+@app.route('/api/spots/<int:spot_id>')
+def get_spot_detail(spot_id):
+    s = GourmetSpot.query.get_or_404(spot_id)
+    html_content = safe_markdown_filter(s.content or "")
+    editor_name = s.last_editor.username if s.last_editor else "不明"
+    updated_str = s.updated_at.replace(tzinfo=utc).astimezone(timezone('Asia/Tokyo')).strftime('%Y/%m/%d %H:%M')
+
+    # 口コミリスト取得 & 平均評価計算
+    reviews_data = []
+    total_score = 0
+    for r in sorted(s.reviews, key=lambda x: x.timestamp, reverse=True):
+        total_score += r.rating
+        reviews_data.append({
+            'id': r.id,
+            'user': r.user.username,
+            'icon_url': r.user.icon_url,
+            'rating': r.rating,
+            'content': safe_markdown_filter(r.content),
+            'date': r.timestamp.replace(tzinfo=utc).astimezone(timezone('Asia/Tokyo')).strftime('%Y/%m/%d'),
+            'is_mine': (current_user.is_authenticated and r.user_id == current_user.id)
+        })
+    
+    review_count = len(reviews_data)
+    if review_count > 0:
+        avg_rating = total_score / review_count
+        display_rating = int(round(avg_rating))
+    else:
+        display_rating = 0
+
+    return jsonify({
+        'id': s.id,
+        'name': s.name,
+        'content': s.content,
+        'html': html_content,
+        'rating': display_rating,
+        'review_count': review_count,
+        'editor': editor_name,
+        'updated_at': updated_str,
+        'reviews': reviews_data
+    })
+
+# スポット保存API (評価入力を廃止)
+@app.route('/api/spots/save', methods=['POST'])
+@login_required
+def save_spot():
+    data = request.get_json()
+    spot_id = data.get('id')
+    
+    if spot_id:
+        # 更新モード (Wiki)
+        spot = GourmetSpot.query.get_or_404(spot_id)
+        spot.content = data.get('content')
+        # ratingの更新は削除 (口コミ平均を使うため)
+        spot.last_editor = current_user
+        action = "updated"
+    else:
+        # 新規作成モード
+        new_spot = GourmetSpot(
+            name=data.get('name'),
+            lat=float(data.get('lat')),
+            lng=float(data.get('lng')),
+            content=data.get('content'),
+            rating=0, # 初期値は0
+            last_editor=current_user
+        )
+        db.session.add(new_spot)
+        action = "created"
+    
+    db.session.commit()
+    return jsonify({'status': 'success', 'action': action})
+
+@app.route('/api/spots/<int:spot_id>/delete', methods=['POST'])
+@login_required
+def delete_spot(spot_id):
+    # 管理者だけが実行可能
+    if not current_user.is_admin:
+        return jsonify({'error': '削除権限がありません'}), 403
+    
+    spot = GourmetSpot.query.get_or_404(spot_id)
+    db.session.delete(spot)
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
+# --- 新規追加: 口コミ投稿API ---
+@app.route('/api/spots/<int:spot_id>/review', methods=['POST'])
+@login_required
+def post_spot_review(spot_id):
+    data = request.get_json()
+    content = data.get('content')
+    rating = int(data.get('rating'))
+    
+    if not content:
+        return jsonify({'error': 'コメントを入力してください'}), 400
+
+    review = GourmetReview(
+        spot_id=spot_id,
+        user_id=current_user.id,
+        content=content,
+        rating=rating
+    )
+    db.session.add(review)
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
+# --- 新規追加: 口コミ削除API ---
+@app.route('/api/reviews/<int:review_id>/delete', methods=['POST'])
+@login_required
+def delete_spot_review(review_id):
+    review = GourmetReview.query.get_or_404(review_id)
+    if review.user_id != current_user.id and not current_user.is_admin:
+        return jsonify({'error': '権限がありません'}), 403
+    
+    db.session.delete(review)
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
+@app.route('/api/spots/<int:spot_id>/request_name', methods=['POST'])
+@login_required
+def request_spot_name(spot_id):
+    data = request.get_json()
+    new_name = data.get('new_name')
+    if not new_name: return jsonify({'status': 'error', 'message': '名前を入力してください'}), 400
+
+    # 重複チェック (未解決の申請が既にあれば弾く)
+    exists = SpotNameRequest.query.filter_by(spot_id=spot_id, user_id=current_user.id, is_resolved=False).first()
+    if exists:
+        return jsonify({'status': 'error', 'message': '既に修正申請中です。管理者の確認をお待ちください。'})
+
+    req = SpotNameRequest(user_id=current_user.id, spot_id=spot_id, new_name=new_name)
+    db.session.add(req)
+    db.session.commit()
+    return jsonify({'status': 'success', 'message': '修正依頼を送信しました。'})
+
+# 管理者: 店名変更を承認
+@app.route('/admin/approve_spot_name/<int:request_id>', methods=['POST'])
+@login_required
+def approve_spot_name(request_id):
+    if not current_user.is_admin: abort(403)
+    req = SpotNameRequest.query.get_or_404(request_id)
+    spot = req.spot
+    
+    if spot:
+        old_name = spot.name
+        spot.name = req.new_name # 名前を更新
+        req.is_resolved = True   # 解決済みにする
+        db.session.commit()
+        flash(f'スポット名を「{old_name}」から「{req.new_name}」に変更しました。', 'success')
+    else:
+        flash('対象のスポットが見つかりません（削除された可能性があります）。', 'danger')
+        db.session.delete(req) # 整合性が取れない申請は削除
+        db.session.commit()
+        
+    return redirect(url_for('admin_dashboard'))
+
+# 管理者: 申請を却下
+@app.route('/admin/reject_spot_name/<int:request_id>', methods=['POST'])
+@login_required
+def reject_spot_name(request_id):
+    if not current_user.is_admin: abort(403)
+    req = SpotNameRequest.query.get_or_404(request_id)
+    
+    # 却下の場合はデータを削除して「なかったこと」にする（あるいは is_resolved=True にして履歴を残す）
+    # ここではシンプルに削除します
+    db.session.delete(req)
+    db.session.commit()
+    
+    flash('店名変更申請を却下（削除）しました。', 'info')
+    return redirect(url_for('admin_dashboard'))
 
 # ▼▼▼ 3. スケジューラーの起動 (if __name__ == '__main__': の直前に追加) ▼▼▼
 # サーバー起動時にスケジューラーを開始

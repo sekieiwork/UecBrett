@@ -47,6 +47,33 @@
         </ul>
     </div>
 
+    <h2>グルメマップ店名変更申請</h2>
+    <div class="admin-list-container">
+        {% if spot_name_requests %}
+            <ul>
+            {% for req in spot_name_requests %}
+                <li style="margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">
+                    <strong>{{ req.spot.name }}</strong> → <span style="color: #d63384; font-weight: bold;">{{ req.new_name }}</span><br>
+                    <span style="font-size: 0.9em; color: #666;">申請者: {{ req.user.username }} - {{ req.timestamp.strftime('%Y/%m/%d %H:%M') }}</span>
+                    
+                    <div style="margin-top: 5px;">
+                        <form action="{{ url_for('approve_spot_name', request_id=req.id) }}" method="POST" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="file-upload-btn" style="background-color: #28a745; padding: 2px 8px; font-size: 0.8em;">承認 (変更する)</button>
+                        </form>
+                        <form action="{{ url_for('reject_spot_name', request_id=req.id) }}" method="POST" style="display:inline; margin-left: 5px;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="file-upload-btn" style="background-color: #dc3545; padding: 2px 8px; font-size: 0.8em;" onclick="return confirm('申請を却下しますか？')">却下</button>
+                        </form>
+                    </div>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>未対応の申請はありません。</p>
+        {% endif %}
+    </div>
+
     <h2>科目修正・正規化申請</h2>
     <div class="admin-list-container">
         {% if subject_requests %}

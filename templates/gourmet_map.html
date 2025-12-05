@@ -1,0 +1,424 @@
+{% extends "base_layout.html" %}
+
+{% block title %}UEC×グルメマップ{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    /* マップの高さ */
+    #map { height: 75vh; width: 100%; border-radius: 8px; border: 1px solid #ddd; z-index: 1; }
+    
+    /* モーダル */
+    .spot-modal {
+        display: none;
+        position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center;
+    }
+    /* モーダルの中身（スクロール領域） */
+    .spot-modal-content {
+        background-color: #fff; padding: 0; border-radius: 12px; width: 95%; max-width: 600px;
+        max-height: 90vh; overflow-y: auto; position: relative; display: flex; flex-direction: column;
+        scroll-behavior: auto; 
+    }
+    .modal-header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; border-radius: 12px 12px 0 0; }
+    .modal-body { padding: 20px; overflow-y: auto; }
+    
+    .btn-save { background-color: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+    .close-modal { font-size: 1.8em; cursor: pointer; color: #888; line-height: 1; }
+    
+    /* 入力フォームのスタイル */
+    .wiki-form-area, .review-form-area, .map-textarea {
+        width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ced4da;
+        border-radius: 4px; font-size: 1em; line-height: 1.5; min-height: 150px;
+        resize: none; margin-bottom: 10px; display: block; overflow: hidden;
+    }
+    .map-textarea:focus {
+        border-color: #80bdff; outline: 0; box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    }
+    
+    /* 店名入力欄 */
+    #edit-name {
+        width: 100%; 
+        padding: 12px 10px; 
+        box-sizing: border-box;
+        border: 1px solid #ced4da; 
+        border-radius: 4px; 
+        font-size: 1.1em;
+        line-height: 1.5;
+        margin-bottom: 5px;
+    }
+
+    .review-section { margin-top: 25px; border-top: 2px dashed #eee; padding-top: 15px; }
+    .review-item { border-bottom: 1px solid #f0f0f0; padding: 10px 0; }
+    .review-user { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 0.9em; margin-bottom: 5px; }
+    .review-date { font-size: 0.8em; color: #999; margin-left: auto; }
+    .review-rating { color: #f39c12; margin-right: 5px; }
+    
+    .wiki-badge { background: #e3f2fd; color: #0d47a1; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; vertical-align: middle; margin-left: 5px; }
+</style>
+
+<div class="content-width-limiter">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h2 style="margin: 0;"><i class="fas fa-map-marked-alt text-red"></i> UEC×グルメマップ</h2>
+        <span style="font-size: 0.8em; color: #666;">タップして追加 / ピンで詳細</span>
+    </div>
+    <div id="map"></div>
+</div>
+
+<div id="spot-modal" class="spot-modal">
+    <div class="spot-modal-content">
+        <div class="modal-header">
+            <h3 id="modal-title" style="margin: 0;">スポット情報</h3>
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+        </div>
+        
+        <div class="modal-body">
+            <div id="view-mode">
+                <div style="margin-bottom: 10px;">
+                    <span id="view-rating" style="color: #f39c12; font-weight: bold; font-size: 1.2em;"></span>
+                    <span id="view-count" style="font-size: 0.8em; color: #666; margin-left: 5px;"></span>
+                    <span id="view-updated" style="font-size: 0.8em; color: #888; margin-left: 10px;"></span>
+                </div>
+                <div id="view-body" class="post-content" style="max-height: 200px; overflow-y: auto; background: #fff; border:none; padding: 0;"></div>
+                
+                <div style="text-align: right; margin-top: 10px; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button onclick="switchToEdit()" style="background: #007bff; border: none; color: #fff; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                        <i class="fas fa-edit"></i> 情報を編集
+                    </button>
+                    
+                    {% if current_user.is_admin %}
+                    <button id="btn-delete-view" onclick="deleteSpot()" style="background: #dc3545; border: none; color: #fff; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                        <i class="fas fa-trash"></i> 削除
+                    </button>
+                    {% endif %}
+                </div>
+
+                <div class="review-section">
+                    <h4 style="margin: 0 0 10px 0;"><i class="fas fa-comments"></i> みんなの口コミ</h4>
+                    <div id="review-list"></div>
+                    
+                    <div style="background: #fdfdfd; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-top: 15px;">
+                        <div style="font-weight: bold; margin-bottom: 5px; font-size: 0.9em;">口コミを投稿する</div>
+                        <div style="margin-bottom: 10px;">
+                            <select id="new-review-rating" style="padding: 5px; border-radius: 4px; border: 1px solid #ddd;">
+                                <option value="5">★★★★★ (5)</option>
+                                <option value="4">★★★★☆ (4)</option>
+                                <option value="3" selected>★★★☆☆ (3)</option>
+                                <option value="2">★★☆☆☆ (2)</option>
+                                <option value="1">★☆☆☆☆ (1)</option>
+                            </select>
+                        </div>
+                        <textarea id="new-review-content" class="review-form-area map-textarea" placeholder="味や雰囲気の感想をどうぞ"></textarea>
+                        
+                        <div style="text-align: right;">
+                            <button onclick="postReview()" class="btn-save" style="font-size: 0.9em;">投稿</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="edit-mode" style="display: none;">
+                <input type="hidden" id="edit-id">
+                <input type="hidden" id="edit-lat">
+                <input type="hidden" id="edit-lng">
+                
+                <p style="font-size: 0.85em; color: #666; margin-top: 0;">
+                    <span class="wiki-badge">編集</span> お店の基本情報を編集します。<br>※評価は口コミから自動計算されます。
+                </p>
+
+                <label style="font-weight:bold; font-size:0.9em;">店名・場所名</label>
+                <div style="display: flex; gap: 5px; align-items: flex-start; margin-bottom: 15px;">
+                    <input type="text" id="edit-name" placeholder="例: 〇〇食堂">
+                    <button id="btn-request-name" onclick="requestNameChange()" style="display:none; background: #6c757d; border: none; color: white; padding: 0 12px; border-radius: 4px; height: 46px; cursor: pointer; white-space: nowrap; font-size: 0.9em;" title="名前の間違いを管理者に報告">
+                        <i class="fas fa-pen"></i> 修正依頼
+                    </button>
+                </div>
+                
+                <label style="font-weight:bold; font-size:0.9em;">詳細情報</label>
+                <textarea id="edit-content" class="wiki-form-area map-textarea" placeholder="営業時間、定休日、おすすめメニューなど"></textarea>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                    <div>
+                        {% if current_user.is_admin %}
+                        <button id="btn-delete-edit" onclick="deleteSpot()" style="background: none; border: 1px solid #dc3545; color: #dc3545; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9em;">
+                            <i class="fas fa-trash"></i> 削除
+                        </button>
+                        {% endif %}
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="closeModal()" style="background: none; border: 1px solid #ddd; padding: 8px 16px; border-radius: 5px; cursor: pointer;">キャンセル</button>
+                        <button onclick="saveSpot()" class="btn-save">保存する</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const map = L.map('map').setView([35.6562, 139.5442], 24);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let markers = [];
+    const csrfToken = "{{ csrf_token() }}";
+    let currentSpotId = null;
+
+    // --- 自動リサイズ＆キーボード対策 ---
+    function adjustHeight(textarea) {
+        if (!textarea) return;
+        
+        // 1. 高さをリセットして中身に合わせて再計算
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+        
+        // 2. 入力フォームの「底辺」が表示領域に収まるようにスクロールする
+        textarea.scrollIntoView(false);
+    }
+
+    document.querySelectorAll('.map-textarea').forEach(ta => {
+        ta.addEventListener('input', function() { adjustHeight(this); });
+    });
+
+    function loadSpots() {
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+        fetch('/api/spots')
+        .then(r => r.json())
+        .then(spots => {
+            spots.forEach(spot => {
+                const marker = L.marker([spot.lat, spot.lng]).addTo(map);
+                const ratingStr = spot.rating > 0 ? `<span style="color:#f39c12;">${'★'.repeat(spot.rating)}</span>` : '<span style="color:#999; font-size:0.8em;">(口コミなし)</span>';
+                marker.bindPopup(`
+                    <strong>${spot.name}</strong><br>
+                    ${ratingStr}<br>
+                    <button onclick="openSpotDetail(${spot.id})" style="margin-top:5px; cursor:pointer; background:#007bff; color:white; border:none; border-radius:3px; padding:3px 10px;">詳細・口コミ</button>
+                `);
+                markers.push(marker);
+            });
+        });
+    }
+    loadSpots();
+
+    map.on('click', function(e) {
+        currentSpotId = null; 
+        document.getElementById('view-mode').style.display = 'none';
+        document.getElementById('edit-mode').style.display = 'block';
+        
+        document.getElementById('edit-id').value = '';
+        document.getElementById('edit-lat').value = e.latlng.lat;
+        document.getElementById('edit-lng').value = e.latlng.lng;
+        
+        const nameInput = document.getElementById('edit-name');
+        nameInput.readOnly = false;
+        nameInput.style.background = '#fff';
+        nameInput.value = '';
+        
+        document.getElementById('btn-request-name').style.display = 'none';
+        const deleteBtnEdit = document.getElementById('btn-delete-edit');
+        if(deleteBtnEdit) deleteBtnEdit.style.display = 'none';
+        
+        const contentArea = document.getElementById('edit-content');
+        contentArea.value = '';
+        
+        document.getElementById('modal-title').textContent = '新しいスポットを追加';
+        document.getElementById('spot-modal').style.display = 'flex';
+        
+        setTimeout(() => adjustHeight(contentArea), 50);
+    });
+
+    window.openSpotDetail = function(id) {
+        currentSpotId = id;
+        fetch(`/api/spots/${id}`)
+        .then(r => r.json())
+        .then(data => {
+            map.closePopup();
+            document.getElementById('view-mode').style.display = 'block';
+            document.getElementById('edit-mode').style.display = 'none';
+            
+            document.getElementById('modal-title').textContent = data.name;
+            if (data.review_count > 0) {
+                document.getElementById('view-rating').textContent = '★'.repeat(data.rating);
+                document.getElementById('view-count').textContent = `(${data.review_count}件)`;
+            } else {
+                document.getElementById('view-rating').textContent = '☆☆☆☆☆';
+                document.getElementById('view-count').textContent = '(まだ口コミがありません)';
+            }
+            
+            document.getElementById('view-updated').textContent = `更新: ${data.editor} (${data.updated_at})`;
+            document.getElementById('view-body').innerHTML = data.html || '<p style="color:#999; font-size:0.9em;">情報はまだありません。</p>';
+            
+            renderReviews(data.reviews);
+
+            document.getElementById('edit-id').value = data.id;
+            const nameInput = document.getElementById('edit-name');
+            nameInput.value = data.name;
+            nameInput.readOnly = true; 
+            nameInput.style.background = '#e9ecef';
+            
+            document.getElementById('btn-request-name').style.display = 'inline-block';
+            const deleteBtnEdit = document.getElementById('btn-delete-edit');
+            if(deleteBtnEdit) deleteBtnEdit.style.display = 'block';
+            
+            document.getElementById('edit-content').value = data.content || '';
+            
+            document.getElementById('spot-modal').style.display = 'flex';
+            
+            const reviewArea = document.getElementById('new-review-content');
+            reviewArea.value = '';
+            setTimeout(() => adjustHeight(reviewArea), 50);
+        });
+    };
+    
+    window.requestNameChange = function() {
+        const currentName = document.getElementById('edit-name').value;
+        const newName = prompt("正しい店名・場所名を入力してください。\n管理者が確認後、反映されます。", currentName);
+        
+        if(newName && newName.trim() !== "" && newName !== currentName) {
+            const id = document.getElementById('edit-id').value;
+            fetch(`/api/spots/${id}/request_name`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                body: JSON.stringify({ new_name: newName })
+            })
+            .then(r => r.json())
+            .then(res => {
+                alert(res.message);
+            })
+            .catch(err => alert("通信エラーが発生しました"));
+        }
+    };
+
+    function renderReviews(reviews) {
+        const list = document.getElementById('review-list');
+        list.innerHTML = '';
+        if(!reviews || reviews.length === 0) {
+            list.innerHTML = '<p style="color:#999; font-size:0.9em;">最初の口コミを投稿しましょう！</p>';
+            return;
+        }
+        reviews.forEach(r => {
+            const div = document.createElement('div');
+            div.className = 'review-item';
+            let deleteBtn = r.is_mine ? `<button onclick="deleteReview(${r.id})" style="margin-left:auto; background:none; border:none; color:#dc3545; cursor:pointer; font-size:0.8em;">削除</button>` : '';
+            const icon = r.icon_url ? `<img src="${r.icon_url}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">` : `<img src="{{ url_for('static', filename='icons/default_icon.png') }}" style="width:24px; height:24px; border-radius:50%;">`;
+
+            div.innerHTML = `
+                <div class="review-user">${icon} ${r.user} <span class="review-date">${r.date}</span></div>
+                <div style="margin-bottom:5px;"><span class="review-rating">${'★'.repeat(r.rating)}</span></div>
+                <div style="font-size:0.95em; color:#333;">${r.content}</div>
+                <div style="display:flex;">${deleteBtn}</div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    // 口コミ投稿
+    window.postReview = function() {
+        if(!currentSpotId) return;
+        const contentArea = document.getElementById('new-review-content');
+        const content = contentArea.value;
+        const rating = document.getElementById('new-review-rating').value;
+        if(!content.trim()) { alert('コメントを入力してください'); return; }
+        
+        fetch(`/api/spots/${currentSpotId}/review`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+            body: JSON.stringify({content: content, rating: rating})
+        })
+        .then(r => r.json())
+        .then(res => {
+            if(res.status === 'success') {
+                contentArea.value = '';
+                adjustHeight(contentArea);
+                openSpotDetail(currentSpotId);
+                loadSpots(); // ★追加: マップ上のピン(星の数)も更新
+            }
+        });
+    }
+
+    // 口コミ削除
+    window.deleteReview = function(reviewId) {
+        if(!confirm('削除しますか？')) return;
+        fetch(`/api/reviews/${reviewId}/delete`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrfToken}
+        })
+        .then(() => {
+            openSpotDetail(currentSpotId);
+            loadSpots(); // ★追加: マップ上のピン(星の数)も更新
+        });
+    }
+
+    window.switchToEdit = function() {
+        document.getElementById('view-mode').style.display = 'none';
+        document.getElementById('edit-mode').style.display = 'block';
+        document.getElementById('modal-title').textContent = '情報を編集';
+        setTimeout(() => adjustHeight(document.getElementById('edit-content')), 50);
+    };
+
+    window.saveSpot = function() {
+        const id = document.getElementById('edit-id').value;
+        const name = document.getElementById('edit-name').value;
+        if(!name) { alert('店名を入力してください'); return; }
+        
+        const payload = {
+            id: id ? id : null,
+            name: name,
+            lat: document.getElementById('edit-lat').value,
+            lng: document.getElementById('edit-lng').value,
+            content: document.getElementById('edit-content').value
+        };
+
+        fetch('/api/spots/save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(res => {
+            if(res.status === 'success') {
+                document.getElementById('spot-modal').style.display = 'none';
+                loadSpots();
+            }
+        });
+    };
+    
+    window.deleteSpot = function() {
+        if(!confirm('本当に削除しますか？\n登録された情報と口コミがすべて消えます。')) return;
+        const id = document.getElementById('edit-id').value;
+        if (!id) { closeModal(); return; }
+        
+        fetch(`/api/spots/${id}/delete`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrfToken}
+        })
+        .then(r => r.json())
+        .then(res => {
+            if(res.status === 'success') {
+                closeModal();
+                loadSpots(); 
+                alert('削除しました。');
+            } else {
+                alert('削除に失敗しました: ' + (res.error || '不明なエラー'));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('通信エラーが発生しました。');
+        });
+    }
+
+    window.closeModal = function() {
+        document.getElementById('spot-modal').style.display = 'none';
+    };
+
+    // ★追加: モーダル背景クリックで閉じる処理
+    document.getElementById('spot-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModal();
+        }
+    });
+</script>
+{% endblock %}

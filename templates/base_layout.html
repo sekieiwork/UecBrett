@@ -1115,17 +1115,18 @@ a.tag-box:hover {
                         <img src="{{ url_for('static', filename='icons/development.png') }}" alt="便利機能">
                     </a>
                 </li>
+
+                <li>
+                    <a href="{{ url_for('gourmet_map') }}" title="グルメ通信大学">
+                        <img src="{{ url_for('static', filename='icons/uecfoodmap.png') }}" alt="グルメ通信大学">
+                    </a>
+                </li>
             </ul>
         </nav>
 
         <nav class="mobile-nav">
             <ul>
-                <li>
-                    <a href="{{ url_for('hub_index') }}">
-                        <img src="{{ url_for('static', filename='icons/development.png') }}" alt="便利機能">
-                        <span>機能</span>
-                    </a>
-                </li>
+
                 <li>
                     <a href="{{ url_for('index') }}">
                         <img src="{{ url_for('static', filename='icons/home.png') }}" alt="ホーム">
@@ -1133,11 +1134,24 @@ a.tag-box:hover {
                     </a>
                 </li>
                 <li>
+                    <a href="{{ url_for('hub_index') }}">
+                        <img src="{{ url_for('static', filename='icons/development.png') }}" alt="便利機能">
+                        <span>機能</span>
+                    </a>
+                </li>
+                
+                <li>
                     <a href="{{ url_for('kairanban_index') }}">
                         <div class="kairanban-icon-container {% if has_unread_kairanban %}has-unread-kairanban{% endif %}">
                             <img src="{{ url_for('static', filename='icons/note.png') }}" alt="回覧板">
                         </div>
                         <span>回覧板</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('gourmet_map') }}">
+                        <img src="{{ url_for('static', filename='icons/uecfoodmap.png') }}" alt="グルメ通信大学">
+                        <span>マップ</span>
                     </a>
                 </li>
             </ul>
