@@ -1380,34 +1380,85 @@ def onesignal_worker(): return app.send_static_file('OneSignalSDKWorker.js')
 def get_ogp():
     url = request.args.get('url')
     if not url: return jsonify({'error': 'No URL provided'}), 400
+    
+    print(f"--- OGP Request for: {url} ---")
+    
+    title = None
+    image = None
+    description = ''
+    
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
-        resp = requests.get(url, headers=headers, timeout=3)
-        if resp.status_code == 200:
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            og_title = soup.find('meta', property='og:title')
-            og_image = soup.find('meta', property='og:image')
-            og_desc = soup.find('meta', property='og:description')
-            title = og_title['content'] if og_title else (soup.title.string if soup.title else url)
-            image = og_image['content'] if og_image else None
-            description = og_desc['content'] if og_desc else ''
-            
-            parsed = urlparse(url)
-            domain = parsed.netloc
-            if not title: title = domain
-            if not image:
-                if domain in ['x.com', 'twitter.com', 'www.x.com', 'www.twitter.com']:
-                    path_parts = parsed.path.strip('/').split('/')
-                    if len(path_parts) >= 1:
-                        username = path_parts[0]
-                        image = f"https://unavatar.io/twitter/{username}"
-                if not image:
-                    image = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
-            
-            return jsonify({'title': title, 'image': image, 'description': description, 'url': url})
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        
+        # 1. Twitter/X の場合、FxTwitter API を使用して確実に取りに行く
+        if domain in ['x.com', 'twitter.com', 'www.x.com', 'www.twitter.com']:
+            path_parts = parsed.path.strip('/').split('/')
+            if len(path_parts) >= 1:
+                username = path_parts[0]
+                # 無視リスト
+                if username not in ['home', 'explore', 'notifications', 'messages', 'search', 'i']:
+                    try:
+                        # FxTwitterのAPIを叩く
+                        api_url = f"https://api.fxtwitter.com/{username}"
+                        print(f"DEBUG: Calling FxTwitter API -> {api_url}")
+                        
+                        api_resp = requests.get(api_url, timeout=5)
+                        if api_resp.status_code == 200:
+                            data = api_resp.json()
+                            if 'user' in data:
+                                user_data = data['user']
+                                # アイコンURLを取得
+                                if 'avatar_url' in user_data:
+                                    image = user_data['avatar_url']
+                                    # _normal を外すと高画質になりますが、まずは確実に表示させるためそのまま使うか、少し大きくする
+                                    # image = image.replace('_normal', '_200x200') 
+                                
+                                # ついでに名前と自己紹介も正確に取れるのでセットしておく
+                                if 'name' in user_data:
+                                    title = f"{user_data['name']} (@{username})"
+                                if 'description' in user_data:
+                                    description = user_data['description']
+                                    
+                                print(f"DEBUG: FxTwitter Success -> Image: {image}")
+                    except Exception as e:
+                        print(f"DEBUG: FxTwitter API Failed: {e}")
+                        # API失敗時は unavatar にフォールバック
+                        image = f"https://unavatar.io/twitter/{username}?fallback=https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png"
+
+        # 2. スクレイピング (Twitter以外、またはAPI失敗時のタイトル取得用)
+        # すでにAPIで情報が取れていればスキップしても良いが、念のため実行
+        if not title or not image:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+            }
+            try:
+                resp = requests.get(url, headers=headers, timeout=3)
+                if resp.status_code == 200:
+                    soup = BeautifulSoup(resp.text, 'html.parser')
+                    og_title = soup.find('meta', property='og:title')
+                    og_image = soup.find('meta', property='og:image')
+                    og_desc = soup.find('meta', property='og:description')
+                    
+                    if not title:
+                        title = og_title['content'] if og_title else (soup.title.string if soup.title else url)
+                    if not description:
+                        description = og_desc['content'] if og_desc else ''
+                    if not image and og_image:
+                        image = og_image['content']
+            except Exception as e:
+                print(f"Scraping Warning: {e}")
+
     except Exception as e:
         print(f"OGP Fetch Error: {e}")
-        return jsonify({'error': 'Failed to fetch'}), 400
+        pass
+
+    # フォールバック
+    if not title: title = domain if 'domain' in locals() else url
+    if not image and 'domain' in locals():
+        image = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+    
+    return jsonify({'title': title, 'image': image, 'description': description, 'url': url})
     
 # ▼▼▼ 学習記録機能用のルート ▼▼▼
 # ▼▼▼ 学習記録API (削除機能を追加) ▼▼▼
