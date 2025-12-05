@@ -175,6 +175,7 @@
         const dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
         document.getElementById('current-date-display').textContent = dateStr;
 
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         // --- ToDo日付ピッカーの表示制御 ---
         const dateInput = document.getElementById('todo-date');
         const dateDisplay = document.getElementById('todo-date-display');
@@ -229,7 +230,7 @@
             const date = document.getElementById('todo-date').value;
             
             fetch('/api/todo', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
+                method: 'POST', headers: {'Content-Type': 'application/json','X-CSRFToken': csrfToken},
                 body: JSON.stringify({action: 'add', task, date})
             }).then(() => {
                 document.getElementById('todo-task').value = '';
@@ -242,11 +243,11 @@
         });
 
         window.toggleTodo = (id) => {
-            fetch('/api/todo', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'toggle', id}) }).then(loadTodo);
+            fetch('/api/todo', { method: 'POST', headers: {'Content-Type': 'application/json','X-CSRFToken': csrfToken}, body: JSON.stringify({action: 'toggle', id}) }).then(loadTodo);
         };
 
         window.deleteTodo = (id) => {
-            fetch('/api/todo', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'delete', id}) }).then(loadTodo);
+            fetch('/api/todo', { method: 'POST', headers: {'Content-Type': 'application/json','X-CSRFToken': csrfToken}, body: JSON.stringify({action: 'delete', id}) }).then(loadTodo);
         };
 
         // 初期実行
