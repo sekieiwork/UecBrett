@@ -627,8 +627,10 @@ def index(page):
         query = query.outerjoin(Like).group_by(Post.id).order_by(func.count(Like.id).desc(), Post.created_at.desc())
     elif sort_by == 'bookmarks':
         query = query.outerjoin(Bookmark).group_by(Post.id).order_by(func.count(Bookmark.id).desc(), Post.created_at.desc())
-    else:
+    elif sort_by == 'updated':
         query = query.order_by(func.coalesce(Post.updated_at, Post.created_at).desc())
+    else:
+        query = query.order_by(Post.created_at.desc())
         
     posts = query.paginate(page=page, per_page=posts_per_page, error_out=False)
     japan_tz = timezone('Asia/Tokyo')
@@ -968,6 +970,8 @@ def search():
             posts = posts_query_builder.outerjoin(Like).group_by(Post.id).order_by(func.count(Like.id).desc(), Post.created_at.desc())
         elif sort_by == 'bookmarks':
             posts = posts_query_builder.outerjoin(Bookmark).group_by(Post.id).order_by(func.count(Bookmark.id).desc(), Post.created_at.desc())
+        elif sort_by == 'updated':
+            posts = posts_query_builder.order_by(func.coalesce(Post.updated_at, Post.created_at).desc())
         else:
             posts = posts_query_builder.order_by(Post.created_at.desc())
 

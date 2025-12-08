@@ -2346,10 +2346,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedSort = this.value;
             const currentUrl = new URL(window.location.href);
             
-            // URLパラメータを更新してリロード
+            // URLパラメータを更新
             currentUrl.searchParams.set('sort_by', selectedSort);
-            // ページネーションをリセットするためにページ番号は削除
-            currentUrl.searchParams.delete('page');
+            
+            // ▼▼▼ 検索結果ページの場合、検索クエリを維持する処理 
+            // data-search-query 属性が設定されていれば、それをURLに追加する
+            const searchQuery = this.getAttribute('data-search-query');
+            if (searchQuery) {
+                currentUrl.searchParams.set('search_query', searchQuery);
+            }
+
+            // ページネーションをリセット
+            currentUrl.searchParams.delete('page'); // index用
+            currentUrl.searchParams.delete('post_page'); // search用
             
             window.location.href = currentUrl.toString();
         });

@@ -17,11 +17,14 @@
     <div id="posts" class="tab-content" style="display: {% if active_tab == 'posts' %}block{% else %}none{% endif %};">
         {% if posts and posts.items %}
         <div class="content-width-limiter" style="margin-bottom: 1em; text-align: right;">
-            <select id="sort-select" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
+            <select id="sort-select" 
+                    data-search-query="{{ search_query or '' }}" 
+                    style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
                 <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>新しい順</option>
+                <option value="updated" {% if sort_by == 'updated' %}selected{% endif %}>更新が新しい順</option>
                 <option value="likes" {% if sort_by == 'likes' %}selected{% endif %}>いいねが多い順</option>
             </select>
-        </div>
+            </div>
         {% endif %}
         {% if posts and posts.items %}
             {% for post in posts.items %}
