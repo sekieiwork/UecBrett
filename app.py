@@ -35,6 +35,7 @@ from urllib.parse import urlparse
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
 import unicodedata
+from hashids import Hashids
 
 cloudinary.config(
     cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
@@ -58,6 +59,8 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'ご利用にはログインが必要です。'
 csrf = CSRFProtect(app)
+app.config['HASHIDS_SALT'] = os.environ.get('SECRET_KEY', 'default_salt')
+hashids = Hashids(salt=app.config['HASHIDS_SALT'], min_length=6)
 
 @app.after_request
 def add_header(response):
@@ -69,6 +72,18 @@ def add_header(response):
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '-1'
     return response
+
+def encode_id(id_val):
+    return hashids.encode(id_val)
+
+def decode_id(hash_val):
+    decoded = hashids.decode(hash_val)
+    if decoded:
+        return decoded[0]
+    return None
+
+# テンプレートで使えるように登録
+app.jinja_env.globals.update(encode_id=encode_id)
 
 # --- OneSignalの設定 ---
 app.config['ONESIGNAL_APP_ID'] = os.environ.get('ONESIGNAL_APP_ID')
@@ -447,7 +462,7 @@ class GourmetSpot(db.Model):
     lat = db.Column(db.Float, nullable=False) # 緯度
     lng = db.Column(db.Float, nullable=False) # 経度
     content = db.Column(db.Text, nullable=True) # 説明・レビュー（Wiki形式で編集）
-    rating = db.Column(db.Integer, default=3) # 1~5の評価
+    rating = db.Column(db.Float, default=0.0) # 1~5の評価
     
     # 更新情報 (Wiki形式なので「最後に誰がいつ更新したか」を記録)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -460,7 +475,7 @@ class GourmetReview(db.Model):
     spot_id = db.Column(db.Integer, db.ForeignKey('gourmet_spot.id', ondelete="CASCADE"), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    rating = db.Column(db.Integer, default=3)
+    rating = db.Column(db.Float, default=3.0)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     
     user = db.relationship('User', backref='gourmet_reviews')
@@ -672,62 +687,7 @@ def admin_reset_guide_status():
     # そのままトップページへ飛ばしてガイドを表示させる
     return redirect(url_for('index'))
 
-@app.route('/post/<int:post_id>', methods=['GET', 'POST'])
-@login_required
-def post_detail(post_id):
-    post = Post.query.get_or_404(post_id)
-    
-    # クエリパラメータでソート順を取得 (デフォルトは 'oldest')
-    sort_comments = request.args.get('sort_comments', 'oldest')
-    
-    # コメントの並び替え
-    if sort_comments == 'newest':
-        post.comments.sort(key=lambda c: c.created_at, reverse=True) # 新しい順
-    else:
-        post.comments.sort(key=lambda c: c.created_at, reverse=False) # 古い順 (デフォルト)
 
-    comment_form = CommentForm()
-    if comment_form.validate_on_submit() and current_user.is_authenticated:
-        if contains_unsafe_links(comment_form.content.data):
-            flash('コメントに許可されていないリンク形式が含まれています。', 'danger')
-            return redirect(url_for('post_detail', post_id=post.id))
-        
-        comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
-        db.session.add(comment)
-        db.session.commit()
-        print(f"DEBUG: Comment by {current_user.id} on Post by {post.author.id}", flush=True)
-        
-        if current_user != post.author:
-            if post.author.notification_comment_like:
-                notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
-                db.session.add(notification)
-
-                if post.author.push_notifications_enabled:
-                    send_onesignal_notification(
-                        user_ids=[post.author.id],
-                        title="新しいコメント",
-                        message=f'投稿「{post.title}」にコメントが付きました',
-                        url=url_for('post_detail', post_id=post.id, _external=True)
-                    )
-        process_mentions(comment.content, comment)
-        db.session.commit()
-        return redirect(url_for('post_detail', post_id=post.id, _anchor=f'comment-{comment.id}'))
-    
-    japan_tz = timezone('Asia/Tokyo')
-    post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
-    if post.updated_at: post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
-    else: post.updated_at_jst = None
-    for c in post.comments: c.created_at_jst = c.created_at.replace(tzinfo=utc).astimezone(japan_tz)
-    
-    if current_user.is_authenticated:
-        post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
-        post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
-    else:
-        post.is_bookmarked = False
-        post.is_liked = False
-    
-    # テンプレートに sort_comments を渡す
-    return render_template('detail.html', post=post, comment_form=comment_form, md=md, sort_comments=sort_comments)
 
 @app.route('/like/<int:post_id>', methods=['POST'])
 @login_required
@@ -1952,7 +1912,7 @@ def get_spots():
         review_count = len(s.reviews)
         if review_count > 0:
             avg_rating = sum(r.rating for r in s.reviews) / review_count
-            display_rating = int(round(avg_rating)) # 星表示用に四捨五入
+            display_rating = round(avg_rating, 1)
         else:
             display_rating = 0
 
@@ -1974,7 +1934,6 @@ def get_spot_detail(spot_id):
     editor_name = s.last_editor.username if s.last_editor else "不明"
     updated_str = s.updated_at.replace(tzinfo=utc).astimezone(timezone('Asia/Tokyo')).strftime('%Y/%m/%d %H:%M')
 
-    # 口コミリスト取得 & 平均評価計算
     reviews_data = []
     total_score = 0
     for r in sorted(s.reviews, key=lambda x: x.timestamp, reverse=True):
@@ -1992,7 +1951,7 @@ def get_spot_detail(spot_id):
     review_count = len(reviews_data)
     if review_count > 0:
         avg_rating = total_score / review_count
-        display_rating = int(round(avg_rating))
+        display_rating = round(avg_rating, 1)
     else:
         display_rating = 0
 
@@ -2056,7 +2015,11 @@ def delete_spot(spot_id):
 def post_spot_review(spot_id):
     data = request.get_json()
     content = data.get('content')
-    rating = int(data.get('rating'))
+    # int() ではなく float() で受け取る
+    try:
+        rating = float(data.get('rating'))
+    except (ValueError, TypeError):
+        return jsonify({'error': '評価の値が不正です'}), 400
     
     if not content:
         return jsonify({'error': 'コメントを入力してください'}), 400
@@ -2135,6 +2098,87 @@ def reject_spot_name(request_id):
     
     flash('店名変更申請を却下（削除）しました。', 'info')
     return redirect(url_for('admin_dashboard'))
+
+# ---------------------------------------------------------
+# 追加: 共有用ルート (番号を隠蔽して表示)
+# ---------------------------------------------------------
+@app.route('/s/<string:post_hash>', methods=['GET', 'POST'])
+def shared_post_detail(post_hash):
+    real_id = decode_id(post_hash)
+    if not real_id:
+        abort(404)
+    
+    # 既存の post_detail 処理を再利用するために、実IDへリダイレクトせず
+    # 内部的に処理を委譲したいところですが、フォームのACTIONなどが複雑になるため
+    # ここではシンプルに「post_detailと同じロジック」を実行します。
+    # ただし、今回は「URLを隠したい」という要望なので、redirectは使いません。
+    
+    return post_detail_logic(real_id, is_shared_route=True)
+
+# 既存の post_detail を少し改修して、ロジックを分離します
+# (既存の @app.route('/post/<int:post_id>') はそのまま残し、中身を関数に切り出します)
+
+def post_detail_logic(post_id, is_shared_route=False):
+    post = Post.query.get_or_404(post_id)
+    
+    # ... (既存の post_detail の中身と同じ処理) ...
+    # ソート処理など
+    sort_comments = request.args.get('sort_comments', 'oldest')
+    if sort_comments == 'newest':
+        post.comments.sort(key=lambda c: c.created_at, reverse=True)
+    else:
+        post.comments.sort(key=lambda c: c.created_at, reverse=False)
+
+    comment_form = CommentForm()
+    if comment_form.validate_on_submit() and current_user.is_authenticated:
+        if contains_unsafe_links(comment_form.content.data):
+            flash('コメントに許可されていないリンク形式が含まれています。', 'danger')
+            return redirect(request.url) # 現在のページにリダイレクト
+        
+        comment = Comment(content=comment_form.content.data, post=post, commenter=current_user)
+        db.session.add(comment)
+        db.session.commit()
+        
+        # ... (通知ロジック省略: post_detailと同じ) ...
+        if current_user != post.author:
+             if post.author.notification_comment_like:
+                notification = Notification(recipient=post.author, post=post, message=f'あなたの投稿「{post.title}」にコメントが付きました。')
+                db.session.add(notification)
+                if post.author.push_notifications_enabled:
+                    send_onesignal_notification(
+                        user_ids=[post.author.id],
+                        title="新しいコメント",
+                        message=f'投稿「{post.title}」にコメントが付きました',
+                        url=url_for('post_detail', post_id=post.id, _external=True)
+                    )
+
+        process_mentions(comment.content, comment)
+        db.session.commit()
+        return redirect(request.url) # 現在のページにリダイレクト
+    
+    japan_tz = timezone('Asia/Tokyo')
+    post.created_at_jst = post.created_at.replace(tzinfo=utc).astimezone(japan_tz)
+    if post.updated_at: post.updated_at_jst = post.updated_at.replace(tzinfo=utc).astimezone(japan_tz)
+    else: post.updated_at_jst = None
+    for c in post.comments: c.created_at_jst = c.created_at.replace(tzinfo=utc).astimezone(japan_tz)
+    
+    if current_user.is_authenticated:
+        post.is_bookmarked = Bookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
+        post.is_liked = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first() is not None
+    else:
+        post.is_bookmarked = False
+        post.is_liked = False
+    
+    # 共有用URLの生成
+    share_url = url_for('shared_post_detail', post_hash=encode_id(post.id), _external=True)
+
+    return render_template('detail.html', post=post, comment_form=comment_form, md=md, sort_comments=sort_comments, share_url=share_url)
+
+# 既存のルート定義を書き換え
+@app.route('/post/<int:post_id>', methods=['GET', 'POST'])
+@login_required
+def post_detail(post_id):
+    return post_detail_logic(post_id)
 
 # ▼▼▼ 3. スケジューラーの起動 (if __name__ == '__main__': の直前に追加) ▼▼▼
 # サーバー起動時にスケジューラーを開始

@@ -2,6 +2,15 @@
 
 {% block title %}{{ post.title }}{% endblock %}
 
+{% block meta_tags %}
+<meta property="og:title" content="{{ post.title }} | UEC掲示板">
+<meta property="og:type" content="article">
+<meta property="og:url" content="{{ share_url }}">
+<meta property="og:image" content="{{ url_for('static', filename='icons/android-chrome-192x192.png', _external=True) }}">
+<meta property="og:description" content="クリックして投稿を見る">
+<meta name="twitter:card" content="summary">
+{% endblock %}
+
 {% block content %}
     <div class="content-width-limiter">
         <div class="post-detail">
@@ -80,14 +89,30 @@
                     {% endif %}
                 </div>
 
-                <div style="font-size: 0.9em; color: #6c757d;">
-                    {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}
-                    {% if post.updated_at %}
-                        <span style="margin-left: 0.5em;">(更新: {{ post.updated_at_jst.strftime('%Y-%m-%d %H:%M:%S') }})</span>
-                    {% endif %}
-                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 5px;">
+                    <div style="font-size: 0.9em; color: #6c757d;">
+                        {{ post.created_at_jst.strftime('%Y-%m-%d %H:%M:%S') }}
+                        {% if post.updated_at %}
+                            <span style="margin-left: 0.5em;">(更新: {{ post.updated_at_jst.strftime('%Y-%m-%d %H:%M:%S') }})</span>
+                        {% endif %}
+                    </div>
 
-            </div>
+                    <div class="post-menu-container" style="position: relative;">
+                        <button class="post-menu-btn" onclick="togglePostMenu()" style="background: none; border: none; font-size: 1.2em; color: #6c757d; cursor: pointer; padding: 0 5px;">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div id="post-menu-dropdown" class="dropdown-content" style="right: 0; top: 100%; min-width: 150px; display: none;">
+                            <a href="https://twitter.com/intent/tweet?text={{ post.title }}&url={{ share_url }}" target="_blank" style="font-size: 0.9em;">
+                                <i class="fab fa-twitter"></i> Twitterで共有
+                            </a>
+                            <a href="javascript:void(0)" onclick="copyShareLink()" style="font-size: 0.9em;">
+                                <i class="fas fa-link"></i> リンクをコピー
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+                </div>
         </div> 
     </div> 
         
@@ -189,6 +214,37 @@
                         }, 100);
                     }
                 });
-            </script>
+
+                // 3. メニュー開閉とリンクコピー機能
+                    function togglePostMenu() {
+                    const menu = document.getElementById('post-menu-dropdown');
+                    if (menu.style.display === 'block') {
+                        menu.style.display = 'none';
+                    } else {
+                        menu.style.display = 'block';
+                    }
+                    }
+
+                // 画面外クリックで閉じる
+                    document.addEventListener('click', function(e) {
+                    const container = document.querySelector('.post-menu-container');
+                    if (container && !container.contains(e.target)) {
+                        document.getElementById('post-menu-dropdown').style.display = 'none';
+                        }
+                    });
+
+                function copyShareLink() {
+                const url = "{{ share_url }}";
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(url).then(() => {
+                    alert('リンクをコピーしました！\n' + url);
+                    document.getElementById('post-menu-dropdown').style.display = 'none';
+                    });
+                } else {
+                    // fallback
+                    prompt("以下のリンクをコピーしてください:", url);
+                }
+                }
+    </script>
             
 {% endblock %}

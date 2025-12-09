@@ -55,6 +55,21 @@
     .review-rating { color: #f39c12; margin-right: 5px; }
     
     .wiki-badge { background: #e3f2fd; color: #0d47a1; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; vertical-align: middle; margin-left: 5px; }
+
+    /* スライダーのスタイル調整 */
+    input[type=range] {
+        width: 100%;
+        max-width: 200px;
+        cursor: pointer;
+    }
+    .rating-value-display {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #f39c12;
+        min-width: 40px;
+        display: inline-block;
+        text-align: center;
+    }
 </style>
 
 <div class="content-width-limiter">
@@ -99,15 +114,16 @@
                     
                     <div style="background: #fdfdfd; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-top: 15px;">
                         <div style="font-weight: bold; margin-bottom: 5px; font-size: 0.9em;">口コミを投稿する</div>
-                        <div style="margin-bottom: 10px;">
-                            <select id="new-review-rating" style="padding: 5px; border-radius: 4px; border: 1px solid #ddd;">
-                                <option value="5">★★★★★ (5)</option>
-                                <option value="4">★★★★☆ (4)</option>
-                                <option value="3" selected>★★★☆☆ (3)</option>
-                                <option value="2">★★☆☆☆ (2)</option>
-                                <option value="1">★☆☆☆☆ (1)</option>
-                            </select>
+                        
+                        <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
+                            <label style="font-size: 0.9em;">評価:</label>
+                            <input type="range" id="new-review-rating" min="1" max="5" step="0.5" value="3" 
+                                   oninput="updateRatingDisplay(this.value)">
+                            
+                            <span id="rating-val-display" class="rating-value-display">3.0</span>
+                            <span style="color: #f39c12;">★</span>
                         </div>
+
                         <textarea id="new-review-content" class="review-form-area map-textarea" placeholder="味や雰囲気の感想をどうぞ"></textarea>
                         
                         <div style="text-align: right;">
@@ -182,6 +198,37 @@
         ta.addEventListener('input', function() { adjustHeight(this); });
     });
 
+    // 3. 【新規追加】星評価のHTML生成関数 (0.5刻み対応)
+    function generateStarHtml(rating) {
+        let html = '';
+        const fullStar = '<i class="fas fa-star" style="color:#f39c12;"></i>';
+        const halfStar = '<i class="fas fa-star-half-alt" style="color:#f39c12;"></i>';
+        const emptyStar = '<i class="far fa-star" style="color:#ccc;"></i>'; // 空の星は灰色に
+
+        const integerPart = Math.floor(rating);
+        const decimalPart = rating % 1;
+
+        // 全星
+        for (let i = 0; i < integerPart; i++) {
+            html += fullStar;
+        }
+        // 半星 (0.5以上なら表示)
+        if (decimalPart >= 0.5) {
+            html += halfStar;
+        }
+        // 空星 (5 - (全+半) の個数分埋める)
+        const filledCount = integerPart + (decimalPart >= 0.5 ? 1 : 0);
+        for (let i = filledCount; i < 5; i++) {
+            html += emptyStar;
+        }
+        
+        // 数値を横に添える (例: 3.5)
+        html += `<span style="margin-left:5px; color:#666; font-size:0.9em; font-weight:normal;">(${rating.toFixed(1)})</span>`;
+        
+        return html;
+    }
+
+    // マーカーポップアップの星表示を更新
     function loadSpots() {
         markers.forEach(m => map.removeLayer(m));
         markers = [];
@@ -190,10 +237,11 @@
         .then(spots => {
             spots.forEach(spot => {
                 const marker = L.marker([spot.lat, spot.lng]).addTo(map);
-                const ratingStr = spot.rating > 0 ? `<span style="color:#f39c12;">${'★'.repeat(spot.rating)}</span>` : '<span style="color:#999; font-size:0.8em;">(口コミなし)</span>';
+                const ratingStr = spot.rating > 0 ? generateStarHtml(spot.rating) : '<span style="color:#999; font-size:0.8em;">(口コミなし)</span>';
+                
                 marker.bindPopup(`
                     <strong>${spot.name}</strong><br>
-                    ${ratingStr}<br>
+                    <div style="margin: 5px 0;">${ratingStr}</div>
                     <button onclick="openSpotDetail(${spot.id})" style="margin-top:5px; cursor:pointer; background:#007bff; color:white; border:none; border-radius:3px; padding:3px 10px;">詳細・口コミ</button>
                 `);
                 markers.push(marker);
@@ -240,10 +288,10 @@
             
             document.getElementById('modal-title').textContent = data.name;
             if (data.review_count > 0) {
-                document.getElementById('view-rating').textContent = '★'.repeat(data.rating);
+                document.getElementById('view-rating').innerHTML = generateStarHtml(data.rating);
                 document.getElementById('view-count').textContent = `(${data.review_count}件)`;
             } else {
-                document.getElementById('view-rating').textContent = '☆☆☆☆☆';
+                document.getElementById('view-rating').innerHTML = generateStarHtml(0);
                 document.getElementById('view-count').textContent = '(まだ口コミがありません)';
             }
             
@@ -266,8 +314,12 @@
             
             document.getElementById('spot-modal').style.display = 'flex';
             
+            // 入力フォームのリセット（スライダーを3.0に戻す）
             const reviewArea = document.getElementById('new-review-content');
             reviewArea.value = '';
+            document.getElementById('new-review-rating').value = 3;
+            updateRatingDisplay(3); // 表示もリセット
+            
             setTimeout(() => adjustHeight(reviewArea), 50);
         });
     };
@@ -291,6 +343,7 @@
         }
     };
 
+    // 6. レビューリストの星表示を更新
     function renderReviews(reviews) {
         const list = document.getElementById('review-list');
         list.innerHTML = '';
@@ -304,15 +357,28 @@
             let deleteBtn = r.is_mine ? `<button onclick="deleteReview(${r.id})" style="margin-left:auto; background:none; border:none; color:#dc3545; cursor:pointer; font-size:0.8em;">削除</button>` : '';
             const icon = r.icon_url ? `<img src="${r.icon_url}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">` : `<img src="{{ url_for('static', filename='icons/default_icon.png') }}" style="width:24px; height:24px; border-radius:50%;">`;
 
+            // ここで星生成
+            const starHtml = generateStarHtml(r.rating);
+
             div.innerHTML = `
                 <div class="review-user">${icon} ${r.user} <span class="review-date">${r.date}</span></div>
-                <div style="margin-bottom:5px;"><span class="review-rating">${'★'.repeat(r.rating)}</span></div>
+                <div style="margin-bottom:5px;">${starHtml}</div>
                 <div style="font-size:0.95em; color:#333;">${r.content}</div>
                 <div style="display:flex;">${deleteBtn}</div>
             `;
             list.appendChild(div);
         });
     }
+
+    // 7.スライダーの値を表示に反映する関数
+    window.updateRatingDisplay = function(val) {
+        // 3 -> "3.0" のように整形
+        const floatVal = parseFloat(val).toFixed(1);
+        document.getElementById('rating-val-display').textContent = floatVal;
+    }
+    
+    // ページロード時に初期化
+    updateRatingDisplay(1);
 
     // 口コミ投稿
     window.postReview = function() {
@@ -420,5 +486,7 @@
             closeModal();
         }
     });
+
+
 </script>
 {% endblock %}
