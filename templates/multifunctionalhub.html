@@ -222,6 +222,7 @@
         </h3>
         <p style="font-size: 0.9em; color: #666;">
             複数の画像をまとめて1つのPDFにします。<br>
+            ※iPhoneの写真もOK
         </p>
 
         <div style="margin-top: 1em;">
@@ -301,28 +302,6 @@
             </p>
         </div>
     </div>
-
-    <!--{% if current_user.username == '二酸化ケイ素' %}
-        <div class="hub-card" data-id="debug" style="border-left: 5px solid #6610f2;">
-            <h3 style="margin-top:0; border-bottom: none;">
-                <i class="fas fa-tools" style="color: #6610f2;"></i> 通知デバッグ
-            </h3>
-            <p style="font-size:0.9em; color:#666;">スマホが正しく登録されているか確認します。</p>
-        
-            <div id="debug-output" style="background:#f8f9fa; padding:10px; border:1px solid #ddd; border-radius:5px; font-family:monospace; margin-bottom:10px; min-height:60px; font-size:0.85em; overflow-wrap: break-word;">
-                ボタンを押して状態をチェックしてください...
-            </div>
-        
-            <div style="display:flex; gap:10px;">
-                <button id="check-onesignal-btn" class="file-upload-btn" style="background-color: #6610f2; flex:1;">
-                    状態チェック
-                </button>
-                <button id="force-permission-btn" class="file-upload-btn" style="background-color: #fd7e14; flex:1;">
-                許可を求める
-                </button>
-            </div>
-        </div>
-    {% endif %}-->
 </div>
 
 <script>
@@ -348,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- 2. 天気予報 (時刻表示修正版) ---
+    // --- 2. 天気予報 ---
     const WEATHER_CODE_MAP = {
         0: { icon: 'fa-sun', color: '#f39c12', desc: '快晴' },
         1: { icon: 'fa-sun', color: '#f39c12', desc: '晴れ' },
@@ -437,11 +416,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         label = '現在';
                     } else {
                         const dateObj = new Date(timeUnix * 1000);
-                        // :00 を削除して「時」だけにする、または数字だけにする
                         const jstHour = dateObj.toLocaleTimeString('ja-JP', { 
                             timeZone: 'Asia/Tokyo', hour: 'numeric', hour12: false 
                         });
-
                         label = jstHour.replace('時', ''); 
                     }
 
@@ -456,7 +433,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 hourlyContainer.innerHTML = hourlyHTML;
 
-                // --- 週間予報 (独自集計) ---
                 const dailyContainer = document.getElementById('daily-forecast-container');
                 let dailyHTML = '';
                 const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
@@ -550,7 +526,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- 3. ToDoサマリー取得 ---
+    // --- 3. ToDoサマリー ---
     function fetchTodoSummary() {
         const now = new Date();
         const dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -571,7 +547,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     fetchTodoSummary();
 
-    // --- 4. PDF変換機能 ---
+    // --- 4. PDF変換機能 (iPhone/HEIC対策 & 横線バグ修正版) ---
     const { jsPDF } = window.jspdf;
     const pdfInput = document.getElementById('pdf-images');
     const pdfPreviewArea = document.getElementById('pdf-preview-area');
@@ -589,17 +565,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (pdfInput) {
         pdfInput.addEventListener('change', function(e) {
             if (this.files && this.files.length > 0) {
-                selectedFiles = Array.from(this.files);
+                // ファイルを追加する（既存のものに追記）
+                const newFiles = Array.from(this.files);
+                selectedFiles = selectedFiles.concat(newFiles);
                 updatePdfPreview();
                 resetButtons(false);
             }
+            // 同じファイルを再度選択できるようにクリア
+            this.value = '';
         });
     }
 
     if (clearPdfBtn) {
         clearPdfBtn.addEventListener('click', function() {
             selectedFiles = [];
-            pdfInput.value = '';
             pdfPreviewContainer.style.display = 'none';
             resetButtons(true);
             pdfStatus.innerText = '';
@@ -611,15 +590,39 @@ document.addEventListener('DOMContentLoaded', function() {
         pdfImageCount.textContent = `${selectedFiles.length}枚`;
         pdfPreviewContainer.style.display = 'block';
 
-        selectedFiles.forEach(file => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.className = 'pdf-preview-item';
-                pdfPreviewArea.appendChild(img);
+        selectedFiles.forEach((file, index) => {
+            const container = document.createElement('div');
+            container.style.position = 'relative';
+            
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.className = 'pdf-preview-item';
+            
+            // プレビューからも削除できるようにする
+            const removeBadge = document.createElement('div');
+            removeBadge.innerHTML = '×';
+            removeBadge.style.position = 'absolute';
+            removeBadge.style.top = '-5px';
+            removeBadge.style.right = '-5px';
+            removeBadge.style.background = 'red';
+            removeBadge.style.color = 'white';
+            removeBadge.style.borderRadius = '50%';
+            removeBadge.style.width = '18px';
+            removeBadge.style.height = '18px';
+            removeBadge.style.textAlign = 'center';
+            removeBadge.style.lineHeight = '18px';
+            removeBadge.style.fontSize = '12px';
+            removeBadge.style.cursor = 'pointer';
+            
+            removeBadge.onclick = function() {
+                selectedFiles.splice(index, 1);
+                updatePdfPreview();
+                if(selectedFiles.length === 0) resetButtons(true);
             };
-            reader.readAsDataURL(file);
+
+            container.appendChild(img);
+            container.appendChild(removeBadge);
+            pdfPreviewArea.appendChild(container);
         });
     }
 
@@ -644,6 +647,49 @@ document.addEventListener('DOMContentLoaded', function() {
         pdfStatus.innerText = 'PDFを作成しています...';
     }
 
+    // --- ★ 画像処理の中核関数 (Canvasを使ってJPEG化・リサイズ) ★ ---
+    function compressAndGetDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    // キャンバスを作成して描画（これでサイズが確定し、横線バグが直る）
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    // メモリ節約のため、長辺が2000pxを超える場合はリサイズ
+                    const MAX_SIZE = 2000;
+                    if (width > height) {
+                        if (width > MAX_SIZE) {
+                            height *= MAX_SIZE / width;
+                            width = MAX_SIZE;
+                        }
+                    } else {
+                        if (height > MAX_SIZE) {
+                            width *= MAX_SIZE / height;
+                            height = MAX_SIZE;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // JPEGとしてDataURLを取得
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.85); // 画質85%
+                    resolve({ dataUrl, width, height });
+                };
+                img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+        });
+    }
+
     async function generatePDF() {
         const doc = new jsPDF();
         const pdfWidth = doc.internal.pageSize.getWidth();
@@ -652,18 +698,33 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let i = 0; i < selectedFiles.length; i++) {
             if (i > 0) doc.addPage();
             
-            const file = selectedFiles[i];
-            const imgData = await readFileAsDataURL(file);
-            const imgProps = doc.getImageProperties(imgData);
-            const ratio = imgProps.width / imgProps.height;
-            const pdfRatio = pdfWidth / pdfHeight;
-            let w, h;
-            if (ratio > pdfRatio) { w = pdfWidth; h = w / ratio; } 
-            else { h = pdfHeight; w = h * ratio; }
-            const x = (pdfWidth - w) / 2;
-            const y = (pdfHeight - h) / 2;
-            doc.addImage(imgData, 'JPEG', x, y, w, h);
-            pdfStatus.innerText = `${i + 1} / ${selectedFiles.length} 枚目を処理完了`;
+            pdfStatus.innerText = `${i + 1} / ${selectedFiles.length} 枚目を処理中...`;
+            
+            try {
+                // ここでCanvas経由のデータを取得
+                const { dataUrl, width, height } = await compressAndGetDataURL(selectedFiles[i]);
+                
+                const ratio = width / height;
+                const pdfRatio = pdfWidth / pdfHeight;
+                
+                let w, h;
+                if (ratio > pdfRatio) { 
+                    w = pdfWidth; 
+                    h = w / ratio; 
+                } else { 
+                    h = pdfHeight; 
+                    w = h * ratio; 
+                }
+                
+                const x = (pdfWidth - w) / 2;
+                const y = (pdfHeight - h) / 2;
+                
+                doc.addImage(dataUrl, 'JPEG', x, y, w, h);
+                
+            } catch (err) {
+                console.error("Image processing error:", err);
+                alert(`${i+1}枚目の画像の処理に失敗しました。スキップします。`);
+            }
         }
         return doc;
     }
@@ -673,6 +734,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (selectedFiles.length === 0) return;
             setProcessingState(downloadBtn);
             try {
+                // 処理を少し待たせてUI更新を反映
+                await new Promise(r => setTimeout(r, 100));
+                
                 const filenameText = pdfFilename.value.trim() || '画像まとめ';
                 const filename = filenameText.endsWith('.pdf') ? filenameText : filenameText + '.pdf';
                 const doc = await generatePDF();
@@ -690,11 +754,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (selectedFiles.length === 0) return;
             setProcessingState(shareBtn);
             try {
+                await new Promise(r => setTimeout(r, 100));
+
                 const filenameText = pdfFilename.value.trim() || '画像まとめ';
                 const filename = filenameText.endsWith('.pdf') ? filenameText : filenameText + '.pdf';
                 const doc = await generatePDF();
                 const blob = doc.output('blob');
                 const file = new File([blob], filename, { type: "application/pdf" });
+                
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     try {
                         await navigator.share({ files: [file], title: filename, text: 'PDFファイルを作成しました' });
@@ -713,54 +780,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error(err);
                 pdfStatus.innerText = 'エラーが発生しました';
             } finally { resetButtons(false); }
-        });
-    }
-
-    function readFileAsDataURL(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    }
-
-    // ▼▼▼ 通知デバッグ機能 (専用) ▼▼▼
-    const debugOut = document.getElementById('debug-output');
-    if (debugOut) {
-        document.getElementById('check-onesignal-btn').addEventListener('click', function() {
-            debugOut.innerHTML = "確認中...";
-            if (!window.OneSignalDeferred) {
-                debugOut.innerHTML = "OneSignal SDKが見つかりません";
-                return;
-            }
-            window.OneSignalDeferred.push(async function(OneSignal) {
-                try {
-                    const permission = Notification.permission;
-                    const isOptedIn = OneSignal.User.PushSubscription.optedIn;
-                    const subId = OneSignal.User.PushSubscription.id;
-                    const extId = OneSignal.User.externalId; 
-                    
-                    let html = `<strong>権限:</strong> ${permission}<br>`;
-                    html += `<strong>有効:</strong> ${isOptedIn ? 'YES' : 'NO'}<br>`;
-                    html += `<strong>User ID:</strong> ${extId || '未設定'}<br>`;
-                    html += `<strong>Device ID:</strong> ${subId ? 'あり' : 'なし'}`;
-                    debugOut.innerHTML = html;
-                } catch (e) {
-                    debugOut.innerHTML = "エラー: " + e;
-                }
-            });
-        });
-
-        document.getElementById('force-permission-btn').addEventListener('click', function() {
-            window.OneSignalDeferred.push(async function(OneSignal) {
-                try {
-                    await OneSignal.Slidedown.promptPush();
-                    debugOut.innerHTML = "許可プロンプトを表示しました";
-                } catch(e) {
-                    debugOut.innerHTML = "プロンプト表示エラー: " + e;
-                }
-            });
         });
     }
 });
